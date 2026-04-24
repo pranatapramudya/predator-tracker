@@ -72,20 +72,35 @@ async function createWalletAction(formData: FormData) {
     formData.get("network") ?? "",
   ).toUpperCase() as WalletNetwork;
 
-  if (!address || !name || !network || !isValidAddress(address, network))
+  // Validasi Awal
+  if (!address || !name || !network || !isValidAddress(address, network)) {
     redirect("/?feedback=invalid");
+  }
+
+  let isSuccess = false;
 
   try {
     const normalized = network === "SOLANA" ? address : address.toLowerCase();
+
+    // Operasi Database
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
       update: { name, isActive: true },
       create: { address: normalized, name, network, isActive: true },
     });
+
+    // Paksa UI update
     revalidatePath("/");
-    redirect("/?feedback=created");
+    isSuccess = true;
   } catch (e) {
     console.error("Action Error:", e);
+    // Kita biarkan isSuccess tetap false
+  }
+
+  // REDIRECT DI LUAR TRY-CATCH (WAJIB!)
+  if (isSuccess) {
+    redirect("/?feedback=created");
+  } else {
     redirect("/?feedback=failed");
   }
 }
@@ -98,7 +113,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     ? FEEDBACK_COPY[params.feedback as string]
     : null;
 
-  // SAFETY NET: Supaya Vercel nggak blank kalau DB error
   let wallets: any[] = [];
   try {
     wallets = await prisma.wallet.findMany({
