@@ -12,26 +12,11 @@ import {
   Info,
 } from "lucide-react";
 
-// --- KONFIGURASI DATA ---
+// --- CONFIG ---
 const NETWORK_OPTIONS = [
-  {
-    value: "SOLANA",
-    label: "Solana",
-    color: "text-emerald-400",
-    glow: "shadow-emerald-500/20",
-  },
-  {
-    value: "ETHEREUM",
-    label: "Ethereum",
-    color: "text-cyan-400",
-    glow: "shadow-cyan-500/20",
-  },
-  {
-    value: "BASE",
-    label: "Base",
-    color: "text-indigo-400",
-    glow: "shadow-indigo-500/20",
-  },
+  { value: "SOLANA", label: "Solana", color: "text-emerald-400" },
+  { value: "ETHEREUM", label: "Ethereum", color: "text-cyan-400" },
+  { value: "BASE", label: "Base", color: "text-indigo-400" },
 ] as const;
 
 type WalletNetwork = (typeof NETWORK_OPTIONS)[number]["value"];
@@ -66,7 +51,7 @@ const FEEDBACK_COPY: Record<
   },
 };
 
-// --- HELPER FUNCTIONS ---
+// --- HELPERS ---
 function isValidAddress(address: string, network: WalletNetwork): boolean {
   return network === "SOLANA"
     ? /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)
@@ -100,11 +85,12 @@ async function createWalletAction(formData: FormData) {
     revalidatePath("/");
     redirect("/?feedback=created");
   } catch (e) {
+    console.error("Action Error:", e);
     redirect("/?feedback=failed");
   }
 }
 
-// --- MAIN PAGE COMPONENT ---
+// --- PAGE ---
 export default async function Page({ searchParams }: { searchParams: any }) {
   noStore();
   const params = await searchParams;
@@ -112,13 +98,18 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     ? FEEDBACK_COPY[params.feedback as string]
     : null;
 
-  const wallets = await prisma.wallet.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  // SAFETY NET: Supaya Vercel nggak blank kalau DB error
+  let wallets: any[] = [];
+  try {
+    wallets = await prisma.wallet.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (dbError) {
+    console.error("Database Connection Failed:", dbError);
+  }
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10">
-      {/* 🚀 HEADER: THE COMMAND CENTER */}
       <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-white/10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] text-white/80 uppercase mb-4 shadow-lg shadow-emerald-500/10">
@@ -135,7 +126,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
             Real-time multi-chain surveillance system for high-value targets.
           </p>
         </div>
-
         <div className="flex gap-3">
           <div className="px-5 py-3 bg-white/10 border border-white/20 rounded-2xl backdrop-blur-xl shadow-xl">
             <p className="text-[10px] text-white/80 uppercase tracking-widest font-bold">
@@ -151,7 +141,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </div>
       </header>
 
-      {/* 🔔 FEEDBACK: FLOATING NOTIFICATION */}
       {feedback && (
         <div
           className={`flex items-start gap-4 p-4 rounded-2xl border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-500 ${feedback.color}`}
@@ -169,7 +158,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
-        {/* 🛠️ FORM: TARGET ACQUISITION */}
         <section className="lg:col-span-4">
           <div className="sticky top-10 bg-white/5 border border-white/10 rounded-[32px] p-8 backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] transform transition-transform hover:scale-[1.01]">
             <div className="flex items-center gap-4 mb-8">
@@ -190,10 +178,9 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   name="address"
                   required
                   placeholder="0x... or Solana Address"
-                  className="w-full bg-black/60 border border-white/20 rounded-2xl px-5 py-4 text-base font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/60 transition-all placeholder:text-white/40 placeholder:font-normal font-mono shadow-inner"
+                  className="w-full bg-black/60 border border-white/20 rounded-2xl px-5 py-4 text-base font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/60 transition-all placeholder:text-white/40 font-mono shadow-inner"
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[11px] font-black text-white/90 uppercase tracking-widest ml-1">
@@ -201,7 +188,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   </label>
                   <select
                     name="network"
-                    className="w-full bg-black/60 border border-white/20 rounded-2xl px-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/60 appearance-none cursor-pointer shadow-inner"
+                    className="w-full bg-black/60 border border-white/20 rounded-2xl px-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/60 appearance-none cursor-pointer"
                   >
                     {NETWORK_OPTIONS.map((n) => (
                       <option
@@ -222,12 +209,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     name="name"
                     required
                     placeholder="e.g. Wintermute"
-                    className="w-full bg-black/60 border border-white/20 rounded-2xl px-5 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/60 transition-all placeholder:text-white/40 placeholder:font-normal shadow-inner"
+                    className="w-full bg-black/60 border border-white/20 rounded-2xl px-5 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/60 transition-all placeholder:text-white/40 shadow-inner"
                   />
                 </div>
               </div>
-
-              <button className="group relative w-full py-5 bg-white text-black font-black rounded-2xl transition-all hover:bg-emerald-400 active:scale-95 overflow-hidden shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_25px_rgba(52,211,153,0.5)]">
+              <button className="group relative w-full py-5 bg-white text-black font-black rounded-2xl transition-all hover:bg-emerald-400 active:scale-95 overflow-hidden shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   START TRACKING{" "}
                   <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -238,7 +224,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </div>
         </section>
 
-        {/* 📊 LIST: LIVE SURVEILLANCE */}
         <section className="lg:col-span-8 space-y-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="flex items-center gap-2 text-sm font-black text-white/80 tracking-[0.2em] uppercase">
@@ -278,7 +263,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       {wallet.network}
                     </span>
                   </div>
-
                   <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/10">
                     <code className="text-sm text-white/80 font-mono tracking-wider font-bold">
                       {formatAddress(wallet.address)}
@@ -297,7 +281,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </section>
       </div>
 
-      {/* BACKGROUND DECORATION */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/10 blur-[120px] rounded-full" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-500/10 blur-[120px] rounded-full" />
