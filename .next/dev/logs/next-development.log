@@ -1,3 +1,4 @@
-{"timestamp":"00:00:02.118","source":"Server","level":"WARN","message":"⚠ Slow filesystem detected. The benchmark took 404ms. If D:\\predator-tracker\\.next/dev is a network drive, consider moving it to a local folder.\nSee more: https://nextjs.org/docs/app/guides/local-development"}
-{"timestamp":"00:00:02.147","source":"Server","level":"LOG","message":""}
-{"timestamp":"00:00:04.075","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:00:04.119","source":"Server","level":"WARN","message":"⚠ Slow filesystem detected. The benchmark took 609ms. If D:\\predator-tracker\\.next/dev is a network drive, consider moving it to a local folder.\nSee more: https://nextjs.org/docs/app/guides/local-development"}
+{"timestamp":"00:00:04.141","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:11.094","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"00:04:56.183","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
