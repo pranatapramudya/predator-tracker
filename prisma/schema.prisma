@@ -7,22 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Network {
-  SOLANA
-  ETHEREUM
-  BASE
-}
-
 model Wallet {
-  id        String        @id @default(cuid())
+  id           String        @id @default(cuid())
   /// Store EVM addresses in lowercase so webhook matching is deterministic.
-  address   String
-  name      String?
-  network   Network
-  isActive  Boolean       @default(true)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-
+  address      String
+  name         String?
+  network      Network
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   transactions Transaction[]
 
   @@unique([address, network])
@@ -31,17 +24,23 @@ model Wallet {
 
 model Transaction {
   id          String   @id @default(cuid())
-  walletId     String
-  wallet       Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  dedupeKey    String   @unique
-  signature    String
-  type         String
-  amount       Decimal  @db.Decimal(38, 18)
-  tokenSymbol  String
-  usdValue     Decimal  @db.Decimal(18, 2)
-  explorerUrl  String
-  createdAt    DateTime @default(now())
+  walletId    String
+  dedupeKey   String   @unique
+  signature   String
+  type        String
+  amount      Decimal  @db.Decimal(38, 18)
+  tokenSymbol String
+  usdValue    Decimal  @db.Decimal(18, 2)
+  explorerUrl String
+  createdAt   DateTime @default(now())
+  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   @@index([walletId, createdAt(sort: Desc)])
   @@index([signature])
+}
+
+enum Network {
+  SOLANA
+  ETHEREUM
+  BASE
 }
