@@ -58,20 +58,31 @@ export async function getEVMBalance(
 }
 
 /**
- * MENGAMBIL SALDO BITCOIN (THE CACHE BUSTER + BLOCKCYPHER)
+ * MENGAMBIL SALDO BITCOIN (THE ULTIMATE 4-ENGINE FALLBACK)
+ * Tahan banting lawan Vercel Rate Limit
  */
 export async function getBTCBalance(address: string): Promise<number> {
-  const headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    Accept: "text/plain, application/json, */*",
-  };
-
   const cb = Date.now();
 
-  // ENGINE 1: BlockCypher (Paling stabil untuk Vercel Serverless)
+  // ENGINE 1: Blockchair (Sangat ramah Vercel, kebal blokir)
   try {
     const res = await fetch(
-      `https://api.blockcypher.com/v1/btc/main/addrs/${address}/balance?t=${cb}`,
+      `https://api.blockchair.com/bitcoin/dashboards/address/${address}?_=${cb}`,
+      { cache: "no-store" },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const bal = Number(data.data[address].address.balance) / 100_000_000;
+      if (!isNaN(bal) && bal >= 0) return bal;
+    }
+  } catch (e) {
+    console.error("Blockchair failed");
+  }
+
+  // ENGINE 2: BlockCypher
+  try {
+    const res = await fetch(
+      `https://api.blockcypher.com/v1/btc/main/addrs/${address}/balance?_=${cb}`,
       { cache: "no-store" },
     );
     if (res.ok) {
@@ -80,14 +91,29 @@ export async function getBTCBalance(address: string): Promise<number> {
       if (!isNaN(bal) && bal >= 0) return bal;
     }
   } catch (e) {
-    console.error("BTC Engine 1 (BlockCypher) Failed");
+    console.error("BlockCypher failed");
   }
 
-  // ENGINE 2: Mempool.space (JSON Backup)
+  // ENGINE 3: Blockchain.info
   try {
     const res = await fetch(
-      `https://mempool.space/api/address/${address}?t=${cb}`,
-      { headers, cache: "no-store" },
+      `https://blockchain.info/q/addressbalance/${address}?_=${cb}`,
+      { cache: "no-store" },
+    );
+    if (res.ok) {
+      const text = await res.text();
+      const bal = Number(text) / 100_000_000;
+      if (!isNaN(bal) && bal >= 0) return bal;
+    }
+  } catch (e) {
+    console.error("Blockchain.info failed");
+  }
+
+  // ENGINE 4: Mempool.space
+  try {
+    const res = await fetch(
+      `https://mempool.space/api/address/${address}?_=${cb}`,
+      { cache: "no-store" },
     );
     if (res.ok) {
       const data = await res.json();
@@ -97,22 +123,7 @@ export async function getBTCBalance(address: string): Promise<number> {
       if (!isNaN(bal) && bal >= 0) return bal;
     }
   } catch (e) {
-    console.error("BTC Engine 2 (Mempool) Failed");
-  }
-
-  // ENGINE 3: Blockchain.info (Raw Text Backup)
-  try {
-    const res = await fetch(
-      `https://blockchain.info/q/addressbalance/${address}?t=${cb}`,
-      { headers, cache: "no-store" },
-    );
-    if (res.ok) {
-      const text = await res.text();
-      const bal = Number(text) / 100_000_000;
-      if (!isNaN(bal) && bal >= 0) return bal;
-    }
-  } catch (e) {
-    console.error("BTC Engine 3 (Blockchain.info) Failed");
+    console.error("Mempool failed");
   }
 
   return 0;
