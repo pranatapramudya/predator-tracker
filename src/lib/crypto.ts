@@ -5,27 +5,24 @@
  */
 export async function getSolanaBalance(address: string): Promise<number> {
   const apiKey = process.env.HELIUS_API_KEY;
-  const url = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
-
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: "helius-test",
-        method: "getBalance",
-        params: [address],
-      }),
-      cache: "no-store",
-    });
-
-    const data = await response.json();
-    // Konversi Lamports ke SOL (1 SOL = 10^9 Lamports)
-    const solAmount = Number(data.result?.value || 0) / 1_000_000_000;
-    return solAmount;
-  } catch (error) {
-    console.error("Gagal narik saldo Solana:", error);
+    const res = await fetch(
+      `https://mainnet.helius-rpc.com/?api-key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getBalance",
+          params: [address],
+        }),
+        cache: "no-store",
+      },
+    );
+    const data = await res.json();
+    return Number(data.result?.value || 0) / 1_000_000_000;
+  } catch (e) {
     return 0;
   }
 }
@@ -41,13 +38,12 @@ export async function getEVMBalance(
     network === "ETHEREUM"
       ? `https://eth.llamarpc.com`
       : `https://mainnet.base.org`;
-
   try {
-    const response = await fetch(url, {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "User-Agent": "Mozilla/5.0",
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -57,64 +53,64 @@ export async function getEVMBalance(
       }),
       cache: "no-store",
     });
-
-    const data = await response.json();
-
+    const data = await res.json();
     if (data.result) {
-      // Konversi Hex Wei ke ETH (1 ETH = 10^18 Wei)
-      const balanceInWei = BigInt(data.result);
-      return Number(balanceInWei) / 1_000_000_000_000_000_000;
+      return Number(BigInt(data.result)) / 1e18;
     }
     return 0;
-  } catch (error) {
-    console.error(`Fetch Error ${network}:`, error);
+  } catch (e) {
     return 0;
   }
 }
 
 /**
- * MENGAMBIL SALDO BITCOIN (DUAL ENGINE FALLBACK)
- * Mencoba Mempool.space dulu, jika gagal/limit pindah ke Blockchain.info
+ * MENGAMBIL SALDO BITCOIN (TRIPLE ENGINE FALLBACK)
  */
 export async function getBTCBalance(address: string): Promise<number> {
-  // MESIN 1: Mempool.space (Paling stabil buat API JSON)
+  const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" };
+
+  // ENGINE 1: Mempool.space
   try {
-    const res1 = await fetch(`https://mempool.space/api/address/${address}`, {
-      method: "GET",
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+    const res = await fetch(`https://mempool.space/api/address/${address}`, {
+      headers,
       cache: "no-store",
     });
-
-    if (res1.ok) {
-      const data = await res1.json();
-      const funded = data.chain_stats?.funded_txo_sum || 0;
-      const spent = data.chain_stats?.spent_txo_sum || 0;
-      const satoshis = funded - spent;
-      return satoshis / 100_000_000;
+    if (res.ok) {
+      const data = await res.json();
+      const bal =
+        (data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum) /
+        100_000_000;
+      if (!isNaN(bal)) return bal;
     }
-  } catch (err1) {
-    console.error("Mesin BTC 1 (Mempool) gagal, mencoba Mesin 2...");
-  }
+  } catch (e) {}
 
-  // MESIN 2: Blockchain.info (Fallback jalur tol)
+  // ENGINE 2: Blockstream.info
   try {
-    const res2 = await fetch(
-      `https://blockchain.info/q/addressbalance/${address}`,
-      {
-        method: "GET",
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
-        cache: "no-store",
-      },
-    );
-
-    if (res2.ok) {
-      const text = await res2.text();
-      const satoshis = Number(text);
-      if (!isNaN(satoshis)) return satoshis / 100_000_000;
+    const res = await fetch(`https://blockstream.info/api/address/${address}`, {
+      headers,
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const bal =
+        (data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum) /
+        100_000_000;
+      if (!isNaN(bal)) return bal;
     }
-    return 0;
-  } catch (err2) {
-    console.error("Mesin BTC 2 (Blockchain.info) juga gagal:", err2);
-    return 0;
-  }
+  } catch (e) {}
+
+  // ENGINE 3: Blockchain.info
+  try {
+    const res = await fetch(
+      `https://blockchain.info/q/addressbalance/${address}`,
+      { headers, cache: "no-store" },
+    );
+    if (res.ok) {
+      const text = await res.text();
+      const bal = Number(text) / 100_000_000;
+      if (!isNaN(bal)) return bal;
+    }
+  } catch (e) {}
+
+  return 0;
 }
