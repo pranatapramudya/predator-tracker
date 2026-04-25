@@ -1,3 +1,4 @@
+import { getSolanaBalance } from "@/lib/crypto";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -91,20 +92,39 @@ async function createWalletAction(formData: FormData) {
         ? address
         : address.toLowerCase();
 
-    // 1. Simpan ke Database
+    // --- STEP: AMBIL SALDO DULU ---
+    let balance = "0.00";
+    if (network === "SOLANA") {
+      balance = await getSolanaBalance(normalized);
+    }
+
+    // 1. Simpan ke Database (Update lastBalance)
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
-      update: { name, chatId, isActive: true },
-      create: { address: normalized, name, network, chatId, isActive: true },
+      update: { name, chatId, lastBalance: balance, isActive: true },
+      create: {
+        address: normalized,
+        name,
+        network,
+        chatId,
+        lastBalance: balance,
+        isActive: true,
+      },
     });
 
     // 2. Kirim Notifikasi Telegram
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (botToken && chatId) {
+      const balanceText =
+        network === "SOLANA"
+          ? `💰 *Balance:* ◎ ${balance} SOL`
+          : `💰 *Balance:* Tracking...`;
+
       const message =
         `🎯 *TARGET LOCKED: PAUS BARU!*\n\n` +
         `👤 *Name:* ${name}\n` +
         `🌐 *Network:* ${network}\n` +
+        `${balanceText}\n` +
         `📍 *Address:* \`${normalized}\`\n\n` +
         `_Lumestack Predator Tracker is now active._`;
 
@@ -170,6 +190,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#050505] text-white">
+      {/* HEADER */}
       <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-white/10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] text-white/80 uppercase mb-4 shadow-lg shadow-emerald-500/10">
@@ -191,6 +212,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </div>
       </header>
 
+      {/* FEEDBACK ALERT */}
       {feedback && (
         <div
           className={`flex items-start gap-4 p-4 rounded-2xl border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-500 ${feedback.color}`}
@@ -206,6 +228,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+        {/* FORM SECTION */}
         <section className="lg:col-span-4">
           <div className="sticky top-10 bg-white/5 border border-white/10 rounded-[32px] p-8 backdrop-blur-3xl shadow-2xl">
             <div className="flex items-center gap-4 mb-8">
@@ -286,6 +309,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </div>
         </section>
 
+        {/* LIST SECTION */}
         <section className="lg:col-span-8 space-y-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="flex items-center gap-2 text-sm font-black opacity-60 tracking-[0.2em] uppercase">
@@ -305,16 +329,25 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               {wallets.map((wallet) => (
                 <div
                   key={wallet.id}
-                  className="group bg-white/5 border border-white/10 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl"
+                  className="group bg-white/5 border border-white/10 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative"
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">
                         Target Whale
                       </p>
                       <h4 className="text-xl font-black group-hover:text-emerald-400 transition-colors">
                         {wallet.name}
                       </h4>
+
+                      {/* --- TAMPILAN SALDO (LANGKAH 3) --- */}
+                      {wallet.network === "SOLANA" && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                            ◎ {wallet.lastBalance || "0.00"} SOL
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <span
