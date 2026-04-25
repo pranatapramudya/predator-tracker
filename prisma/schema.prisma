@@ -9,37 +9,44 @@ datasource db {
 
 model Wallet {
   id           String        @id @default(cuid())
-  /// Store EVM addresses in lowercase so webhook matching is deterministic.
+  /// Store EVM addresses in lowercase. Untuk BTC & SOL tetap Case-Sensitive.
   address      String
-  name         String?
+  name         String?       // Alias untuk paus (misal: "Naga Sumedang")
   network      Network
   isActive     Boolean       @default(true)
+  
+  // Fitur Baru untuk Notifikasi & Caching
+  chatId       String?       // ID Telegram User (Penting buat SaaS Multi-user)
+  lastBalance  Decimal?      @default(0) @db.Decimal(38, 18)
+  
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[]
 
   @@unique([address, network])
   @@index([network, isActive])
+  @@index([chatId])         // Index baru: Biar narik wallet per user lebih sat-set
 }
 
 model Transaction {
-  id          String   @id @default(cuid())
-  walletId    String
-  dedupeKey   String   @unique
-  signature   String
-  type        String
-  amount      Decimal  @db.Decimal(38, 18)
-  tokenSymbol String
-  usdValue    Decimal  @db.Decimal(18, 2)
-  explorerUrl String
-  createdAt   DateTime @default(now())
-  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  walletId     String
+  dedupeKey    String   @unique
+  signature    String
+  type         String
+  amount       Decimal  @db.Decimal(38, 18)
+  tokenSymbol  String
+  usdValue     Decimal  @db.Decimal(18, 2)
+  explorerUrl  String
+  createdAt    DateTime @default(now())
+  wallet       Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   @@index([walletId, createdAt(sort: Desc)])
   @@index([signature])
 }
 
 enum Network {
+  BITCOIN
   SOLANA
   ETHEREUM
   BASE
