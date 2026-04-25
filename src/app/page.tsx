@@ -80,16 +80,19 @@ async function createWalletAction(formData: FormData) {
     formData.get("network") ?? "",
   ).toUpperCase() as WalletNetwork;
 
+  // 1. Validasi Input
   if (!address || !name || !network || !isValidAddress(address, network)) {
     redirect("/?feedback=invalid");
   }
 
+  let success = false;
   try {
     const normalized =
       network === "SOLANA" || network === "BITCOIN"
         ? address
         : address.toLowerCase();
 
+    // 2. Database Operation
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
       update: { name, chatId, isActive: true },
@@ -97,9 +100,15 @@ async function createWalletAction(formData: FormData) {
     });
 
     revalidatePath("/");
-    redirect("/?feedback=created");
+    success = true;
   } catch (e) {
     console.error("Action Error:", e);
+  }
+
+  // 3. Redirect di luar try-catch (WAJIB di Next.js)
+  if (success) {
+    redirect("/?feedback=created");
+  } else {
     redirect("/?feedback=failed");
   }
 }
@@ -107,11 +116,18 @@ async function createWalletAction(formData: FormData) {
 async function deleteWalletAction(formData: FormData) {
   "use server";
   const id = String(formData.get("id"));
+  let success = false;
   try {
     await prisma.wallet.delete({ where: { id } });
     revalidatePath("/");
-    redirect("/?feedback=deleted");
+    success = true;
   } catch (e) {
+    console.error("Delete Error:", e);
+  }
+
+  if (success) {
+    redirect("/?feedback=deleted");
+  } else {
     redirect("/?feedback=failed");
   }
 }
@@ -134,8 +150,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   }
 
   return (
-    <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#050505] text-white">
-      {/* HEADER */}
+    <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#050505] text-white font-sans">
       <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-white/10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] text-white/80 uppercase mb-4 shadow-lg shadow-emerald-500/10">
@@ -160,7 +175,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </div>
       </header>
 
-      {/* FEEDBACK ALERT */}
       {feedback && (
         <div
           className={`flex items-start gap-4 p-4 rounded-2xl border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-500 ${feedback.color}`}
@@ -176,7 +190,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
-        {/* FORM SECTION */}
         <section className="lg:col-span-4">
           <div className="sticky top-10 bg-white/5 border border-white/10 rounded-[32px] p-8 backdrop-blur-3xl shadow-2xl">
             <div className="flex items-center gap-4 mb-8">
@@ -195,7 +208,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   name="address"
                   required
                   placeholder="Paste BTC, SOL, or EVM address..."
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-base font-bold focus:ring-2 focus:ring-emerald-500/60 outline-none transition-all placeholder:text-white/20 font-mono"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-base font-bold focus:ring-2 focus:ring-emerald-500/60 outline-none transition-all placeholder:text-white/20 font-mono text-white"
                 />
               </div>
 
@@ -206,7 +219,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   </label>
                   <select
                     name="network"
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-4 text-sm font-bold appearance-none cursor-pointer outline-none focus:ring-2 focus:ring-emerald-500/60"
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-4 text-sm font-bold appearance-none cursor-pointer outline-none focus:ring-2 focus:ring-emerald-500/60 text-white"
                   >
                     {NETWORK_OPTIONS.map((n) => (
                       <option
@@ -227,19 +240,20 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     name="name"
                     required
                     placeholder="e.g. MicroStrategy"
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/60 transition-all placeholder:text-white/20"
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/60 transition-all placeholder:text-white/20 text-white"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  <Send className="w-3 h-3" /> Telegram Chat ID (Optional)
+                  <Send className="w-3 h-3 text-cyan-400" /> Telegram Chat ID
+                  (Optional)
                 </label>
                 <input
                   name="chatId"
                   placeholder="e.g. 12345678"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-500/60 transition-all placeholder:text-white/20"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-500/60 transition-all placeholder:text-white/20 text-white"
                 />
               </div>
 
@@ -253,7 +267,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </div>
         </section>
 
-        {/* LIST SECTION */}
         <section className="lg:col-span-8 space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-sm font-black opacity-60 tracking-[0.2em] uppercase">
@@ -292,7 +305,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       </span>
                       <form action={deleteWalletAction}>
                         <input type="hidden" name="id" value={wallet.id} />
-                        <button className="p-2 text-white/20 hover:text-rose-500 transition-colors">
+                        <button className="p-2 text-white/20 hover:text-rose-500 transition-colors cursor-pointer">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </form>
