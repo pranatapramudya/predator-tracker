@@ -36,19 +36,19 @@ const FEEDBACK_COPY: Record<
 > = {
   created: {
     title: "TARGET LOCKED",
-    description: "Wallet paus masuk radar.",
+    description: "Paus masuk radar.",
     icon: CheckCircle2,
     color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
   },
   deleted: {
     title: "TARGET ELIMINATED",
-    description: "Target dihapus dari sistem.",
+    description: "Target dihapus.",
     icon: Trash2,
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
   invalid: {
     title: "INVALID COORDS",
-    description: "Cek kembali alamat dan network.",
+    description: "Cek alamat & network.",
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
@@ -74,6 +74,7 @@ function formatAddress(address: string): string {
     : `${address.slice(0, 6)}...${address.slice(-6)}`;
 }
 
+// --- SERVER ACTIONS ---
 async function createWalletAction(formData: FormData) {
   "use server";
   const address = String(formData.get("address") ?? "").trim();
@@ -93,17 +94,14 @@ async function createWalletAction(formData: FormData) {
         ? address
         : address.toLowerCase();
 
+    // AMBIL SALDO (DIPASTIKAN BTC TERPANGGIL)
     let balance = 0;
     if (network === "SOLANA") balance = await getSolanaBalance(normalized);
     else if (network === "ETHEREUM" || network === "BASE")
       balance = await getEVMBalance(normalized, network);
     else if (network === "BITCOIN") balance = await getBTCBalance(normalized);
 
-    // Kirim debug log ke Vercel dashboard
-    console.log(
-      `[PREDATOR] Net: ${network} | Bal: ${balance} | Addr: ${normalized}`,
-    );
-
+    // DB UPSERT
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
       update: { name, chatId, lastBalance: balance, isActive: true },
@@ -117,11 +115,13 @@ async function createWalletAction(formData: FormData) {
       },
     });
 
+    // TELEGRAM NOTIF
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (botToken && chatId) {
       const sym =
         network === "BITCOIN" ? "₿" : network === "SOLANA" ? "◎" : "Ξ";
-      const message = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n🌐 *Net:* ${network}\n💰 *Bal:* ${sym} ${Number(balance).toFixed(network === "BITCOIN" ? 8 : 4)}\n📍 *Addr:* \`${normalized}\``;
+      const dec = network === "BITCOIN" ? 8 : 4;
+      const message = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n💰 *Bal:* ${sym} ${balance.toFixed(dec)}\n📍 *Addr:* \`${normalized}\``;
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -151,6 +151,7 @@ async function deleteWalletAction(formData: FormData) {
   }
 }
 
+// --- PAGE ---
 export default async function Page({ searchParams }: { searchParams: any }) {
   noStore();
   const params = await searchParams;
@@ -167,20 +168,17 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] uppercase mb-4">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />{" "}
-            Neural Link Active
+            Predator Neural Link
           </div>
           <h1 className="text-5xl md:text-6xl font-black tracking-tighter">
             PREDATOR <span className="text-emerald-400">TRACKER</span>
           </h1>
         </div>
         <div className="px-5 py-3 bg-white/5 border border-white/10 rounded-2xl">
-          <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold">
-            Monitored Targets
+          <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold font-mono">
+            Targets
           </p>
-          <p className="text-xl font-black">
-            {wallets.length}{" "}
-            <span className="text-xs font-normal text-white/40">WHALES</span>
-          </p>
+          <p className="text-xl font-black">{wallets.length} WHALES</p>
         </div>
       </header>
 
@@ -205,7 +203,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
             <form action={createWalletAction} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1">
-                  Wallet Address
+                  Address
                 </label>
                 <input
                   name="address"
@@ -248,13 +246,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               </div>
               <div className="space-y-2">
                 <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  <Send className="w-3 h-3 text-cyan-400" /> Telegram Chat ID
+                  <Send className="w-3 h-3 text-cyan-400" /> Telegram ID
                 </label>
                 <input
                   name="chatId"
                   required
                   placeholder="e.g. 12345678"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-2 focus:ring-cyan-500/60"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none"
                 />
               </div>
               <button className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2">
@@ -306,7 +304,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               : w.network === "SOLANA"
                                 ? `◎ ${Number(w.lastBalance).toFixed(2)}`
                                 : `Ξ ${Number(w.lastBalance).toFixed(4)}`}{" "}
-                            {w.network}
+                            {w.network === "SOLANA"
+                              ? "SOL"
+                              : w.network === "BITCOIN"
+                                ? "BTC"
+                                : "ETH"}
                           </span>
                         </div>
                       </div>
