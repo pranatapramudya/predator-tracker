@@ -15,7 +15,6 @@ import {
   Send,
 } from "lucide-react";
 
-// WAJIB: Biar Next.js Vercel nggak nge-cache halaman ini!
 export const dynamic = "force-dynamic";
 
 const NETWORK_OPTIONS = [
@@ -80,6 +79,7 @@ function formatAddress(address: string): string {
 
 async function createWalletAction(formData: FormData) {
   "use server";
+  let feedback = "failed";
   const address = String(formData.get("address") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const chatId = String(formData.get("chatId") ?? "").trim();
@@ -87,16 +87,15 @@ async function createWalletAction(formData: FormData) {
     formData.get("network") ?? "",
   ).toUpperCase() as WalletNetwork;
 
-  if (!address || !name || !network || !isValidAddress(address, network))
-    redirect("/?feedback=invalid");
+  if (!address || !name || !network || !isValidAddress(address, network)) {
+    return redirect("/?feedback=invalid");
+  }
 
-  let success = false;
   try {
     const normalized =
       network === "SOLANA" || network === "BITCOIN"
         ? address
         : address.toLowerCase();
-
     let balance = 0;
     if (network === "SOLANA") balance = await getSolanaBalance(normalized);
     else if (network === "ETHEREUM" || network === "BASE")
@@ -120,8 +119,7 @@ async function createWalletAction(formData: FormData) {
     if (botToken && chatId) {
       const sym =
         network === "BITCOIN" ? "₿" : network === "SOLANA" ? "◎" : "Ξ";
-      const dec = network === "BITCOIN" ? 8 : 4;
-      const message = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n🌐 *Net:* ${network}\n💰 *Bal:* ${sym} ${Number(balance).toFixed(dec)}\n📍 *Addr:* \`${normalized}\``;
+      const message = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n🌐 *Net:* ${network}\n💰 *Bal:* ${sym} ${Number(balance).toFixed(4)}\n📍 *Addr:* \`${normalized}\``;
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,34 +131,26 @@ async function createWalletAction(formData: FormData) {
       });
     }
     revalidatePath("/");
-    success = true;
+    feedback = "created";
   } catch (e) {
-    console.error("Create Wallet Error:", e);
+    console.error(e);
   }
-
-  // Redirect dipindah ke LUAR try-catch biar gak error!
-  redirect(success ? "/?feedback=created" : "/?feedback=failed");
+  redirect(`/?feedback=${feedback}`);
 }
 
 async function deleteWalletAction(formData: FormData) {
   "use server";
-  let success = false;
-
+  let feedback = "failed";
   try {
     const id = String(formData.get("id"));
+    await prisma.transaction.deleteMany({ where: { walletId: id } });
     await prisma.wallet.delete({ where: { id } });
     revalidatePath("/");
-    success = true;
+    feedback = "deleted";
   } catch (e) {
-    console.error("Gagal hapus wallet:", e);
+    console.error(e);
   }
-
-  // Taruh redirect di LUAR try-catch!
-  if (success) {
-    redirect("/?feedback=deleted");
-  } else {
-    redirect("/?feedback=failed");
-  }
+  redirect(`/?feedback=${feedback}`);
 }
 
 export default async function Page({ searchParams }: { searchParams: any }) {
@@ -265,7 +255,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 <input
                   name="chatId"
                   required
-                  placeholder="e.g. 12345678"
+                  placeholder="e.g. 12345"
                   className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-2 focus:ring-cyan-500/60"
                 />
               </div>
@@ -317,8 +307,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               ? `₿ ${Number(w.lastBalance).toFixed(8)}`
                               : w.network === "SOLANA"
                                 ? `◎ ${Number(w.lastBalance).toFixed(2)}`
-                                : `Ξ ${Number(w.lastBalance).toFixed(4)}`}{" "}
-                            {w.network}
+                                : `Ξ ${Number(w.lastBalance).toFixed(4)}`}
                           </span>
                         </div>
                       </div>

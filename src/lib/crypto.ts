@@ -58,24 +58,21 @@ export async function getEVMBalance(
 }
 
 /**
- * MENGAMBIL SALDO BITCOIN (ROBUST VERSION)
- * Menggunakan Object.values untuk menghindari masalah Case-Sensitivity di Blockchair
+ * MENGAMBIL SALDO BITCOIN (THE FINAL BOSS ENGINE)
+ * Menggunakan Case-Insensitive Parsing untuk Blockchair
  */
 export async function getBTCBalance(address: string): Promise<number> {
   const cb = Date.now();
 
-  // ENGINE 1: Blockchair (Jagoan Utama)
+  // ENGINE 1: Blockchair (Paling Stabil)
   try {
     const res = await fetch(
       `https://api.blockchair.com/bitcoin/dashboards/address/${address}?_=${cb}`,
       { cache: "no-store" },
     );
-
     if (res.ok) {
       const data = await res.json();
-
-      // LOGIC BARU: Ambil data pertama di dalam objek 'data'
-      // biar gak peduli mau alamatnya huruf gede atau kecil di JSON-nya.
+      // Mengambil data pertama tanpa peduli key address (case-insensitive)
       const addressData =
         data.data && Object.values(data.data)[0]
           ? (Object.values(data.data)[0] as any)
@@ -86,11 +83,9 @@ export async function getBTCBalance(address: string): Promise<number> {
         if (!isNaN(bal) && bal >= 0) return bal;
       }
     }
-  } catch (e) {
-    console.error("Blockchair Error:", e);
-  }
+  } catch (e) {}
 
-  // ENGINE 2: BlockCypher (Fallback)
+  // ENGINE 2: BlockCypher (Fallback 1)
   try {
     const res = await fetch(
       `https://api.blockcypher.com/v1/btc/main/addrs/${address}/balance?t=${cb}`,
@@ -101,11 +96,9 @@ export async function getBTCBalance(address: string): Promise<number> {
       const bal = Number(data.final_balance || 0) / 100_000_000;
       if (!isNaN(bal) && bal >= 0) return bal;
     }
-  } catch (e) {
-    console.error("BlockCypher Error:", e);
-  }
+  } catch (e) {}
 
-  // ENGINE 3: Blockchain.info (Raw Text Fallback)
+  // ENGINE 3: Blockchain.info (Fallback 2)
   try {
     const res = await fetch(
       `https://blockchain.info/q/addressbalance/${address}?t=${cb}`,
