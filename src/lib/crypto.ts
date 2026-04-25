@@ -1,5 +1,10 @@
 // src/lib/crypto.ts
 
+const HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+};
+
 export async function getSolanaBalance(address: string): Promise<number> {
   const apiKey = process.env.HELIUS_API_KEY;
   try {
@@ -7,7 +12,7 @@ export async function getSolanaBalance(address: string): Promise<number> {
       `https://mainnet.helius-rpc.com/?api-key=${apiKey}&t=${Date.now()}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...HEADERS },
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: 1,
@@ -35,10 +40,7 @@ export async function getEVMBalance(
   try {
     const res = await fetch(`${url}?t=${Date.now()}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0",
-      },
+      headers: { "Content-Type": "application/json", ...HEADERS },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -54,39 +56,45 @@ export async function getEVMBalance(
   }
 }
 
+/**
+ * BTC BALANCE - FINAL BOSS MODE
+ * Menggunakan triple engine untuk menghindari angka 0 di Vercel
+ */
 export async function getBTCBalance(address: string): Promise<number> {
   const cb = Date.now();
 
-  // ENGINE 1: Mempool.space (Jagoan Anti-0)
+  // ENGINE 1: Blockchain.info (Sangat ringan & jarang nge-block)
   try {
     const res = await fetch(
-      `https://mempool.space/api/address/${address}?t=${cb}`,
+      `https://blockchain.info/q/addressbalance/${address}?_=${cb}`,
       {
         cache: "no-store",
-        headers: { "User-Agent": "Mozilla/5.0" },
+        headers: HEADERS,
+      },
+    );
+    if (res.ok) {
+      const text = await res.text();
+      const bal = Number(text) / 100_000_000;
+      if (!isNaN(bal) && bal > 0) return bal;
+    }
+  } catch (e) {}
+
+  // ENGINE 2: Mempool.space (Rumus: Funded - Spent)
+  try {
+    const res = await fetch(
+      `https://mempool.space/api/address/${address}?_=${cb}`,
+      {
+        cache: "no-store",
+        headers: HEADERS,
       },
     );
     if (res.ok) {
       const data = await res.json();
       const bal =
-        (data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum) /
+        ((data.chain_stats?.funded_txo_sum || 0) -
+          (data.chain_stats?.spent_txo_sum || 0)) /
         100_000_000;
-      console.log(`[BTC DEBUG] ${address} balance: ${bal}`);
-      if (!isNaN(bal)) return bal;
-    }
-  } catch (e) {
-    console.error("Mempool Error");
-  }
-
-  // ENGINE 2: Blockchain.info (Cadangan)
-  try {
-    const res = await fetch(
-      `https://blockchain.info/q/addressbalance/${address}?_=${cb}`,
-      { cache: "no-store" },
-    );
-    if (res.ok) {
-      const text = await res.text();
-      return Number(text) / 100_000_000;
+      if (!isNaN(bal) && bal >= 0) return bal;
     }
   } catch (e) {}
 
