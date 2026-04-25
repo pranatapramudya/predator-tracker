@@ -1,5 +1,8 @@
 // lib/crypto.ts
 
+/**
+ * MENGAMBIL SALDO SOLANA (HELIUS)
+ */
 export async function getSolanaBalance(address: string): Promise<number> {
   const apiKey = process.env.HELIUS_API_KEY;
   const url = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
@@ -26,11 +29,13 @@ export async function getSolanaBalance(address: string): Promise<number> {
   }
 }
 
+/**
+ * MENGAMBIL SALDO EVM (ETH & BASE VIA LLAMARPC)
+ */
 export async function getEVMBalance(
   address: string,
   network: "ETHEREUM" | "BASE",
 ): Promise<number> {
-  // BYPASS ALCHEMY: Pake LlamaRPC (ETH) & Public Base (BASE)
   const url =
     network === "ETHEREUM"
       ? `https://eth.llamarpc.com`
@@ -41,7 +46,6 @@ export async function getEVMBalance(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // Topeng Ninja biar Vercel gak dikira bot
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       },
       body: JSON.stringify({
@@ -68,11 +72,10 @@ export async function getEVMBalance(
 }
 
 /**
- * MENGAMBIL SALDO BITCOIN (Via Mempool.space - Super Stabil)
+ * MENGAMBIL SALDO BITCOIN (Via Mempool.space - Paling Stabil)
  */
 export async function getBTCBalance(address: string): Promise<number> {
   try {
-    // API publik dari Mempool.space, paling andal buat ekosistem BTC
     const response = await fetch(
       `https://mempool.space/api/address/${address}`,
       {
@@ -88,14 +91,13 @@ export async function getBTCBalance(address: string): Promise<number> {
 
     const data = await response.json();
 
-    // Logika Bitcoin: Saldo = Total Masuk - Total Keluar
+    // BTC Balance = (Total Satoshis Masuk) - (Total Satoshis Keluar)
     const funded = data.chain_stats?.funded_txo_sum || 0;
     const spent = data.chain_stats?.spent_txo_sum || 0;
     const satoshis = funded - spent;
 
     // 1 BTC = 100.000.000 Satoshis
-    const btcAmount = satoshis / 100_000_000;
-    return btcAmount;
+    return satoshis / 100_000_000;
   } catch (error) {
     console.error("Gagal narik saldo BTC:", error);
     return 0;
