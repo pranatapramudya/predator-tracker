@@ -135,20 +135,31 @@ async function createWalletAction(formData: FormData) {
     revalidatePath("/");
     success = true;
   } catch (e) {
-    console.error(e);
+    console.error("Create Wallet Error:", e);
   }
+
+  // Redirect dipindah ke LUAR try-catch biar gak error!
   redirect(success ? "/?feedback=created" : "/?feedback=failed");
 }
 
 async function deleteWalletAction(formData: FormData) {
   "use server";
+  let success = false;
   try {
-    await prisma.wallet.delete({ where: { id: String(formData.get("id")) } });
+    const id = String(formData.get("id"));
+    // Hapus transaksinya dulu (Cascade manual)
+    await prisma.transaction.deleteMany({ where: { walletId: id } });
+    // Baru hapus wallet-nya
+    await prisma.wallet.delete({ where: { id } });
+
     revalidatePath("/");
-    redirect("/?feedback=deleted");
+    success = true;
   } catch (e) {
-    redirect("/?feedback=failed");
+    console.error("Delete Wallet Error:", e);
   }
+
+  // Redirect dipindah ke LUAR try-catch biar Next.js gak ngamuk!
+  redirect(success ? "/?feedback=deleted" : "/?feedback=failed");
 }
 
 export default async function Page({ searchParams }: { searchParams: any }) {
