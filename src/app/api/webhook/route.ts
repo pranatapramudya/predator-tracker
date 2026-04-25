@@ -73,17 +73,13 @@ export async function GET(request: Request) {
           }
         }
 
-        // ==========================================
-        // 2. CEK SMART MONEY SWAP KHUSUS SOLANA
-        // ==========================================
+        // 2. CEK SMART MONEY SWAP (SOLANA)
         if (wallet.network === "SOLANA") {
           const swapData = await getSolanaLatestSwap(wallet.address);
-
           if (swapData) {
             const isExists = await prisma.transaction.findFirst({
               where: { signature: swapData.signature },
             });
-
             if (!isExists) {
               await prisma.transaction.create({
                 data: {
@@ -99,13 +95,7 @@ export async function GET(request: Request) {
               });
 
               if (wallet.chatId && process.env.TELEGRAM_BOT_TOKEN) {
-                const swapMessage =
-                  `🚨 *SMART MONEY SWAP (SOLANA)* 🚨\n\n` +
-                  `🐳 *Whale:* ${wallet.name}\n` +
-                  `🔄 *Aksi:* ${swapData.description}\n\n` +
-                  `🔍 *Cek TX:* [Solscan](https://solscan.io/tx/${swapData.signature})\n` +
-                  `📍 *Address:* \`${wallet.address}\``;
-
+                const swapMessage = `🚨 *SMART MONEY SWAP (SOLANA)* 🚨\n\n🐳 *Whale:* ${wallet.name}\n🔄 *Aksi:* ${swapData.description}\n\n🔍 *Cek TX:* [Solscan](https://solscan.io/tx/${swapData.signature})\n📍 *Address:* \`${wallet.address}\``;
                 await fetch(
                   `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
                   {
@@ -124,20 +114,16 @@ export async function GET(request: Request) {
           }
         }
 
-        // ==========================================
         // 3. CEK SMART MONEY TOKEN (ETH & BASE)
-        // ==========================================
         if (wallet.network === "ETHEREUM" || wallet.network === "BASE") {
           const tokenTx = await getEVMLatestTokenTx(
             wallet.address,
             wallet.network as any,
           );
-
           if (tokenTx) {
             const isExists = await prisma.transaction.findFirst({
               where: { signature: tokenTx.signature },
             });
-
             if (!isExists) {
               await prisma.transaction.create({
                 data: {
@@ -153,13 +139,7 @@ export async function GET(request: Request) {
               });
 
               if (wallet.chatId && process.env.TELEGRAM_BOT_TOKEN) {
-                const swapMessage =
-                  `🚨 *SMART MONEY TOKEN (${wallet.network})* 🚨\n\n` +
-                  `🐳 *Whale:* ${wallet.name}\n` +
-                  `🔄 *Aksi:* ${tokenTx.description}\n\n` +
-                  `🔍 *Cek TX:* [Explorer](${tokenTx.explorerUrl})\n` +
-                  `📍 *Address:* \`${wallet.address}\``;
-
+                const tokenMessage = `🚨 *SMART MONEY TOKEN (${wallet.network})* 🚨\n\n🐳 *Whale:* ${wallet.name}\n🔄 *Aksi:* ${tokenTx.description}\n\n🔍 *Cek TX:* [Explorer](${tokenTx.explorerUrl})\n📍 *Address:* \`${wallet.address}\``;
                 await fetch(
                   `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
                   {
@@ -167,7 +147,7 @@ export async function GET(request: Request) {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       chat_id: wallet.chatId,
-                      text: swapMessage,
+                      text: tokenMessage,
                       parse_mode: "Markdown",
                       disable_web_page_preview: true,
                     }),
@@ -184,7 +164,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Radar Predator Selesai Menyapu + Cek Token",
+      message: "Radar Predator Selesai Menyapu Semua Jaringan",
     });
   } catch (error) {
     return NextResponse.json(
