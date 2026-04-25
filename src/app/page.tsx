@@ -14,6 +14,7 @@ import {
 
 // --- CONFIG ---
 const NETWORK_OPTIONS = [
+  { value: "BITCOIN", label: "Bitcoin", color: "text-orange-500" },
   { value: "SOLANA", label: "Solana", color: "text-emerald-400" },
   { value: "ETHEREUM", label: "Ethereum", color: "text-cyan-400" },
   { value: "BASE", label: "Base", color: "text-indigo-400" },
@@ -217,7 +218,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 </div>
                 <div className="space-y-2">
                   <label className="text-[11px] font-black text-white/90 uppercase tracking-widest ml-1">
-                    Target Alias
+                    Target Whale
                   </label>
                   <input
                     name="name"
@@ -265,7 +266,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   <div className="flex justify-between items-start mb-4">
                     <div className="space-y-1">
                       <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">
-                        Target Name
+                        Target Name Whale
                       </p>
                       <h4 className="text-xl font-black text-white drop-shadow-md group-hover:text-emerald-400 transition-colors">
                         {wallet.name}
