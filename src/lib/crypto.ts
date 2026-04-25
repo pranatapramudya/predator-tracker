@@ -57,22 +57,28 @@ export async function getEVMBalance(
 export async function getBTCBalance(address: string): Promise<number> {
   const cb = Date.now();
 
-  // ENGINE 1: Mempool.space (Paling Akurat & Stabil)
+  // ENGINE 1: Mempool.space (Jagoan Anti-0)
   try {
     const res = await fetch(
       `https://mempool.space/api/address/${address}?t=${cb}`,
-      { cache: "no-store" },
+      {
+        cache: "no-store",
+        headers: { "User-Agent": "Mozilla/5.0" },
+      },
     );
     if (res.ok) {
       const data = await res.json();
-      const funded = data.chain_stats.funded_txo_sum;
-      const spent = data.chain_stats.spent_txo_sum;
-      const bal = (funded - spent) / 100_000_000;
-      if (!isNaN(bal) && bal >= 0) return bal;
+      const bal =
+        (data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum) /
+        100_000_000;
+      console.log(`[BTC DEBUG] ${address} balance: ${bal}`);
+      if (!isNaN(bal)) return bal;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("Mempool Error");
+  }
 
-  // ENGINE 2: Blockchain.info (Raw Fallback)
+  // ENGINE 2: Blockchain.info (Cadangan)
   try {
     const res = await fetch(
       `https://blockchain.info/q/addressbalance/${address}?_=${cb}`,
@@ -80,8 +86,7 @@ export async function getBTCBalance(address: string): Promise<number> {
     );
     if (res.ok) {
       const text = await res.text();
-      const bal = Number(text) / 100_000_000;
-      if (!isNaN(bal) && bal >= 0) return bal;
+      return Number(text) / 100_000_000;
     }
   } catch (e) {}
 
