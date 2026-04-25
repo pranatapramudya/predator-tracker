@@ -33,31 +33,42 @@ export async function getEVMBalance(
   address: string,
   network: "ETHEREUM" | "BASE",
 ): Promise<number> {
-  const url =
-    network === "ETHEREUM"
-      ? `https://rpc.ankr.com/eth`
-      : `https://mainnet.base.org`;
+  // ROUND ROBIN ANTI-LIMIT VERCEL
+  const ethRPCs = [
+    "https://eth.llamarpc.com",
+    "https://rpc.ankr.com/eth",
+    "https://ethereum.publicnode.com",
+    "https://1rpc.io/eth",
+  ];
+  const rpcList =
+    network === "ETHEREUM" ? ethRPCs : ["https://mainnet.base.org"];
 
-  const res = await fetch(`${url}?t=${Date.now()}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...HEADERS },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "eth_getBalance",
-      params: [address, "latest"],
-    }),
-    cache: "no-store",
-  });
+  for (const url of rpcList) {
+    try {
+      const res = await fetch(`${url}?t=${Date.now()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...HEADERS },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "eth_getBalance",
+          params: [address, "latest"],
+        }),
+        cache: "no-store",
+      });
 
-  if (!res.ok) throw new Error("EVM Network Timeout");
-  const data = await res.json();
+      if (!res.ok) continue;
+      const data = await res.json();
 
-  if (data.error || data.result === undefined) {
-    throw new Error("EVM API Limit Reached");
+      if (!data.error && data.result !== undefined) {
+        return Number(BigInt(data.result)) / 1e18;
+      }
+    } catch (e) {
+      continue;
+    }
   }
 
-  return Number(BigInt(data.result)) / 1e18;
+  throw new Error("EVM All RPCs Timeout/Limit");
 }
 
 export async function getBTCBalance(address: string): Promise<number> {
@@ -121,14 +132,10 @@ export async function getSolanaLatestSwap(address: string) {
   return null;
 }
 
-// ==========================================
-// FITUR BARU: SMART MONEY EVM (ETH & BASE)
-// ==========================================
 export async function getEVMLatestTokenTx(
   address: string,
   network: "ETHEREUM" | "BASE",
 ) {
-  // Boleh tanpa API Key buat testing, tapi dilimit 1 request/detik sama Etherscan
   const apiKey =
     network === "ETHEREUM"
       ? process.env.ETHERSCAN_API_KEY
@@ -151,12 +158,8 @@ export async function getEVMLatestTokenTx(
 
     if (data.status === "1" && data.result && data.result.length > 0) {
       const tx = data.result[0];
-
-      // Deteksi ini token masuk (beli) atau keluar (jual)
       const isReceive = tx.to.toLowerCase() === address.toLowerCase();
       const action = isReceive ? "🟢 TERIMA/BELI" : "🔴 KIRIM/JUAL";
-
-      // Kalkulasi desimal token (biar PEPE yang jumlahnya miliaran kebaca bener)
       const amount = Number(tx.value) / Math.pow(10, Number(tx.tokenDecimal));
 
       return {

@@ -96,20 +96,16 @@ async function createWalletAction(formData: FormData) {
       network === "SOLANA" || network === "BITCOIN"
         ? address
         : address.toLowerCase();
-
     let balance = 0;
 
-    // BUNGKUS TRY-CATCH KHUSUS BIAR UI GAK CORE ERROR
+    // TRY CATCH KHUSUS BIAR GAK CORE ERROR KALAU API SIBUK
     try {
       if (network === "BITCOIN") balance = await getBTCBalance(normalized);
       else if (network === "SOLANA")
         balance = await getSolanaBalance(normalized);
       else balance = await getEVMBalance(normalized, network);
     } catch (apiError) {
-      console.warn(
-        "API lagi sibuk pas daftar, saldo diset ke 0 dulu buat nunggu Cron Job.",
-      );
-      balance = 0;
+      balance = 0; // Kasih 0 dulu, biar UptimeRobot yang benerin nanti
     }
 
     await prisma.wallet.upsert({
