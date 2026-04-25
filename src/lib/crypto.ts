@@ -48,68 +48,50 @@ export async function getEVMBalance(
       cache: "no-store",
     });
     const data = await res.json();
-    if (data.result) {
-      return Number(BigInt(data.result)) / 1e18;
-    }
-    return 0;
+    return data.result ? Number(BigInt(data.result)) / 1e18 : 0;
   } catch (e) {
     return 0;
   }
 }
 
 /**
- * MENGAMBIL SALDO BITCOIN (THE FINAL BOSS ENGINE)
- * Menggunakan Case-Insensitive Parsing untuk Blockchair
+ * BTC BALANCE - VERSI ANTI-LIMIT & ANTI-CASE SENSITIVE
  */
 export async function getBTCBalance(address: string): Promise<number> {
   const cb = Date.now();
+  // Opsional: Tambahin &key=${process.env.BLOCKCHAIR_API_KEY} kalau lo punya key-nya
+  const blockchairUrl = `https://api.blockchair.com/bitcoin/dashboards/address/${address}?_=${cb}`;
 
-  // ENGINE 1: Blockchair (Paling Stabil)
   try {
-    const res = await fetch(
-      `https://api.blockchair.com/bitcoin/dashboards/address/${address}?_=${cb}`,
-      { cache: "no-store" },
-    );
+    const res = await fetch(blockchairUrl, { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
-      // Mengambil data pertama tanpa peduli key address (case-insensitive)
+      // JURUS SAKTI: Ambil data pertama di dalam objek 'data' tanpa peduli nama key-nya
       const addressData =
         data.data && Object.values(data.data)[0]
           ? (Object.values(data.data)[0] as any)
           : null;
-
-      if (addressData && addressData.address) {
-        const bal = Number(addressData.address.balance) / 100_000_000;
-        if (!isNaN(bal) && bal >= 0) return bal;
+      if (addressData?.address?.balance !== undefined) {
+        return Number(addressData.address.balance) / 100_000_000;
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("Blockchair failed");
+  }
 
-  // ENGINE 2: BlockCypher (Fallback 1)
+  // Fallback: Blockchain.info
   try {
     const res = await fetch(
-      `https://api.blockcypher.com/v1/btc/main/addrs/${address}/balance?t=${cb}`,
-      { cache: "no-store" },
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const bal = Number(data.final_balance || 0) / 100_000_000;
-      if (!isNaN(bal) && bal >= 0) return bal;
-    }
-  } catch (e) {}
-
-  // ENGINE 3: Blockchain.info (Fallback 2)
-  try {
-    const res = await fetch(
-      `https://blockchain.info/q/addressbalance/${address}?t=${cb}`,
+      `https://blockchain.info/q/addressbalance/${address}?_=${cb}`,
       { cache: "no-store" },
     );
     if (res.ok) {
       const text = await res.text();
-      const bal = Number(text) / 100_000_000;
-      if (!isNaN(bal) && bal >= 0) return bal;
+      return Number(text) / 100_000_000;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("Blockchain.info failed");
+  }
 
   return 0;
 }
