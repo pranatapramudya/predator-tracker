@@ -92,7 +92,7 @@ async function createWalletAction(formData: FormData) {
         ? address
         : address.toLowerCase();
 
-    // --- STEP: AMBIL SALDO (Balikan adalah Number) ---
+    // --- STEP: AMBIL SALDO MULTI-CHAIN ---
     let balance = 0;
     if (network === "SOLANA") {
       balance = await getSolanaBalance(normalized);
@@ -100,7 +100,7 @@ async function createWalletAction(formData: FormData) {
       balance = await getEVMBalance(normalized, network);
     }
 
-    // 1. Simpan ke Database (lastBalance menerima Decimal/Number)
+    // 1. Simpan ke Database (lastBalance otomatis jadi Decimal di DB)
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
       update: { name, chatId, lastBalance: balance, isActive: true },

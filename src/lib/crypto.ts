@@ -1,8 +1,5 @@
 // lib/crypto.ts
 
-/**
- * MENGAMBIL SALDO SOLANA (HELIUS)
- */
 export async function getSolanaBalance(address: string): Promise<number> {
   const apiKey = process.env.HELIUS_API_KEY;
   const url = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
@@ -17,27 +14,23 @@ export async function getSolanaBalance(address: string): Promise<number> {
         method: "getBalance",
         params: [address],
       }),
+      cache: "no-store",
     });
 
     const data = await response.json();
     const solAmount = data.result?.value / 1_000_000_000 || 0;
     return solAmount;
   } catch (error) {
-    console.error("Gagal narik saldo Helius:", error);
+    console.error("Gagal narik saldo Solana:", error);
     return 0;
   }
 }
 
-/**
- * MENGAMBIL SALDO EVM (ETH & BASE VIA ALCHEMY)
- */
 export async function getEVMBalance(
   address: string,
   network: "ETHEREUM" | "BASE",
 ): Promise<number> {
   const apiKey = process.env.ALCHEMY_API_KEY;
-
-  // Tentukan RPC URL berdasarkan network
   const url =
     network === "ETHEREUM"
       ? `https://eth-mainnet.g.alchemy.com/v2/${apiKey}`
@@ -53,12 +46,11 @@ export async function getEVMBalance(
         method: "eth_getBalance",
         params: [address, "latest"],
       }),
+      cache: "no-store",
     });
 
     const data = await response.json();
 
-    // Alchemy mengembalikan data dalam format Hexadecimal (Wei)
-    // 1 ETH = 10^18 Wei
     if (data.result) {
       const balanceInWei = BigInt(data.result);
       const ethAmount = Number(balanceInWei) / 1_000_000_000_000_000_000;
@@ -66,7 +58,7 @@ export async function getEVMBalance(
     }
     return 0;
   } catch (error) {
-    console.error(`Gagal narik saldo ${network}:`, error);
+    console.error(`Fetch Error ${network}:`, error);
     return 0;
   }
 }
