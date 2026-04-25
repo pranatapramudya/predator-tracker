@@ -30,11 +30,11 @@ export async function getEVMBalance(
   address: string,
   network: "ETHEREUM" | "BASE",
 ): Promise<number> {
-  const apiKey = process.env.ALCHEMY_API_KEY;
+  // BYPASS ALCHEMY: Kita pake Public RPC gratisan yang ngebut
   const url =
     network === "ETHEREUM"
-      ? `https://eth-mainnet.g.alchemy.com/v2/${apiKey}`
-      : `https://base-mainnet.g.alchemy.com/v2/${apiKey}`;
+      ? `https://cloudflare-eth.com`
+      : `https://mainnet.base.org`;
 
   try {
     const response = await fetch(url, {
