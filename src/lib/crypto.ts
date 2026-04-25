@@ -68,23 +68,33 @@ export async function getEVMBalance(
 }
 
 /**
- * MENGAMBIL SALDO BITCOIN (Public API, Gak butuh API Key!)
+ * MENGAMBIL SALDO BITCOIN (Via Mempool.space - Super Stabil)
  */
 export async function getBTCBalance(address: string): Promise<number> {
   try {
-    // API publik dari blockchain.info (sangat stabil)
+    // API publik dari Mempool.space, paling andal buat ekosistem BTC
     const response = await fetch(
-      `https://blockchain.info/q/addressbalance/${address}`,
+      `https://mempool.space/api/address/${address}`,
       {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        },
         cache: "no-store",
       },
     );
 
     if (!response.ok) return 0;
 
-    const satoshis = await response.text();
+    const data = await response.json();
+
+    // Logika Bitcoin: Saldo = Total Masuk - Total Keluar
+    const funded = data.chain_stats?.funded_txo_sum || 0;
+    const spent = data.chain_stats?.spent_txo_sum || 0;
+    const satoshis = funded - spent;
+
     // 1 BTC = 100.000.000 Satoshis
-    const btcAmount = Number(satoshis) / 100_000_000;
+    const btcAmount = satoshis / 100_000_000;
     return btcAmount;
   } catch (error) {
     console.error("Gagal narik saldo BTC:", error);
