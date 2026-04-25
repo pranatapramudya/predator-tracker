@@ -1,4 +1,4 @@
-import { getSolanaBalance } from "@/lib/crypto";
+import { getSolanaBalance, getEVMBalance } from "@/lib/crypto";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -96,6 +96,8 @@ async function createWalletAction(formData: FormData) {
     let balance = 0;
     if (network === "SOLANA") {
       balance = await getSolanaBalance(normalized);
+    } else if (network === "ETHEREUM" || network === "BASE") {
+      balance = await getEVMBalance(normalized, network);
     }
 
     // 1. Simpan ke Database (lastBalance menerima Decimal/Number)
@@ -115,10 +117,13 @@ async function createWalletAction(formData: FormData) {
     // 2. Kirim Notifikasi Telegram
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (botToken && chatId) {
-      const balanceText =
-        network === "SOLANA"
-          ? `💰 *Balance:* ◎ ${Number(balance).toFixed(2)} SOL`
-          : `💰 *Balance:* Tracking...`;
+      let balanceText = `💰 *Balance:* Tracking...`;
+
+      if (network === "SOLANA") {
+        balanceText = `💰 *Balance:* ◎ ${Number(balance).toFixed(2)} SOL`;
+      } else if (network === "ETHEREUM" || network === "BASE") {
+        balanceText = `💰 *Balance:* Ξ ${Number(balance).toFixed(4)} ETH`;
+      }
 
       const message =
         `🎯 *TARGET LOCKED: PAUS BARU!*\n\n` +
@@ -336,11 +341,19 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                         {wallet.name}
                       </h4>
 
-                      {/* --- TAMPILAN SALDO --- */}
+                      {/* --- TAMPILAN SALDO MULTI-CHAIN --- */}
                       {wallet.network === "SOLANA" && (
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                             ◎ {Number(wallet.lastBalance).toFixed(2)} SOL
+                          </span>
+                        </div>
+                      )}
+                      {(wallet.network === "ETHEREUM" ||
+                        wallet.network === "BASE") && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-xs font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
+                            Ξ {Number(wallet.lastBalance).toFixed(4)} ETH
                           </span>
                         </div>
                       )}
