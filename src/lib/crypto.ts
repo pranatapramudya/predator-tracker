@@ -33,7 +33,6 @@ export async function getEVMBalance(
   address: string,
   network: "ETHEREUM" | "BASE",
 ): Promise<number> {
-  // Pake Cloudflare biar 100x lebih badak buat Ethereum
   const url =
     network === "ETHEREUM"
       ? `https://cloudflare-eth.com`
@@ -54,7 +53,6 @@ export async function getEVMBalance(
   if (!res.ok) throw new Error("EVM Network Timeout");
   const data = await res.json();
 
-  // Kalau gagal ngasih angka, lempar error (biar Cron Job nge-skip)
   if (data.error || data.result === undefined) {
     throw new Error("EVM API Limit Reached");
   }
@@ -65,7 +63,6 @@ export async function getEVMBalance(
 export async function getBTCBalance(address: string): Promise<number> {
   const cb = Date.now();
 
-  // ENGINE 1: Blockchain.info
   try {
     const res = await fetch(
       `https://blockchain.info/q/addressbalance/${address}?_=${cb}`,
@@ -78,7 +75,6 @@ export async function getBTCBalance(address: string): Promise<number> {
     }
   } catch (e) {}
 
-  // ENGINE 2: Mempool.space
   try {
     const res = await fetch(
       `https://mempool.space/api/address/${address}?_=${cb}`,
@@ -97,4 +93,35 @@ export async function getBTCBalance(address: string): Promise<number> {
   } catch (e) {}
 
   throw new Error("BTC All Engines Timeout");
+}
+
+// ==========================================
+// FITUR BARU: SMART MONEY SWAP TRACKER (SOLANA)
+// ==========================================
+export async function getSolanaLatestSwap(address: string) {
+  const apiKey = process.env.HELIUS_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    // Tembak Helius API khusus cari tipe "SWAP"
+    const res = await fetch(
+      `https://api.helius.xyz/v0/addresses/${address}/transactions?api-key=${apiKey}&type=SWAP`,
+      { cache: "no-store" },
+    );
+
+    if (!res.ok) return null;
+    const txs = await res.json();
+
+    // Kalau ada transaksi swap baru
+    if (txs && txs.length > 0) {
+      const latestTx = txs[0];
+      return {
+        signature: latestTx.signature,
+        description: latestTx.description || "Melakukan aktivitas Swap Token",
+      };
+    }
+  } catch (e) {
+    console.error("Helius Swap Fetch Error:", e);
+  }
+  return null;
 }
