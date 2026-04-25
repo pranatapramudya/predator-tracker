@@ -1,4 +1,4 @@
-// lib/crypto.ts
+// src/lib/crypto.ts
 
 export async function getSolanaBalance(address: string): Promise<number> {
   const apiKey = process.env.HELIUS_API_KEY;
@@ -58,7 +58,7 @@ export async function getEVMBalance(
 }
 
 /**
- * MENGAMBIL SALDO BITCOIN (THE CACHE BUSTER)
+ * MENGAMBIL SALDO BITCOIN (THE CACHE BUSTER + BLOCKCYPHER)
  */
 export async function getBTCBalance(address: string): Promise<number> {
   const headers = {
@@ -66,22 +66,21 @@ export async function getBTCBalance(address: string): Promise<number> {
     Accept: "text/plain, application/json, */*",
   };
 
-  // JURUS PENGHANCUR CACHE VERCEL
   const cb = Date.now();
 
-  // ENGINE 1: Blockchain.info (Raw Text) - Paling kebal dari blokiran Vercel
+  // ENGINE 1: BlockCypher (Paling stabil untuk Vercel Serverless)
   try {
     const res = await fetch(
-      `https://blockchain.info/q/addressbalance/${address}?t=${cb}`,
-      { headers, cache: "no-store" },
+      `https://api.blockcypher.com/v1/btc/main/addrs/${address}/balance?t=${cb}`,
+      { cache: "no-store" },
     );
     if (res.ok) {
-      const text = await res.text();
-      const bal = Number(text) / 100_000_000;
+      const data = await res.json();
+      const bal = Number(data.final_balance) / 100_000_000;
       if (!isNaN(bal) && bal >= 0) return bal;
     }
   } catch (e) {
-    console.error("BTC Engine 1 Failed");
+    console.error("BTC Engine 1 (BlockCypher) Failed");
   }
 
   // ENGINE 2: Mempool.space (JSON Backup)
@@ -98,7 +97,22 @@ export async function getBTCBalance(address: string): Promise<number> {
       if (!isNaN(bal) && bal >= 0) return bal;
     }
   } catch (e) {
-    console.error("BTC Engine 2 Failed");
+    console.error("BTC Engine 2 (Mempool) Failed");
+  }
+
+  // ENGINE 3: Blockchain.info (Raw Text Backup)
+  try {
+    const res = await fetch(
+      `https://blockchain.info/q/addressbalance/${address}?t=${cb}`,
+      { headers, cache: "no-store" },
+    );
+    if (res.ok) {
+      const text = await res.text();
+      const bal = Number(text) / 100_000_000;
+      if (!isNaN(bal) && bal >= 0) return bal;
+    }
+  } catch (e) {
+    console.error("BTC Engine 3 (Blockchain.info) Failed");
   }
 
   return 0;
