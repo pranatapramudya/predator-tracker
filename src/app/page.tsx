@@ -15,7 +15,6 @@ import {
   Send,
 } from "lucide-react";
 
-// FORCE DYNAMIC: Biar Vercel selalu narik data terbaru dari DB, bukan cache!
 export const dynamic = "force-dynamic";
 
 const NETWORK_OPTIONS = [
@@ -97,15 +96,11 @@ async function createWalletAction(formData: FormData) {
       network === "SOLANA" || network === "BITCOIN"
         ? address
         : address.toLowerCase();
-
-    // Tarik saldo real-time
     let balance = 0;
     if (network === "SOLANA") balance = await getSolanaBalance(normalized);
-    else if (network === "ETHEREUM" || network === "BASE")
-      balance = await getEVMBalance(normalized, network);
     else if (network === "BITCOIN") balance = await getBTCBalance(normalized);
+    else balance = await getEVMBalance(normalized, network);
 
-    // Simpan ke database
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
       update: { name, chatId, lastBalance: balance, isActive: true },
@@ -118,29 +113,11 @@ async function createWalletAction(formData: FormData) {
         isActive: true,
       },
     });
-
-    // Kirim notif Telegram
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (botToken && chatId) {
-      const sym =
-        network === "BITCOIN" ? "₿" : network === "SOLANA" ? "◎" : "Ξ";
-      const message = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n🌐 *Net:* ${network}\n💰 *Bal:* ${sym} ${Number(balance).toFixed(8)}\n📍 *Addr:* \`${normalized}\``;
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: message,
-          parse_mode: "Markdown",
-        }),
-      });
-    }
     revalidatePath("/");
     feedback = "created";
   } catch (e) {
-    console.error("Create Action Error:", e);
+    console.error(e);
   }
-  // Redirect di luar try-catch biar nggak Core Error
   redirect(`/?feedback=${feedback}`);
 }
 
@@ -149,15 +126,13 @@ async function deleteWalletAction(formData: FormData) {
   let feedback = "failed";
   try {
     const id = String(formData.get("id"));
-    // Hapus relasi transaksi dulu biar gak error foreign key
     await prisma.transaction.deleteMany({ where: { walletId: id } });
     await prisma.wallet.delete({ where: { id } });
     revalidatePath("/");
     feedback = "deleted";
   } catch (e) {
-    console.error("Delete Action Error:", e);
+    console.error(e);
   }
-  // Redirect di luar try-catch biar nggak Core Error
   redirect(`/?feedback=${feedback}`);
 }
 
