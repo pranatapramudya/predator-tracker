@@ -66,3 +66,28 @@ export async function getEVMBalance(
     return 0;
   }
 }
+
+/**
+ * MENGAMBIL SALDO BITCOIN (Public API, Gak butuh API Key!)
+ */
+export async function getBTCBalance(address: string): Promise<number> {
+  try {
+    // API publik dari blockchain.info (sangat stabil)
+    const response = await fetch(
+      `https://blockchain.info/q/addressbalance/${address}`,
+      {
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) return 0;
+
+    const satoshis = await response.text();
+    // 1 BTC = 100.000.000 Satoshis
+    const btcAmount = Number(satoshis) / 100_000_000;
+    return btcAmount;
+  } catch (error) {
+    console.error("Gagal narik saldo BTC:", error);
+    return 0;
+  }
+}

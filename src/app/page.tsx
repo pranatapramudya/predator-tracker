@@ -1,4 +1,4 @@
-import { getSolanaBalance, getEVMBalance } from "@/lib/crypto";
+import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -24,6 +24,14 @@ const NETWORK_OPTIONS = [
 ] as const;
 
 type WalletNetwork = (typeof NETWORK_OPTIONS)[number]["value"];
+
+// --- URL GAMBAR LOGO KOIN ---
+const NETWORK_LOGOS: Record<WalletNetwork, string> = {
+  BITCOIN: "https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=035",
+  SOLANA: "https://cryptologos.cc/logos/solana-sol-logo.svg?v=035",
+  ETHEREUM: "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=035",
+  BASE: "https://raw.githubusercontent.com/base-org/brand-kit/main/logo/symbol/Base_Symbol_Blue.svg",
+};
 
 const FEEDBACK_COPY: Record<
   string,
@@ -98,9 +106,11 @@ async function createWalletAction(formData: FormData) {
       balance = await getSolanaBalance(normalized);
     } else if (network === "ETHEREUM" || network === "BASE") {
       balance = await getEVMBalance(normalized, network);
+    } else if (network === "BITCOIN") {
+      balance = await getBTCBalance(normalized);
     }
 
-    // 1. Simpan ke Database (lastBalance otomatis jadi Decimal di DB)
+    // 1. Simpan ke Database
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
       update: { name, chatId, lastBalance: balance, isActive: true },
@@ -123,6 +133,8 @@ async function createWalletAction(formData: FormData) {
         balanceText = `💰 *Balance:* ◎ ${Number(balance).toFixed(2)} SOL`;
       } else if (network === "ETHEREUM" || network === "BASE") {
         balanceText = `💰 *Balance:* Ξ ${Number(balance).toFixed(4)} ETH`;
+      } else if (network === "BITCOIN") {
+        balanceText = `💰 *Balance:* ₿ ${Number(balance).toFixed(8)} BTC`;
       }
 
       const message =
@@ -327,64 +339,78 @@ export default async function Page({ searchParams }: { searchParams: any }) {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {wallets.map((wallet) => (
-                <div
-                  key={wallet.id}
-                  className="group bg-white/5 border border-white/10 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">
-                        Target Whale
-                      </p>
-                      <h4 className="text-xl font-black group-hover:text-emerald-400 transition-colors">
-                        {wallet.name}
-                      </h4>
+              {wallets.map((wallet) => {
+                const networkStyle = NETWORK_OPTIONS.find(
+                  (n) => n.value === wallet.network,
+                )?.color;
+                return (
+                  <div
+                    key={wallet.id}
+                    className="group bg-white/5 border border-white/10 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                          Target Whale
+                        </p>
+                        <h4 className="text-xl font-black group-hover:text-emerald-400 transition-colors">
+                          {wallet.name}
+                        </h4>
 
-                      {/* --- TAMPILAN SALDO MULTI-CHAIN --- */}
-                      {wallet.network === "SOLANA" && (
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                            ◎ {Number(wallet.lastBalance).toFixed(2)} SOL
-                          </span>
+                        {/* --- TAMPILAN SALDO DENGAN GAMBAR LOGO --- */}
+                        <div className="flex items-center gap-2 mt-2">
+                          <img
+                            src={NETWORK_LOGOS[wallet.network as WalletNetwork]}
+                            alt={wallet.network}
+                            className="w-5 h-5 rounded-full object-cover shadow-md bg-white"
+                          />
+
+                          {wallet.network === "SOLANA" && (
+                            <span className="text-sm font-bold text-emerald-400">
+                              {Number(wallet.lastBalance).toFixed(2)} SOL
+                            </span>
+                          )}
+                          {(wallet.network === "ETHEREUM" ||
+                            wallet.network === "BASE") && (
+                            <span className="text-sm font-bold text-cyan-400">
+                              {Number(wallet.lastBalance).toFixed(4)} ETH
+                            </span>
+                          )}
+                          {wallet.network === "BITCOIN" && (
+                            <span className="text-sm font-bold text-orange-400">
+                              {Number(wallet.lastBalance).toFixed(8)} BTC
+                            </span>
+                          )}
                         </div>
-                      )}
-                      {(wallet.network === "ETHEREUM" ||
-                        wallet.network === "BASE") && (
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-xs font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
-                            Ξ {Number(wallet.lastBalance).toFixed(4)} ETH
-                          </span>
-                        </div>
-                      )}
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <span
+                          className={`text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 bg-black/40 ${networkStyle}`}
+                        >
+                          {wallet.network}
+                        </span>
+                        <form action={deleteWalletAction}>
+                          <input type="hidden" name="id" value={wallet.id} />
+                          <button className="p-2 text-white/20 hover:text-rose-500 transition-colors cursor-pointer">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </form>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span
-                        className={`text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 bg-black/40 ${NETWORK_OPTIONS.find((n) => n.value === wallet.network)?.color}`}
-                      >
-                        {wallet.network}
-                      </span>
-                      <form action={deleteWalletAction}>
-                        <input type="hidden" name="id" value={wallet.id} />
-                        <button className="p-2 text-white/20 hover:text-rose-500 transition-colors cursor-pointer">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </form>
+                    <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
+                      <code className="text-xs text-white/60 font-mono">
+                        {formatAddress(wallet.address)}
+                      </code>
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]" />
+                        <span className="text-[10px] font-bold opacity-60 uppercase tracking-tighter">
+                          Live
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
-                    <code className="text-xs text-white/60 font-mono">
-                      {formatAddress(wallet.address)}
-                    </code>
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]" />
-                      <span className="text-[10px] font-bold opacity-60 uppercase tracking-tighter">
-                        Live
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
