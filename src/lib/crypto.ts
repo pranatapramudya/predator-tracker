@@ -1,8 +1,5 @@
 // lib/crypto.ts
 
-/**
- * MENGAMBIL SALDO SOLANA (HELIUS)
- */
 export async function getSolanaBalance(address: string): Promise<number> {
   const apiKey = process.env.HELIUS_API_KEY;
   try {
@@ -27,9 +24,6 @@ export async function getSolanaBalance(address: string): Promise<number> {
   }
 }
 
-/**
- * MENGAMBIL SALDO EVM (ETH & BASE VIA LLAMARPC/PUBLIC)
- */
 export async function getEVMBalance(
   address: string,
   network: "ETHEREUM" | "BASE",
@@ -77,12 +71,14 @@ export async function getBTCBalance(address: string): Promise<number> {
     });
     if (res.ok) {
       const data = await res.json();
-      const bal =
-        (data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum) /
-        100_000_000;
-      if (!isNaN(bal)) return bal;
+      const funded = Number(data?.chain_stats?.funded_txo_sum || 0);
+      const spent = Number(data?.chain_stats?.spent_txo_sum || 0);
+      const bal = (funded - spent) / 100_000_000;
+      if (!isNaN(bal) && bal >= 0) return bal;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("BTC Engine 1 Failed");
+  }
 
   // ENGINE 2: Blockstream.info
   try {
@@ -92,14 +88,16 @@ export async function getBTCBalance(address: string): Promise<number> {
     });
     if (res.ok) {
       const data = await res.json();
-      const bal =
-        (data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum) /
-        100_000_000;
-      if (!isNaN(bal)) return bal;
+      const funded = Number(data?.chain_stats?.funded_txo_sum || 0);
+      const spent = Number(data?.chain_stats?.spent_txo_sum || 0);
+      const bal = (funded - spent) / 100_000_000;
+      if (!isNaN(bal) && bal >= 0) return bal;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("BTC Engine 2 Failed");
+  }
 
-  // ENGINE 3: Blockchain.info
+  // ENGINE 3: Blockchain.info (Raw Text - Jalur Terakhir)
   try {
     const res = await fetch(
       `https://blockchain.info/q/addressbalance/${address}`,
@@ -108,9 +106,11 @@ export async function getBTCBalance(address: string): Promise<number> {
     if (res.ok) {
       const text = await res.text();
       const bal = Number(text) / 100_000_000;
-      if (!isNaN(bal)) return bal;
+      if (!isNaN(bal) && bal >= 0) return bal;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("BTC Engine 3 Failed");
+  }
 
   return 0;
 }
