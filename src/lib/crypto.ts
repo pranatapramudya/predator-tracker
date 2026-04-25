@@ -95,15 +95,11 @@ export async function getBTCBalance(address: string): Promise<number> {
   throw new Error("BTC All Engines Timeout");
 }
 
-// ==========================================
-// FITUR BARU: SMART MONEY SWAP TRACKER (SOLANA)
-// ==========================================
 export async function getSolanaLatestSwap(address: string) {
   const apiKey = process.env.HELIUS_API_KEY;
   if (!apiKey) return null;
 
   try {
-    // Tembak Helius API khusus cari tipe "SWAP"
     const res = await fetch(
       `https://api.helius.xyz/v0/addresses/${address}/transactions?api-key=${apiKey}&type=SWAP`,
       { cache: "no-store" },
@@ -112,7 +108,6 @@ export async function getSolanaLatestSwap(address: string) {
     if (!res.ok) return null;
     const txs = await res.json();
 
-    // Kalau ada transaksi swap baru
     if (txs && txs.length > 0) {
       const latestTx = txs[0];
       return {
@@ -122,6 +117,57 @@ export async function getSolanaLatestSwap(address: string) {
     }
   } catch (e) {
     console.error("Helius Swap Fetch Error:", e);
+  }
+  return null;
+}
+
+// ==========================================
+// FITUR BARU: SMART MONEY EVM (ETH & BASE)
+// ==========================================
+export async function getEVMLatestTokenTx(
+  address: string,
+  network: "ETHEREUM" | "BASE",
+) {
+  // Boleh tanpa API Key buat testing, tapi dilimit 1 request/detik sama Etherscan
+  const apiKey =
+    network === "ETHEREUM"
+      ? process.env.ETHERSCAN_API_KEY
+      : process.env.BASESCAN_API_KEY;
+  const baseUrl =
+    network === "ETHEREUM"
+      ? "https://api.etherscan.io/api"
+      : "https://api.basescan.org/api";
+  const explorer =
+    network === "ETHEREUM"
+      ? "https://etherscan.io/tx"
+      : "https://basescan.org/tx";
+
+  try {
+    const url = `${baseUrl}?module=account&action=tokentx&address=${address}&page=1&offset=1&sort=desc${apiKey ? `&apikey=${apiKey}` : ""}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+
+    if (data.status === "1" && data.result && data.result.length > 0) {
+      const tx = data.result[0];
+
+      // Deteksi ini token masuk (beli) atau keluar (jual)
+      const isReceive = tx.to.toLowerCase() === address.toLowerCase();
+      const action = isReceive ? "🟢 TERIMA/BELI" : "🔴 KIRIM/JUAL";
+
+      // Kalkulasi desimal token (biar PEPE yang jumlahnya miliaran kebaca bener)
+      const amount = Number(tx.value) / Math.pow(10, Number(tx.tokenDecimal));
+
+      return {
+        signature: tx.hash,
+        tokenSymbol: tx.tokenSymbol || "TOKEN",
+        description: `${action} ${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${tx.tokenSymbol}`,
+        explorerUrl: `${explorer}/${tx.hash}`,
+      };
+    }
+  } catch (e) {
+    console.error("EVM Token Tx Error:", e);
   }
   return null;
 }
