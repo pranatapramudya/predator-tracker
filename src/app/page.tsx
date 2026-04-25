@@ -1,3 +1,5 @@
+// src/app/page.tsx
+
 import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -13,7 +15,9 @@ import {
   Send,
 } from "lucide-react";
 
-// --- CONFIG ---
+// WAJIB: Biar Next.js Vercel nggak nge-cache halaman ini!
+export const dynamic = "force-dynamic";
+
 const NETWORK_OPTIONS = [
   { value: "BITCOIN", label: "Bitcoin", color: "text-orange-500" },
   { value: "SOLANA", label: "Solana", color: "text-emerald-400" },
@@ -36,19 +40,19 @@ const FEEDBACK_COPY: Record<
 > = {
   created: {
     title: "TARGET LOCKED",
-    description: "Paus masuk radar.",
+    description: "Wallet paus masuk radar.",
     icon: CheckCircle2,
     color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
   },
   deleted: {
     title: "TARGET ELIMINATED",
-    description: "Target dihapus.",
+    description: "Target dihapus dari sistem.",
     icon: Trash2,
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
   invalid: {
     title: "INVALID COORDS",
-    description: "Cek alamat & network.",
+    description: "Cek kembali alamat dan network.",
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
@@ -74,7 +78,6 @@ function formatAddress(address: string): string {
     : `${address.slice(0, 6)}...${address.slice(-6)}`;
 }
 
-// --- SERVER ACTIONS ---
 async function createWalletAction(formData: FormData) {
   "use server";
   const address = String(formData.get("address") ?? "").trim();
@@ -94,14 +97,12 @@ async function createWalletAction(formData: FormData) {
         ? address
         : address.toLowerCase();
 
-    // AMBIL SALDO (DIPASTIKAN BTC TERPANGGIL)
     let balance = 0;
     if (network === "SOLANA") balance = await getSolanaBalance(normalized);
     else if (network === "ETHEREUM" || network === "BASE")
       balance = await getEVMBalance(normalized, network);
     else if (network === "BITCOIN") balance = await getBTCBalance(normalized);
 
-    // DB UPSERT
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
       update: { name, chatId, lastBalance: balance, isActive: true },
@@ -115,13 +116,12 @@ async function createWalletAction(formData: FormData) {
       },
     });
 
-    // TELEGRAM NOTIF
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (botToken && chatId) {
       const sym =
         network === "BITCOIN" ? "₿" : network === "SOLANA" ? "◎" : "Ξ";
       const dec = network === "BITCOIN" ? 8 : 4;
-      const message = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n💰 *Bal:* ${sym} ${balance.toFixed(dec)}\n📍 *Addr:* \`${normalized}\``;
+      const message = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n🌐 *Net:* ${network}\n💰 *Bal:* ${sym} ${Number(balance).toFixed(dec)}\n📍 *Addr:* \`${normalized}\``;
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -135,7 +135,7 @@ async function createWalletAction(formData: FormData) {
     revalidatePath("/");
     success = true;
   } catch (e) {
-    console.error("Action Error:", e);
+    console.error(e);
   }
   redirect(success ? "/?feedback=created" : "/?feedback=failed");
 }
@@ -151,7 +151,6 @@ async function deleteWalletAction(formData: FormData) {
   }
 }
 
-// --- PAGE ---
 export default async function Page({ searchParams }: { searchParams: any }) {
   noStore();
   const params = await searchParams;
@@ -175,10 +174,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </h1>
         </div>
         <div className="px-5 py-3 bg-white/5 border border-white/10 rounded-2xl">
-          <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold font-mono">
-            Targets
+          <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold">
+            Monitored Targets
           </p>
-          <p className="text-xl font-black">{wallets.length} WHALES</p>
+          <p className="text-xl font-black">
+            {wallets.length}{" "}
+            <span className="text-xs font-normal text-white/40">WHALES</span>
+          </p>
         </div>
       </header>
 
@@ -203,7 +205,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
             <form action={createWalletAction} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1">
-                  Address
+                  Wallet Address
                 </label>
                 <input
                   name="address"
@@ -246,13 +248,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               </div>
               <div className="space-y-2">
                 <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  <Send className="w-3 h-3 text-cyan-400" /> Telegram ID
+                  <Send className="w-3 h-3 text-cyan-400" /> Telegram Chat ID
                 </label>
                 <input
                   name="chatId"
                   required
                   placeholder="e.g. 12345678"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-2 focus:ring-cyan-500/60"
                 />
               </div>
               <button className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2">
@@ -304,11 +306,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               : w.network === "SOLANA"
                                 ? `◎ ${Number(w.lastBalance).toFixed(2)}`
                                 : `Ξ ${Number(w.lastBalance).toFixed(4)}`}{" "}
-                            {w.network === "SOLANA"
-                              ? "SOL"
-                              : w.network === "BITCOIN"
-                                ? "BTC"
-                                : "ETH"}
+                            {w.network}
                           </span>
                         </div>
                       </div>
