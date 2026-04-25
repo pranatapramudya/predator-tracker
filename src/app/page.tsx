@@ -30,7 +30,7 @@ const FEEDBACK_COPY: Record<
 > = {
   created: {
     title: "TARGET LOCKED",
-    description: "Wallet paus berhasil masuk radar.",
+    description: "Wallet paus berhasil masuk radar dan sistem notifikasi.",
     icon: CheckCircle2,
     color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
   },
@@ -48,7 +48,7 @@ const FEEDBACK_COPY: Record<
   },
   failed: {
     title: "CORE ERROR",
-    description: "Gagal tersambung ke database.",
+    description: "Gagal tersambung ke database atau API Telegram.",
     icon: AlertCircle,
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
@@ -80,7 +80,6 @@ async function createWalletAction(formData: FormData) {
     formData.get("network") ?? "",
   ).toUpperCase() as WalletNetwork;
 
-  // 1. Validasi Input
   if (!address || !name || !network || !isValidAddress(address, network)) {
     redirect("/?feedback=invalid");
   }
@@ -92,12 +91,33 @@ async function createWalletAction(formData: FormData) {
         ? address
         : address.toLowerCase();
 
-    // 2. Database Operation
+    // 1. Simpan ke Database
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
       update: { name, chatId, isActive: true },
       create: { address: normalized, name, network, chatId, isActive: true },
     });
+
+    // 2. Kirim Notifikasi Telegram
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (botToken && chatId) {
+      const message =
+        `🎯 *TARGET LOCKED: PAUS BARU!*\n\n` +
+        `👤 *Name:* ${name}\n` +
+        `🌐 *Network:* ${network}\n` +
+        `📍 *Address:* \`${normalized}\`\n\n` +
+        `_Lumestack Predator Tracker is now active._`;
+
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: "Markdown",
+        }),
+      });
+    }
 
     revalidatePath("/");
     success = true;
@@ -105,7 +125,6 @@ async function createWalletAction(formData: FormData) {
     console.error("Action Error:", e);
   }
 
-  // 3. Redirect di luar try-catch (WAJIB di Next.js)
   if (success) {
     redirect("/?feedback=created");
   } else {
@@ -146,11 +165,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       orderBy: { createdAt: "desc" },
     });
   } catch (dbError) {
-    console.error("Database Connection Failed:", dbError);
+    console.error("Database Failed:", dbError);
   }
 
   return (
-    <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#050505] text-white font-sans">
+    <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#050505] text-white">
       <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-white/10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] text-white/80 uppercase mb-4 shadow-lg shadow-emerald-500/10">
@@ -158,10 +177,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
             Lumestack Neural Link Active
           </div>
           <h1 className="text-5xl md:text-6xl font-black tracking-tighter">
-            PREDATOR{" "}
-            <span className="text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]">
-              TRACKER
-            </span>
+            PREDATOR <span className="text-emerald-400">TRACKER</span>
           </h1>
         </div>
         <div className="px-5 py-3 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl">
@@ -196,7 +212,9 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               <div className="p-3 bg-emerald-500/20 rounded-2xl border border-emerald-500/30">
                 <Shield className="w-6 h-6 text-emerald-400" />
               </div>
-              <h2 className="text-xl font-black tracking-tight">ACQUISITION</h2>
+              <h2 className="text-xl font-black tracking-tight uppercase">
+                Acquisition
+              </h2>
             </div>
 
             <form action={createWalletAction} className="space-y-6">
@@ -208,7 +226,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   name="address"
                   required
                   placeholder="Paste BTC, SOL, or EVM address..."
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-base font-bold focus:ring-2 focus:ring-emerald-500/60 outline-none transition-all placeholder:text-white/20 font-mono text-white"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-base font-bold focus:ring-2 focus:ring-emerald-500/60 outline-none text-white font-mono"
                 />
               </div>
 
@@ -219,7 +237,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   </label>
                   <select
                     name="network"
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-4 text-sm font-bold appearance-none cursor-pointer outline-none focus:ring-2 focus:ring-emerald-500/60 text-white"
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-4 text-sm font-bold text-white outline-none appearance-none cursor-pointer"
                   >
                     {NETWORK_OPTIONS.map((n) => (
                       <option
@@ -239,8 +257,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   <input
                     name="name"
                     required
-                    placeholder="e.g. MicroStrategy"
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/60 transition-all placeholder:text-white/20 text-white"
+                    placeholder="e.g. Whale #1"
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none"
                   />
                 </div>
               </div>
@@ -248,12 +266,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               <div className="space-y-2">
                 <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1 flex items-center gap-2">
                   <Send className="w-3 h-3 text-cyan-400" /> Telegram Chat ID
-                  (Optional)
+                  (Mandatory for Alerts)
                 </label>
                 <input
                   name="chatId"
+                  required
                   placeholder="e.g. 12345678"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-500/60 transition-all placeholder:text-white/20 text-white"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/60"
                 />
               </div>
 
@@ -268,7 +287,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </section>
 
         <section className="lg:col-span-8 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             <h3 className="flex items-center gap-2 text-sm font-black opacity-60 tracking-[0.2em] uppercase">
               <Activity className="w-4 h-4 text-cyan-400" /> Live Watchlist
             </h3>
@@ -286,7 +305,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               {wallets.map((wallet) => (
                 <div
                   key={wallet.id}
-                  className="group bg-white/5 border border-white/10 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative"
+                  className="group bg-white/5 border border-white/10 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl"
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div>
