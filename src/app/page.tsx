@@ -145,21 +145,22 @@ async function createWalletAction(formData: FormData) {
 async function deleteWalletAction(formData: FormData) {
   "use server";
   let success = false;
+
   try {
     const id = String(formData.get("id"));
-    // Hapus transaksinya dulu (Cascade manual)
-    await prisma.transaction.deleteMany({ where: { walletId: id } });
-    // Baru hapus wallet-nya
     await prisma.wallet.delete({ where: { id } });
-
     revalidatePath("/");
     success = true;
   } catch (e) {
-    console.error("Delete Wallet Error:", e);
+    console.error("Gagal hapus wallet:", e);
   }
 
-  // Redirect dipindah ke LUAR try-catch biar Next.js gak ngamuk!
-  redirect(success ? "/?feedback=deleted" : "/?feedback=failed");
+  // Taruh redirect di LUAR try-catch!
+  if (success) {
+    redirect("/?feedback=deleted");
+  } else {
+    redirect("/?feedback=failed");
+  }
 }
 
 export default async function Page({ searchParams }: { searchParams: any }) {
