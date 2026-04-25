@@ -30,16 +30,20 @@ export async function getEVMBalance(
   address: string,
   network: "ETHEREUM" | "BASE",
 ): Promise<number> {
-  // BYPASS ALCHEMY: Kita pake Public RPC gratisan yang ngebut
+  // BYPASS ALCHEMY: Pake LlamaRPC (ETH) & Public Base (BASE)
   const url =
     network === "ETHEREUM"
-      ? `https://cloudflare-eth.com`
+      ? `https://eth.llamarpc.com`
       : `https://mainnet.base.org`;
 
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // Topeng Ninja biar Vercel gak dikira bot
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
