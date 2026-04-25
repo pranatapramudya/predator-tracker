@@ -6,6 +6,7 @@ import {
   getEVMBalance,
   getBTCBalance,
   getSolanaLatestSwap,
+  getEVMLatestTokenTx,
 } from "@/lib/crypto";
 
 export const dynamic = "force-dynamic";
@@ -79,17 +80,15 @@ export async function GET(request: Request) {
           const swapData = await getSolanaLatestSwap(wallet.address);
 
           if (swapData) {
-            // Cek apakah Swap ini udah ada di database (biar ga spam notif berulang)
             const isExists = await prisma.transaction.findFirst({
               where: { signature: swapData.signature },
             });
 
             if (!isExists) {
-              // Simpan ke database biar diinget
               await prisma.transaction.create({
                 data: {
                   walletId: wallet.id,
-                  dedupeKey: `${wallet.id}-${swapData.signature}`, // Anti-duplikat
+                  dedupeKey: `${wallet.id}-${swapData.signature}`,
                   signature: swapData.signature,
                   type: "SWAP",
                   amount: 0,
@@ -99,13 +98,66 @@ export async function GET(request: Request) {
                 },
               });
 
-              // Teriak ke Telegram soal Swap-nya
               if (wallet.chatId && process.env.TELEGRAM_BOT_TOKEN) {
                 const swapMessage =
                   `🚨 *SMART MONEY SWAP (SOLANA)* 🚨\n\n` +
                   `🐳 *Whale:* ${wallet.name}\n` +
                   `🔄 *Aksi:* ${swapData.description}\n\n` +
                   `🔍 *Cek TX:* [Solscan](https://solscan.io/tx/${swapData.signature})\n` +
+                  `📍 *Address:* \`${wallet.address}\``;
+
+                await fetch(
+                  `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      chat_id: wallet.chatId,
+                      text: swapMessage,
+                      parse_mode: "Markdown",
+                      disable_web_page_preview: true,
+                    }),
+                  },
+                );
+              }
+            }
+          }
+        }
+
+        // ==========================================
+        // 3. CEK SMART MONEY TOKEN (ETH & BASE)
+        // ==========================================
+        if (wallet.network === "ETHEREUM" || wallet.network === "BASE") {
+          const tokenTx = await getEVMLatestTokenTx(
+            wallet.address,
+            wallet.network as any,
+          );
+
+          if (tokenTx) {
+            const isExists = await prisma.transaction.findFirst({
+              where: { signature: tokenTx.signature },
+            });
+
+            if (!isExists) {
+              await prisma.transaction.create({
+                data: {
+                  walletId: wallet.id,
+                  dedupeKey: `${wallet.id}-${tokenTx.signature}`,
+                  signature: tokenTx.signature,
+                  type: "ERC20_TRANSFER",
+                  amount: 0,
+                  tokenSymbol: tokenTx.tokenSymbol,
+                  usdValue: 0,
+                  explorerUrl: tokenTx.explorerUrl,
+                },
+              });
+
+              if (wallet.chatId && process.env.TELEGRAM_BOT_TOKEN) {
+                const swapMessage =
+                  `🚨 *SMART MONEY TOKEN (${wallet.network})* 🚨\n\n` +
+                  `🐳 *Whale:* ${wallet.name}\n` +
+                  `🔄 *Aksi:* ${tokenTx.description}\n\n` +
+                  `🔍 *Cek TX:* [Explorer](${tokenTx.explorerUrl})\n` +
                   `📍 *Address:* \`${wallet.address}\``;
 
                 await fetch(
@@ -132,7 +184,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Radar Predator Selesai Menyapu + Cek Swap",
+      message: "Radar Predator Selesai Menyapu + Cek Token",
     });
   } catch (error) {
     return NextResponse.json(
