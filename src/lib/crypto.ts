@@ -21,7 +21,7 @@ export async function getSolanaBalance(address: string): Promise<number> {
     });
 
     const data = await response.json();
-    const solAmount = data.result?.value / 1_000_000_000 || 0;
+    const solAmount = Number(data.result?.value || 0) / 1_000_000_000;
     return solAmount;
   } catch (error) {
     console.error("Gagal narik saldo Solana:", error);
@@ -61,8 +61,7 @@ export async function getEVMBalance(
 
     if (data.result) {
       const balanceInWei = BigInt(data.result);
-      const ethAmount = Number(balanceInWei) / 1_000_000_000_000_000_000;
-      return ethAmount;
+      return Number(balanceInWei) / 1_000_000_000_000_000_000;
     }
     return 0;
   } catch (error) {
@@ -72,34 +71,47 @@ export async function getEVMBalance(
 }
 
 /**
- * MENGAMBIL SALDO BITCOIN (Via Mempool.space - Paling Stabil)
+ * MENGAMBIL SALDO BITCOIN (DUAL ENGINE FALLBACK)
  */
 export async function getBTCBalance(address: string): Promise<number> {
+  // MESIN 1: API Blockchain.info (Sangat cepat, balikin angka murni)
   try {
-    const response = await fetch(
-      `https://mempool.space/api/address/${address}`,
+    const res1 = await fetch(
+      `https://blockchain.info/q/addressbalance/${address}`,
       {
         method: "GET",
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        },
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
         cache: "no-store",
       },
     );
 
-    if (!response.ok) return 0;
+    if (res1.ok) {
+      const text = await res1.text();
+      const satoshis = Number(text);
+      if (!isNaN(satoshis)) return satoshis / 100_000_000;
+    }
+  } catch (err1) {
+    console.error("Mesin BTC 1 (Blockchain.info) gagal, pindah ke Mesin 2...");
+  }
 
-    const data = await response.json();
+  // MESIN 2: Backup pakai Mempool.space kalau Mesin 1 diblokir Vercel
+  try {
+    const res2 = await fetch(`https://mempool.space/api/address/${address}`, {
+      method: "GET",
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      cache: "no-store",
+    });
 
-    // BTC Balance = (Total Satoshis Masuk) - (Total Satoshis Keluar)
-    const funded = data.chain_stats?.funded_txo_sum || 0;
-    const spent = data.chain_stats?.spent_txo_sum || 0;
-    const satoshis = funded - spent;
-
-    // 1 BTC = 100.000.000 Satoshis
-    return satoshis / 100_000_000;
-  } catch (error) {
-    console.error("Gagal narik saldo BTC:", error);
+    if (res2.ok) {
+      const data = await res2.json();
+      const funded = data.chain_stats?.funded_txo_sum || 0;
+      const spent = data.chain_stats?.spent_txo_sum || 0;
+      const satoshis = funded - spent;
+      return satoshis / 100_000_000;
+    }
+    return 0;
+  } catch (err2) {
+    console.error("Mesin BTC 2 (Mempool) juga gagal:", err2);
     return 0;
   }
 }
