@@ -35,7 +35,7 @@ export async function getEVMBalance(
 ): Promise<number> {
   const url =
     network === "ETHEREUM"
-      ? `https://cloudflare-eth.com`
+      ? `https://rpc.ankr.com/eth`
       : `https://mainnet.base.org`;
 
   const res = await fetch(`${url}?t=${Date.now()}`, {
