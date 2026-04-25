@@ -48,10 +48,7 @@ export async function getEVMBalance(
       cache: "no-store",
     });
     const data = await res.json();
-    if (data.result) {
-      return Number(BigInt(data.result)) / 1e18;
-    }
-    return 0;
+    return data.result ? Number(BigInt(data.result)) / 1e18 : 0;
   } catch (e) {
     return 0;
   }
@@ -59,9 +56,14 @@ export async function getEVMBalance(
 
 /**
  * MENGAMBIL SALDO BITCOIN (TRIPLE ENGINE FALLBACK)
+ * Pake Header khusus biar gak diblokir Vercel
  */
 export async function getBTCBalance(address: string): Promise<number> {
-  const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" };
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    Accept: "application/json, text/plain, */*",
+  };
 
   // ENGINE 1: Mempool.space
   try {
@@ -71,13 +73,14 @@ export async function getBTCBalance(address: string): Promise<number> {
     });
     if (res.ok) {
       const data = await res.json();
-      const funded = Number(data?.chain_stats?.funded_txo_sum || 0);
-      const spent = Number(data?.chain_stats?.spent_txo_sum || 0);
-      const bal = (funded - spent) / 100_000_000;
-      if (!isNaN(bal) && bal >= 0) return bal;
+      const bal =
+        (Number(data.chain_stats.funded_txo_sum) -
+          Number(data.chain_stats.spent_txo_sum)) /
+        100_000_000;
+      if (!isNaN(bal)) return bal;
     }
   } catch (e) {
-    console.error("BTC Engine 1 Failed");
+    console.log("BTC Engine 1 Failed");
   }
 
   // ENGINE 2: Blockstream.info
@@ -88,16 +91,17 @@ export async function getBTCBalance(address: string): Promise<number> {
     });
     if (res.ok) {
       const data = await res.json();
-      const funded = Number(data?.chain_stats?.funded_txo_sum || 0);
-      const spent = Number(data?.chain_stats?.spent_txo_sum || 0);
-      const bal = (funded - spent) / 100_000_000;
-      if (!isNaN(bal) && bal >= 0) return bal;
+      const bal =
+        (Number(data.chain_stats.funded_txo_sum) -
+          Number(data.chain_stats.spent_txo_sum)) /
+        100_000_000;
+      if (!isNaN(bal)) return bal;
     }
   } catch (e) {
-    console.error("BTC Engine 2 Failed");
+    console.log("BTC Engine 2 Failed");
   }
 
-  // ENGINE 3: Blockchain.info (Raw Text - Jalur Terakhir)
+  // ENGINE 3: Blockchain.info (Raw Text)
   try {
     const res = await fetch(
       `https://blockchain.info/q/addressbalance/${address}`,
@@ -106,10 +110,10 @@ export async function getBTCBalance(address: string): Promise<number> {
     if (res.ok) {
       const text = await res.text();
       const bal = Number(text) / 100_000_000;
-      if (!isNaN(bal) && bal >= 0) return bal;
+      if (!isNaN(bal)) return bal;
     }
   } catch (e) {
-    console.error("BTC Engine 3 Failed");
+    console.log("BTC Engine 3 Failed");
   }
 
   return 0;
