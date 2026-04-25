@@ -13,6 +13,7 @@ import {
   Send,
 } from "lucide-react";
 
+// --- CONFIG ---
 const NETWORK_OPTIONS = [
   { value: "BITCOIN", label: "Bitcoin", color: "text-orange-500" },
   { value: "SOLANA", label: "Solana", color: "text-emerald-400" },
@@ -98,6 +99,11 @@ async function createWalletAction(formData: FormData) {
       balance = await getEVMBalance(normalized, network);
     else if (network === "BITCOIN") balance = await getBTCBalance(normalized);
 
+    // Kirim debug log ke Vercel dashboard
+    console.log(
+      `[PREDATOR] Net: ${network} | Bal: ${balance} | Addr: ${normalized}`,
+    );
+
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
       update: { name, chatId, lastBalance: balance, isActive: true },
@@ -115,8 +121,7 @@ async function createWalletAction(formData: FormData) {
     if (botToken && chatId) {
       const sym =
         network === "BITCOIN" ? "₿" : network === "SOLANA" ? "◎" : "Ξ";
-      const dec = network === "BITCOIN" ? 8 : 4;
-      const message = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n🌐 *Net:* ${network}\n💰 *Bal:* ${sym} ${balance.toFixed(dec)}\n📍 *Addr:* \`${normalized}\``;
+      const message = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n🌐 *Net:* ${network}\n💰 *Bal:* ${sym} ${Number(balance).toFixed(network === "BITCOIN" ? 8 : 4)}\n📍 *Addr:* \`${normalized}\``;
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,7 +135,7 @@ async function createWalletAction(formData: FormData) {
     revalidatePath("/");
     success = true;
   } catch (e) {
-    console.error(e);
+    console.error("Action Error:", e);
   }
   redirect(success ? "/?feedback=created" : "/?feedback=failed");
 }
@@ -193,14 +198,14 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
         <section className="lg:col-span-4">
-          <div className="sticky top-10 bg-white/5 border border-white/10 rounded-[32px] p-8 shadow-2xl">
+          <div className="sticky top-10 bg-white/5 border border-white/10 rounded-[32px] p-8 shadow-2xl backdrop-blur-3xl">
             <h2 className="text-xl font-black uppercase mb-8 flex items-center gap-4">
               <Shield className="text-emerald-400" /> Acquisition
             </h2>
             <form action={createWalletAction} className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[11px] font-black opacity-60 uppercase tracking-widest">
-                  Address
+                <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1">
+                  Wallet Address
                 </label>
                 <input
                   name="address"
@@ -211,7 +216,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black opacity-60 uppercase">
+                  <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1">
                     Network
                   </label>
                   <select
@@ -230,26 +235,26 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black opacity-60 uppercase">
-                    Alias
+                  <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1">
+                    Alias Name
                   </label>
                   <input
                     name="name"
                     required
-                    placeholder="Whale #1"
+                    placeholder="e.g. Whale #1"
                     className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[11px] font-black opacity-60 uppercase flex items-center gap-2">
-                  <Send className="w-3 h-3" /> Telegram Chat ID
+                <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1 flex items-center gap-2">
+                  <Send className="w-3 h-3 text-cyan-400" /> Telegram Chat ID
                 </label>
                 <input
                   name="chatId"
                   required
-                  placeholder="12345678"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none"
+                  placeholder="e.g. 12345678"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-2 focus:ring-cyan-500/60"
                 />
               </div>
               <button className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2">
@@ -291,7 +296,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           <img
                             src={NETWORK_LOGOS[w.network as WalletNetwork]}
                             alt=""
-                            className="w-5 h-5 rounded-full bg-white p-0.5 shadow-sm"
+                            className="w-5 h-5 rounded-full bg-white p-0.5"
                           />
                           <span
                             className={`text-sm font-bold ${config?.color}`}
