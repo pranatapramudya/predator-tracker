@@ -1,6 +1,6 @@
 // lib/crypto.ts
 
-export async function getSolanaBalance(address: string) {
+export async function getSolanaBalance(address: string): Promise<number> {
   const apiKey = process.env.HELIUS_API_KEY;
   const url = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
 
@@ -17,11 +17,12 @@ export async function getSolanaBalance(address: string) {
     });
 
     const data = await response.json();
-    // Saldo Solana itu satuannya Lamport, harus dibagi 1 milyar biar jadi SOL
+
+    // Pastiin kita balikin angka (number), bukan string
     const solAmount = data.result?.value / 1_000_000_000 || 0;
-    return solAmount.toFixed(2); // Kita ambil 2 angka di belakang koma aja biar rapi
+    return solAmount;
   } catch (error) {
     console.error("Gagal narik saldo Helius:", error);
-    return "0.00";
+    return 0;
   }
 }

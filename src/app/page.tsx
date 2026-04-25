@@ -92,13 +92,13 @@ async function createWalletAction(formData: FormData) {
         ? address
         : address.toLowerCase();
 
-    // --- STEP: AMBIL SALDO DULU ---
-    let balance = "0.00";
+    // --- STEP: AMBIL SALDO (Balikan adalah Number) ---
+    let balance = 0;
     if (network === "SOLANA") {
       balance = await getSolanaBalance(normalized);
     }
 
-    // 1. Simpan ke Database (Update lastBalance)
+    // 1. Simpan ke Database (lastBalance menerima Decimal/Number)
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
       update: { name, chatId, lastBalance: balance, isActive: true },
@@ -117,7 +117,7 @@ async function createWalletAction(formData: FormData) {
     if (botToken && chatId) {
       const balanceText =
         network === "SOLANA"
-          ? `💰 *Balance:* ◎ ${balance} SOL`
+          ? `💰 *Balance:* ◎ ${Number(balance).toFixed(2)} SOL`
           : `💰 *Balance:* Tracking...`;
 
       const message =
@@ -190,7 +190,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#050505] text-white">
-      {/* HEADER */}
       <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-white/10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] text-white/80 uppercase mb-4 shadow-lg shadow-emerald-500/10">
@@ -212,7 +211,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </div>
       </header>
 
-      {/* FEEDBACK ALERT */}
       {feedback && (
         <div
           className={`flex items-start gap-4 p-4 rounded-2xl border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-500 ${feedback.color}`}
@@ -228,7 +226,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
-        {/* FORM SECTION */}
         <section className="lg:col-span-4">
           <div className="sticky top-10 bg-white/5 border border-white/10 rounded-[32px] p-8 backdrop-blur-3xl shadow-2xl">
             <div className="flex items-center gap-4 mb-8">
@@ -289,7 +286,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               <div className="space-y-2">
                 <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1 flex items-center gap-2">
                   <Send className="w-3 h-3 text-cyan-400" /> Telegram Chat ID
-                  (Mandatory for Alerts)
+                  (Mandatory)
                 </label>
                 <input
                   name="chatId"
@@ -309,7 +306,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </div>
         </section>
 
-        {/* LIST SECTION */}
         <section className="lg:col-span-8 space-y-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="flex items-center gap-2 text-sm font-black opacity-60 tracking-[0.2em] uppercase">
@@ -340,11 +336,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                         {wallet.name}
                       </h4>
 
-                      {/* --- TAMPILAN SALDO (LANGKAH 3) --- */}
+                      {/* --- TAMPILAN SALDO --- */}
                       {wallet.network === "SOLANA" && (
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                            ◎ {wallet.lastBalance || "0.00"} SOL
+                            ◎ {Number(wallet.lastBalance).toFixed(2)} SOL
                           </span>
                         </div>
                       )}
