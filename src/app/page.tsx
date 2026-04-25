@@ -57,7 +57,7 @@ const FEEDBACK_COPY: Record<
   },
   failed: {
     title: "CORE ERROR",
-    description: "Gagal tersambung ke database atau API Telegram.",
+    description: "Gagal tersambung ke database atau API.",
     icon: AlertCircle,
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
@@ -65,12 +65,10 @@ const FEEDBACK_COPY: Record<
 
 // --- HELPERS ---
 function isValidAddress(address: string, network: WalletNetwork): boolean {
-  if (network === "BITCOIN") {
+  if (network === "BITCOIN")
     return /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/.test(address);
-  }
-  if (network === "SOLANA") {
+  if (network === "SOLANA")
     return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
-  }
   return /^0x[a-fA-F0-9]{40}$/.test(address);
 }
 
@@ -102,13 +100,14 @@ async function createWalletAction(formData: FormData) {
 
     // --- STEP: AMBIL SALDO MULTI-CHAIN ---
     let balance = 0;
-    if (network === "SOLANA") {
-      balance = await getSolanaBalance(normalized);
-    } else if (network === "ETHEREUM" || network === "BASE") {
+    if (network === "SOLANA") balance = await getSolanaBalance(normalized);
+    else if (network === "ETHEREUM" || network === "BASE")
       balance = await getEVMBalance(normalized, network);
-    } else if (network === "BITCOIN") {
-      balance = await getBTCBalance(normalized);
-    }
+    else if (network === "BITCOIN") balance = await getBTCBalance(normalized);
+
+    console.log(
+      `[PREDATOR DEBUG] New Target: ${name} | Net: ${network} | Bal: ${balance}`,
+    );
 
     // 1. Simpan ke Database
     await prisma.wallet.upsert({
@@ -127,21 +126,15 @@ async function createWalletAction(formData: FormData) {
     // 2. Kirim Notifikasi Telegram
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (botToken && chatId) {
-      let balanceText = `💰 *Balance:* Tracking...`;
-
-      if (network === "SOLANA") {
-        balanceText = `💰 *Balance:* ◎ ${Number(balance).toFixed(2)} SOL`;
-      } else if (network === "ETHEREUM" || network === "BASE") {
-        balanceText = `💰 *Balance:* Ξ ${Number(balance).toFixed(4)} ETH`;
-      } else if (network === "BITCOIN") {
-        balanceText = `💰 *Balance:* ₿ ${Number(balance).toFixed(8)} BTC`;
-      }
+      let balSymbol =
+        network === "SOLANA" ? "◎" : network === "BITCOIN" ? "₿" : "Ξ";
+      let balDecimals = network === "BITCOIN" ? 8 : 4;
 
       const message =
         `🎯 *TARGET LOCKED: PAUS BARU!*\n\n` +
         `👤 *Name:* ${name}\n` +
         `🌐 *Network:* ${network}\n` +
-        `${balanceText}\n` +
+        `💰 *Balance:* ${balSymbol} ${Number(balance).toFixed(balDecimals)}\n` +
         `📍 *Address:* \`${normalized}\`\n\n` +
         `_Lumestack Predator Tracker is now active._`;
 
@@ -162,28 +155,17 @@ async function createWalletAction(formData: FormData) {
     console.error("Action Error:", e);
   }
 
-  if (success) {
-    redirect("/?feedback=created");
-  } else {
-    redirect("/?feedback=failed");
-  }
+  redirect(success ? "/?feedback=created" : "/?feedback=failed");
 }
 
 async function deleteWalletAction(formData: FormData) {
   "use server";
   const id = String(formData.get("id"));
-  let success = false;
   try {
     await prisma.wallet.delete({ where: { id } });
     revalidatePath("/");
-    success = true;
-  } catch (e) {
-    console.error("Delete Error:", e);
-  }
-
-  if (success) {
     redirect("/?feedback=deleted");
-  } else {
+  } catch (e) {
     redirect("/?feedback=failed");
   }
 }
@@ -198,18 +180,16 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
   let wallets: any[] = [];
   try {
-    wallets = await prisma.wallet.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-  } catch (dbError) {
-    console.error("Database Failed:", dbError);
+    wallets = await prisma.wallet.findMany({ orderBy: { createdAt: "desc" } });
+  } catch (e) {
+    console.error("DB Error:", e);
   }
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#050505] text-white">
       <header className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-white/10">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] text-white/80 uppercase mb-4 shadow-lg shadow-emerald-500/10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] text-white/80 uppercase mb-4">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Lumestack Neural Link Active
           </div>
@@ -230,7 +210,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
       {feedback && (
         <div
-          className={`flex items-start gap-4 p-4 rounded-2xl border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-500 ${feedback.color}`}
+          className={`flex items-start gap-4 p-4 rounded-2xl border backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 ${feedback.color}`}
         >
           <feedback.icon className="w-6 h-6 shrink-0" />
           <div>
@@ -253,7 +233,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 Acquisition
               </h2>
             </div>
-
             <form action={createWalletAction} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1">
@@ -263,10 +242,9 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   name="address"
                   required
                   placeholder="Paste BTC, SOL, or EVM address..."
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-base font-bold focus:ring-2 focus:ring-emerald-500/60 outline-none text-white font-mono"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-base font-bold focus:ring-2 focus:ring-emerald-500/60 outline-none font-mono"
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1">
@@ -274,7 +252,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   </label>
                   <select
                     name="network"
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-4 text-sm font-bold text-white outline-none appearance-none cursor-pointer"
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-4 text-sm font-bold outline-none cursor-pointer"
                   >
                     {NETWORK_OPTIONS.map((n) => (
                       <option
@@ -295,25 +273,22 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     name="name"
                     required
                     placeholder="e.g. Whale #1"
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none"
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold outline-none"
                   />
                 </div>
               </div>
-
               <div className="space-y-2">
                 <label className="text-[11px] font-black opacity-60 uppercase tracking-widest ml-1 flex items-center gap-2">
                   <Send className="w-3 h-3 text-cyan-400" /> Telegram Chat ID
-                  (Mandatory)
                 </label>
                 <input
                   name="chatId"
                   required
                   placeholder="e.g. 12345678"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/60"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-cyan-500/60"
                 />
               </div>
-
-              <button className="group relative w-full py-5 bg-white text-black font-black rounded-2xl transition-all hover:bg-emerald-400 active:scale-95 overflow-hidden">
+              <button className="group relative w-full py-5 bg-white text-black font-black rounded-2xl transition-all hover:bg-emerald-400 active:scale-95">
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   START TRACKING{" "}
                   <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -329,20 +304,17 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               <Activity className="w-4 h-4 text-cyan-400" /> Live Watchlist
             </h3>
           </div>
-
           {wallets.length === 0 ? (
-            <div className="border-2 border-dashed border-white/5 rounded-[32px] p-20 text-center">
-              <Radio className="w-10 h-10 text-white/10 mx-auto mb-4 animate-pulse" />
-              <p className="text-white/40 italic">
-                Scanning for high-value targets...
-              </p>
+            <div className="border-2 border-dashed border-white/5 rounded-[32px] p-20 text-center text-white/40 italic">
+              <Radio className="w-10 h-10 mx-auto mb-4 animate-pulse" />
+              Scanning for high-value targets...
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {wallets.map((wallet) => {
-                const networkStyle = NETWORK_OPTIONS.find(
+                const config = NETWORK_OPTIONS.find(
                   (n) => n.value === wallet.network,
-                )?.color;
+                );
                 return (
                   <div
                     key={wallet.id}
@@ -356,36 +328,31 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                         <h4 className="text-xl font-black group-hover:text-emerald-400 transition-colors">
                           {wallet.name}
                         </h4>
-
-                        {/* --- TAMPILAN SALDO DENGAN GAMBAR LOGO --- */}
                         <div className="flex items-center gap-2 mt-2">
                           <img
                             src={NETWORK_LOGOS[wallet.network as WalletNetwork]}
                             alt={wallet.network}
-                            className="w-5 h-5 rounded-full object-cover shadow-md bg-white"
+                            className="w-5 h-5 rounded-full bg-white p-0.5"
                           />
-
-                          {wallet.network === "SOLANA" && (
-                            <span className="text-sm font-bold text-emerald-400">
-                              {Number(wallet.lastBalance).toFixed(2)} SOL
-                            </span>
-                          )}
-                          {(wallet.network === "ETHEREUM" ||
-                            wallet.network === "BASE") && (
-                            <span className="text-sm font-bold text-cyan-400">
-                              {Number(wallet.lastBalance).toFixed(4)} ETH
-                            </span>
-                          )}
-                          {wallet.network === "BITCOIN" && (
-                            <span className="text-sm font-bold text-orange-400">
-                              {Number(wallet.lastBalance).toFixed(8)} BTC
-                            </span>
-                          )}
+                          <span
+                            className={`text-sm font-bold ${config?.color}`}
+                          >
+                            {wallet.network === "BITCOIN"
+                              ? `₿ ${Number(wallet.lastBalance).toFixed(8)}`
+                              : wallet.network === "SOLANA"
+                                ? `◎ ${Number(wallet.lastBalance).toFixed(2)}`
+                                : `Ξ ${Number(wallet.lastBalance).toFixed(4)}`}{" "}
+                            {wallet.network === "SOLANA"
+                              ? "SOL"
+                              : wallet.network === "BITCOIN"
+                                ? "BTC"
+                                : "ETH"}
+                          </span>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <span
-                          className={`text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 bg-black/40 ${networkStyle}`}
+                          className={`text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 bg-black/40 ${config?.color}`}
                         >
                           {wallet.network}
                         </span>
