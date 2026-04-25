@@ -98,9 +98,19 @@ async function createWalletAction(formData: FormData) {
         : address.toLowerCase();
 
     let balance = 0;
-    if (network === "BITCOIN") balance = await getBTCBalance(normalized);
-    else if (network === "SOLANA") balance = await getSolanaBalance(normalized);
-    else balance = await getEVMBalance(normalized, network);
+
+    // BUNGKUS TRY-CATCH KHUSUS BIAR UI GAK CORE ERROR
+    try {
+      if (network === "BITCOIN") balance = await getBTCBalance(normalized);
+      else if (network === "SOLANA")
+        balance = await getSolanaBalance(normalized);
+      else balance = await getEVMBalance(normalized, network);
+    } catch (apiError) {
+      console.warn(
+        "API lagi sibuk pas daftar, saldo diset ke 0 dulu buat nunggu Cron Job.",
+      );
+      balance = 0;
+    }
 
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
@@ -119,7 +129,7 @@ async function createWalletAction(formData: FormData) {
     if (botToken && chatId) {
       const sym =
         network === "BITCOIN" ? "₿" : network === "SOLANA" ? "◎" : "Ξ";
-      const msg = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n💰 *Bal:* ${sym} ${Number(balance).toFixed(8)}`;
+      const msg = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n💰 *Bal:* ${sym} ${Number(balance).toFixed(4)}`;
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

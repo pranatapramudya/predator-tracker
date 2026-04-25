@@ -33,10 +33,10 @@ export async function getEVMBalance(
   address: string,
   network: "ETHEREUM" | "BASE",
 ): Promise<number> {
-  // Ganti ke Cloudflare biar badak anti-limit buat ETH
+  // Pake Cloudflare biar 100x lebih badak buat Ethereum
   const url =
     network === "ETHEREUM"
-      ? process.env.ETH_RPC_URL || `https://cloudflare-eth.com`
+      ? `https://cloudflare-eth.com`
       : `https://mainnet.base.org`;
 
   const res = await fetch(`${url}?t=${Date.now()}`, {
@@ -54,7 +54,7 @@ export async function getEVMBalance(
   if (!res.ok) throw new Error("EVM Network Timeout");
   const data = await res.json();
 
-  // CEGAH FALSE ALARM: Kalau API gagal balikin result, lempar error!
+  // Kalau gagal ngasih angka, lempar error (biar Cron Job nge-skip)
   if (data.error || data.result === undefined) {
     throw new Error("EVM API Limit Reached");
   }
@@ -78,22 +78,7 @@ export async function getBTCBalance(address: string): Promise<number> {
     }
   } catch (e) {}
 
-  // ENGINE 2: BlockCypher
-  try {
-    const res = await fetch(
-      `https://api.blockcypher.com/v1/btc/main/addrs/${address}/balance?_=${cb}`,
-      { cache: "no-store", headers: HEADERS },
-    );
-    if (res.ok) {
-      const data = await res.json();
-      if (data.final_balance !== undefined) {
-        const bal = Number(data.final_balance) / 100_000_000;
-        if (!isNaN(bal)) return bal;
-      }
-    }
-  } catch (e) {}
-
-  // ENGINE 3: Mempool.space
+  // ENGINE 2: Mempool.space
   try {
     const res = await fetch(
       `https://mempool.space/api/address/${address}?_=${cb}`,
@@ -111,6 +96,5 @@ export async function getBTCBalance(address: string): Promise<number> {
     }
   } catch (e) {}
 
-  // CEGAH FALSE ALARM: Kalau ke-3 API mati/limit, JANGAN balikin 0. Lempar error!
-  throw new Error("BTC All Engines Timeout/Rate Limited");
+  throw new Error("BTC All Engines Timeout");
 }
