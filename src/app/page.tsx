@@ -15,6 +15,7 @@ import {
   Send,
 } from "lucide-react";
 
+// FORCE DYNAMIC: Memastikan Vercel tidak melakukan caching pada data saldo
 export const dynamic = "force-dynamic";
 
 const NETWORK_OPTIONS = [
@@ -88,7 +89,7 @@ async function createWalletAction(formData: FormData) {
   ).toUpperCase() as WalletNetwork;
 
   if (!address || !name || !network || !isValidAddress(address, network)) {
-    return redirect("/?feedback=invalid");
+    redirect("/?feedback=invalid");
   }
 
   try {
@@ -96,11 +97,15 @@ async function createWalletAction(formData: FormData) {
       network === "SOLANA" || network === "BITCOIN"
         ? address
         : address.toLowerCase();
+
+    // Ambil saldo terbaru
     let balance = 0;
     if (network === "SOLANA") balance = await getSolanaBalance(normalized);
+    else if (network === "ETHEREUM" || network === "BASE")
+      balance = await getEVMBalance(normalized, network);
     else if (network === "BITCOIN") balance = await getBTCBalance(normalized);
-    else balance = await getEVMBalance(normalized, network);
 
+    // Update database
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
       update: { name, chatId, lastBalance: balance, isActive: true },
@@ -113,11 +118,29 @@ async function createWalletAction(formData: FormData) {
         isActive: true,
       },
     });
+
+    // Notifikasi Telegram
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (botToken && chatId) {
+      const sym =
+        network === "BITCOIN" ? "₿" : network === "SOLANA" ? "◎" : "Ξ";
+      const message = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n🌐 *Net:* ${network}\n💰 *Bal:* ${sym} ${Number(balance).toFixed(8)}\n📍 *Addr:* \`${normalized}\``;
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: "Markdown",
+        }),
+      });
+    }
     revalidatePath("/");
     feedback = "created";
   } catch (e) {
-    console.error(e);
+    console.error("Gagal membuat wallet:", e);
   }
+  // REDIRECT HARUS DI LUAR TRY-CATCH
   redirect(`/?feedback=${feedback}`);
 }
 
@@ -126,13 +149,15 @@ async function deleteWalletAction(formData: FormData) {
   let feedback = "failed";
   try {
     const id = String(formData.get("id"));
+    // Hapus transaksi terkait terlebih dahulu (mencegah error relasi)
     await prisma.transaction.deleteMany({ where: { walletId: id } });
     await prisma.wallet.delete({ where: { id } });
     revalidatePath("/");
     feedback = "deleted";
   } catch (e) {
-    console.error(e);
+    console.error("Gagal menghapus wallet:", e);
   }
+  // REDIRECT HARUS DI LUAR TRY-CATCH
   redirect(`/?feedback=${feedback}`);
 }
 
@@ -196,7 +221,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   name="address"
                   required
                   placeholder="BTC, SOL, or EVM..."
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none font-mono"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none font-mono focus:ring-1 focus:ring-emerald-500/50"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -227,7 +252,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     name="name"
                     required
                     placeholder="e.g. Whale #1"
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none"
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-1 focus:ring-emerald-500/50"
                   />
                 </div>
               </div>
@@ -239,10 +264,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   name="chatId"
                   required
                   placeholder="e.g. 12345678"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-2 focus:ring-cyan-500/60"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-1 focus:ring-cyan-500/50"
                 />
               </div>
-              <button className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2">
+              <button
+                type="submit"
+                className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 uppercase tracking-tighter"
+              >
                 START TRACKING <ChevronRight />
               </button>
             </form>
@@ -255,8 +283,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </h3>
           {wallets.length === 0 ? (
             <div className="border-2 border-dashed border-white/5 rounded-[32px] p-20 text-center text-white/40 italic">
-              <Radio className="mx-auto mb-4 animate-pulse" />
-              Scanning...
+              <Radio className="mx-auto mb-4 animate-pulse" /> Scanning for
+              targets...
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -274,7 +302,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                         <p className="text-[10px] font-black text-white/40 uppercase">
                           Target Whale
                         </p>
-                        <h4 className="text-xl font-black group-hover:text-emerald-400 transition-colors">
+                        <h4 className="text-xl font-black group-hover:text-emerald-400 transition-colors uppercase">
                           {w.name}
                         </h4>
                         <div className="flex items-center gap-2 mt-2">
@@ -303,7 +331,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                         </span>
                         <form action={deleteWalletAction}>
                           <input type="hidden" name="id" value={w.id} />
-                          <button className="p-2 text-white/20 hover:text-rose-500 cursor-pointer">
+                          <button
+                            type="submit"
+                            className="p-2 text-white/20 hover:text-rose-500 cursor-pointer transition-colors"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </form>
@@ -315,7 +346,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       </code>
                       <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]" />
-                        <span className="text-[10px] font-bold opacity-60 uppercase">
+                        <span className="text-[10px] font-bold opacity-60 uppercase tracking-widest">
                           Live
                         </span>
                       </div>
