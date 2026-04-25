@@ -54,32 +54,25 @@ export async function getEVMBalance(
   }
 }
 
-/**
- * BTC BALANCE - VERSI ANTI-LIMIT & ANTI-CASE SENSITIVE
- */
 export async function getBTCBalance(address: string): Promise<number> {
   const cb = Date.now();
-  // Opsional: Tambahin &key=${process.env.BLOCKCHAIR_API_KEY} kalau lo punya key-nya
-  const blockchairUrl = `https://api.blockchair.com/bitcoin/dashboards/address/${address}?_=${cb}`;
 
+  // ENGINE 1: Mempool.space (Paling Akurat & Stabil)
   try {
-    const res = await fetch(blockchairUrl, { cache: "no-store" });
+    const res = await fetch(
+      `https://mempool.space/api/address/${address}?t=${cb}`,
+      { cache: "no-store" },
+    );
     if (res.ok) {
       const data = await res.json();
-      // JURUS SAKTI: Ambil data pertama di dalam objek 'data' tanpa peduli nama key-nya
-      const addressData =
-        data.data && Object.values(data.data)[0]
-          ? (Object.values(data.data)[0] as any)
-          : null;
-      if (addressData?.address?.balance !== undefined) {
-        return Number(addressData.address.balance) / 100_000_000;
-      }
+      const funded = data.chain_stats.funded_txo_sum;
+      const spent = data.chain_stats.spent_txo_sum;
+      const bal = (funded - spent) / 100_000_000;
+      if (!isNaN(bal) && bal >= 0) return bal;
     }
-  } catch (e) {
-    console.error("Blockchair failed");
-  }
+  } catch (e) {}
 
-  // Fallback: Blockchain.info
+  // ENGINE 2: Blockchain.info (Raw Fallback)
   try {
     const res = await fetch(
       `https://blockchain.info/q/addressbalance/${address}?_=${cb}`,
@@ -87,11 +80,10 @@ export async function getBTCBalance(address: string): Promise<number> {
     );
     if (res.ok) {
       const text = await res.text();
-      return Number(text) / 100_000_000;
+      const bal = Number(text) / 100_000_000;
+      if (!isNaN(bal) && bal >= 0) return bal;
     }
-  } catch (e) {
-    console.error("Blockchain.info failed");
-  }
+  } catch (e) {}
 
   return 0;
 }
