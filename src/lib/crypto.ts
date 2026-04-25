@@ -56,14 +56,10 @@ export async function getEVMBalance(
   }
 }
 
-/**
- * BTC BALANCE - FINAL BOSS MODE
- * Menggunakan triple engine untuk menghindari angka 0 di Vercel
- */
 export async function getBTCBalance(address: string): Promise<number> {
   const cb = Date.now();
 
-  // ENGINE 1: Blockchain.info (Sangat ringan & jarang nge-block)
+  // ENGINE 1: Blockchain.info (Raw text, paling tangguh buat Vercel)
   try {
     const res = await fetch(
       `https://blockchain.info/q/addressbalance/${address}?_=${cb}`,
@@ -75,11 +71,27 @@ export async function getBTCBalance(address: string): Promise<number> {
     if (res.ok) {
       const text = await res.text();
       const bal = Number(text) / 100_000_000;
-      if (!isNaN(bal) && bal > 0) return bal;
+      if (!isNaN(bal)) return bal;
     }
   } catch (e) {}
 
-  // ENGINE 2: Mempool.space (Rumus: Funded - Spent)
+  // ENGINE 2: BlockCypher (Spesialis alamat P2SH/Legacy)
+  try {
+    const res = await fetch(
+      `https://api.blockcypher.com/v1/btc/main/addrs/${address}/balance?_=${cb}`,
+      {
+        cache: "no-store",
+        headers: HEADERS,
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const bal = Number(data.final_balance || 0) / 100_000_000;
+      if (!isNaN(bal)) return bal;
+    }
+  } catch (e) {}
+
+  // ENGINE 3: Mempool.space
   try {
     const res = await fetch(
       `https://mempool.space/api/address/${address}?_=${cb}`,
@@ -94,7 +106,7 @@ export async function getBTCBalance(address: string): Promise<number> {
         ((data.chain_stats?.funded_txo_sum || 0) -
           (data.chain_stats?.spent_txo_sum || 0)) /
         100_000_000;
-      if (!isNaN(bal) && bal >= 0) return bal;
+      if (!isNaN(bal)) return bal;
     }
   } catch (e) {}
 
