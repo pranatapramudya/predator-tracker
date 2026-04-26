@@ -102,7 +102,6 @@ export async function GET(request: Request) {
         const winRate = (wallet as any).winRate || 0;
         const threshold = (wallet as any).minAlertUsd || 100;
 
-        // 🔴 KUNCI SAAS: Ambil Channel ID dari user. Kalau kosong, lari ke channel utama lo
         const ALPHA_CHANNEL_ID =
           (wallet as any).alphaChannelId || "-1003737826938";
 
@@ -144,9 +143,7 @@ export async function GET(request: Request) {
               );
 
               if (usdAmount > 0 && usdAmount < threshold) {
-                console.log(
-                  `[SILENT SKIP] Transaksi receh... WR tetap diupdate.`,
-                );
+                console.log(`[SILENT SKIP] Transaksi Swap receh...`);
               } else {
                 await prisma.transaction.create({
                   data: {
@@ -240,9 +237,7 @@ export async function GET(request: Request) {
               );
 
               if (usdAmount > 0 && usdAmount < threshold) {
-                console.log(
-                  `[SILENT SKIP] Transaksi EVM receh... WR tetap diupdate.`,
-                );
+                console.log(`[SILENT SKIP] Transaksi Token EVM receh...`);
               } else {
                 await prisma.transaction.create({
                   data: {
@@ -296,7 +291,7 @@ export async function GET(request: Request) {
         }
 
         // ==========================================
-        // 3. WHALE ALERT SALDO UMUM (DIAM-DIAM)
+        // 3. WHALE ALERT SALDO UMUM (HISTORY & TELEGRAM)
         // ==========================================
         let currentBalance = 0;
         if (wallet.network === "SOLANA") {
@@ -314,9 +309,29 @@ export async function GET(request: Request) {
         const diff = currentBalance - oldBalance;
 
         if (Math.abs(diff) > 0.00000001) {
+          // Update saldo terakhir di database profil wallet
           await prisma.wallet.update({
             where: { id: wallet.id },
             data: { lastBalance: currentBalance },
+          });
+
+          // 🔴 TAMBAHAN: Simpan ke tabel Transaction agar muncul di Recent Activity dashboard
+          await prisma.transaction.create({
+            data: {
+              walletId: wallet.id,
+              dedupeKey: `NATIVE-${wallet.id}-${Date.now()}`,
+              signature: "NATIVE_TRANSFER",
+              type: diff > 0 ? "RECEIVE_NATIVE" : "SEND_NATIVE",
+              amount: Math.abs(diff),
+              tokenSymbol:
+                wallet.network === "BITCOIN"
+                  ? "BTC"
+                  : wallet.network === "SOLANA"
+                    ? "SOL"
+                    : "ETH",
+              usdValue: 0,
+              explorerUrl: "#",
+            },
           });
 
           if (
