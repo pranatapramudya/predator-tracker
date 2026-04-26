@@ -1,3 +1,4 @@
+import { processWhaleTrade } from "@/app/api/webhook/pnl";
 import { Network, Prisma } from "@prisma/client";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
@@ -106,7 +107,9 @@ function verifyAlchemySignature(headers: Headers, rawBody: string): boolean {
   }
 
   return signingKeys.some((signingKey) => {
-    const digest = createHmac("sha256", signingKey).update(rawBody).digest("hex");
+    const digest = createHmac("sha256", signingKey)
+      .update(rawBody)
+      .digest("hex");
     return safeEqual(digest, signature);
   });
 }
@@ -140,7 +143,9 @@ export function verifyWebhookRequest(params: {
   return verifyAlchemySignature(params.headers, params.rawBody);
 }
 
-function parseHeliusTransfers(payload: HeliusEnhancedTransaction[]): TransferCandidate[] {
+function parseHeliusTransfers(
+  payload: HeliusEnhancedTransaction[],
+): TransferCandidate[] {
   const candidates: TransferCandidate[] = [];
 
   payload.forEach((transaction, txIndex) => {
@@ -151,7 +156,11 @@ function parseHeliusTransfers(payload: HeliusEnhancedTransaction[]): TransferCan
     }
 
     transaction.nativeTransfers?.forEach((transfer, transferIndex) => {
-      if (!transfer.amount || !transfer.fromUserAccount || !transfer.toUserAccount) {
+      if (
+        !transfer.amount ||
+        !transfer.fromUserAccount ||
+        !transfer.toUserAccount
+      ) {
         return;
       }
 
@@ -170,7 +179,11 @@ function parseHeliusTransfers(payload: HeliusEnhancedTransaction[]): TransferCan
     });
 
     transaction.tokenTransfers?.forEach((transfer, transferIndex) => {
-      if (!transfer.tokenAmount || !transfer.fromUserAccount || !transfer.toUserAccount) {
+      if (
+        !transfer.tokenAmount ||
+        !transfer.fromUserAccount ||
+        !transfer.toUserAccount
+      ) {
         return;
       }
 
@@ -209,15 +222,24 @@ function mapAlchemyNetwork(network?: string): Network | null {
 }
 
 function parseAlchemyAmount(activity: AlchemyActivity): number | null {
-  if (typeof activity.value === "number" && Number.isFinite(activity.value) && activity.value > 0) {
+  if (
+    typeof activity.value === "number" &&
+    Number.isFinite(activity.value) &&
+    activity.value > 0
+  ) {
     return activity.value;
   }
 
-  const rawValue = hexToNumber(activity.rawContract?.rawValue, activity.rawContract?.decimals ?? 18);
+  const rawValue = hexToNumber(
+    activity.rawContract?.rawValue,
+    activity.rawContract?.decimals ?? 18,
+  );
   return rawValue && rawValue > 0 ? rawValue : null;
 }
 
-function parseAlchemyTransfers(payload: AlchemyAddressActivityPayload): TransferCandidate[] {
+function parseAlchemyTransfers(
+  payload: AlchemyAddressActivityPayload,
+): TransferCandidate[] {
   const network = mapAlchemyNetwork(payload.event?.network);
 
   if (!network) {
@@ -231,7 +253,12 @@ function parseAlchemyTransfers(payload: AlchemyAddressActivityPayload): Transfer
       const signature = activity.hash;
       const amount = parseAlchemyAmount(activity);
 
-      if (!signature || !amount || !activity.fromAddress || !activity.toAddress) {
+      if (
+        !signature ||
+        !amount ||
+        !activity.fromAddress ||
+        !activity.toAddress
+      ) {
         return [];
       }
 
@@ -253,7 +280,10 @@ function parseAlchemyTransfers(payload: AlchemyAddressActivityPayload): Transfer
   );
 }
 
-function extractCandidates(source: WebhookSource, payload: unknown): TransferCandidate[] {
+function extractCandidates(
+  source: WebhookSource,
+  payload: unknown,
+): TransferCandidate[] {
   if (source === "HELIUS") {
     return parseHeliusTransfers(payload as HeliusEnhancedTransaction[]);
   }
@@ -265,7 +295,8 @@ async function loadTrackedWallets(candidates: TransferCandidate[]) {
   const addressesByNetwork = new Map<Network, Set<string>>();
 
   for (const candidate of candidates) {
-    const addresses = addressesByNetwork.get(candidate.network) ?? new Set<string>();
+    const addresses =
+      addressesByNetwork.get(candidate.network) ?? new Set<string>();
 
     if (candidate.fromAddress) {
       addresses.add(normalizeAddress(candidate.fromAddress, candidate.network));
@@ -288,7 +319,10 @@ async function loadTrackedWallets(candidates: TransferCandidate[]) {
     }));
 
   if (networkClauses.length === 0) {
-    return new Map<string, { id: string; address: string; name: string | null; network: Network }>();
+    return new Map<
+      string,
+      { id: string; address: string; name: string | null; network: Network }
+    >();
   }
 
   const wallets = await prisma.wallet.findMany({
@@ -334,6 +368,7 @@ async function saveTransactionAndNotify(params: {
   const dedupeKey = `${params.candidate.dedupeBase}:${params.wallet.address}:${params.action}`;
 
   try {
+    // 1. Simpan Transaksi ke Database
     await prisma.transaction.create({
       data: {
         walletId: params.wallet.id,
@@ -344,16 +379,38 @@ async function saveTransactionAndNotify(params: {
         tokenSymbol: params.symbol,
         usdValue: new Prisma.Decimal(params.usdValue.toFixed(2)),
         explorerUrl: params.candidate.explorerUrl,
+        // Pastikan tokenAddress ikut disave sesuai schema baru
+        tokenAddress: params.candidate.tokenIdentifier || null,
       },
     });
+
+    // 🔥 2. INJEKSI MESIN PNL (PROFIT & LOSS) 🔥
+    // Kita cuma proses kalau ada tokenIdentifier (bukan transfer native SOL/ETH biasa)
+    if (params.candidate.tokenIdentifier) {
+      try {
+        await processWhaleTrade(
+          params.wallet.id,
+          params.candidate.tokenIdentifier,
+          params.symbol,
+          params.action as "BUY" | "SELL",
+          params.candidate.amount,
+          params.usdValue,
+        );
+        console.log(
+          `[Predator System] PnL & tas koin ${params.symbol} berhasil di-update untuk ${params.wallet.id}!`,
+        );
+      } catch (pnlError) {
+        console.error(`[Predator System] Gagal proses PnL:`, pnlError);
+      }
+    }
   } catch (error) {
     if (isDuplicateError(error)) {
-      return;
+      return; // Kalau transaksi duplikat, stop di sini
     }
-
     throw error;
   }
 
+  // 3. Kirim Notif ke Telegram HP Lo
   await sendTelegramMessage(
     buildWhaleAlertMessage({
       network: params.wallet.network,
@@ -366,7 +423,10 @@ async function saveTransactionAndNotify(params: {
   );
 }
 
-export async function processWebhookPayload(source: WebhookSource, payload: unknown): Promise<void> {
+export async function processWebhookPayload(
+  source: WebhookSource,
+  payload: unknown,
+): Promise<void> {
   const candidates = extractCandidates(source, payload);
 
   if (candidates.length === 0) {
@@ -377,10 +437,14 @@ export async function processWebhookPayload(source: WebhookSource, payload: unkn
 
   for (const candidate of candidates) {
     const fromWallet = candidate.fromAddress
-      ? walletMap.get(`${candidate.network}:${normalizeAddress(candidate.fromAddress, candidate.network)}`)
+      ? walletMap.get(
+          `${candidate.network}:${normalizeAddress(candidate.fromAddress, candidate.network)}`,
+        )
       : undefined;
     const toWallet = candidate.toAddress
-      ? walletMap.get(`${candidate.network}:${normalizeAddress(candidate.toAddress, candidate.network)}`)
+      ? walletMap.get(
+          `${candidate.network}:${normalizeAddress(candidate.toAddress, candidate.network)}`,
+        )
       : undefined;
 
     if (!fromWallet && !toWallet) {
