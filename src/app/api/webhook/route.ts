@@ -11,16 +11,100 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// ==========================================
+// AUTO WIN-RATE & PnL ENGINE (REAL-TIME)
+// ==========================================
+async function processAutoWinRate(
+  walletId: string,
+  isBuy: boolean,
+  amountToken: number,
+  usdValue: number,
+  tokenAddress: string,
+  tokenSymbol: string,
+) {
+  if (!tokenAddress || tokenAddress === "solana" || usdValue <= 0) return;
+
+  try {
+    const position = await prisma.tokenPosition.findUnique({
+      where: { walletId_tokenAddress: { walletId, tokenAddress } },
+    });
+
+    if (isBuy) {
+      // PAUS BELI (AKUMULASI) -> Catat modalnya
+      if (position) {
+        await prisma.tokenPosition.update({
+          where: { id: position.id },
+          data: {
+            tokenAmount: Number(position.tokenAmount) + amountToken,
+            totalInvestedUsd: Number(position.totalInvestedUsd) + usdValue,
+          },
+        });
+      } else {
+        await prisma.tokenPosition.create({
+          data: {
+            walletId,
+            tokenAddress,
+            tokenSymbol,
+            tokenAmount: amountToken,
+            totalInvestedUsd: usdValue,
+          },
+        });
+      }
+    } else {
+      // PAUS JUAL (TAKE PROFIT / CUT LOSS) -> Kalkulasi WR!
+      if (position && Number(position.tokenAmount) > 0) {
+        const avgBuyPrice =
+          Number(position.totalInvestedUsd) / Number(position.tokenAmount);
+        const costOfSoldTokens = avgBuyPrice * amountToken;
+        const pnl = usdValue - costOfSoldTokens; // Profit atau Minus?
+        const isWin = pnl > 0; // Cuan!
+
+        const walletStats = await prisma.wallet.findUnique({
+          where: { id: walletId },
+        });
+        if (walletStats) {
+          const newTotalTrades = walletStats.totalTrades + 1;
+          const newSuccessTrades = walletStats.successTrades + (isWin ? 1 : 0);
+          const newWinRate = (newSuccessTrades / newTotalTrades) * 100; // Hitung persentase
+
+          // UPDATE REPUTASI PAUS REAL-TIME
+          await prisma.wallet.update({
+            where: { id: walletId },
+            data: {
+              totalTrades: newTotalTrades,
+              successTrades: newSuccessTrades,
+              winRate: newWinRate,
+            },
+          });
+
+          // Update Sisa Posisi Koin
+          const remainingAmount = Math.max(
+            0,
+            Number(position.tokenAmount) - amountToken,
+          );
+          await prisma.tokenPosition.update({
+            where: { id: position.id },
+            data: {
+              tokenAmount: remainingAmount,
+              realizedPnlUsd: Number(position.realizedPnlUsd) + pnl,
+            },
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Auto WR Error:", e);
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const wallets = await prisma.wallet.findMany({ where: { isActive: true } });
-
     const ALPHA_CHANNEL_ID = "-1003737826938";
 
     for (const wallet of wallets) {
       try {
         const winRate = (wallet as any).winRate || 0;
-        // 🔴 TARIK FILTER DINAMIS DARI DATABASE:
         const threshold = (wallet as any).minAlertUsd || 100;
 
         let label = "🐋 THE WHALE";
@@ -43,11 +127,28 @@ export async function GET(request: Request) {
             if (!isExists) {
               isSwapOrTokenAlertSent = true;
               const usdAmount = (swapData as any).usdValue || 0;
+              const amountToken = (swapData as any).amount || 0;
+              const tokenAddress = (swapData as any).tokenAddress || "solana";
+              const tokenSymbol = (swapData as any).tokenSymbol || "MEME_COIN";
 
-              // 🔴 PAKAI VARIABEL THRESHOLD
+              // DETEKSI BUY ATAU SELL (Solana Logic)
+              const isBuy =
+                !swapData.description.toUpperCase().includes("FOR SOL") &&
+                !swapData.description.toUpperCase().includes("FOR USDC");
+
+              // 🔴 EKSEKUSI AUTO WIN-RATE
+              await processAutoWinRate(
+                wallet.id,
+                isBuy,
+                amountToken,
+                usdAmount,
+                tokenAddress,
+                tokenSymbol,
+              );
+
               if (usdAmount > 0 && usdAmount < threshold) {
                 console.log(
-                  `[SILENT SKIP] Transaksi Swap receh $${usdAmount} dari ${wallet.name} (Batas: $${threshold}). Saldo diupdate tanpa notif.`,
+                  `[SILENT SKIP] Transaksi receh... WR tetap diupdate.`,
                 );
               } else {
                 await prisma.transaction.create({
@@ -56,21 +157,23 @@ export async function GET(request: Request) {
                     dedupeKey: `${wallet.id}-${swapData.signature}`,
                     signature: swapData.signature,
                     type: "SWAP",
-                    amount: (swapData as any).amount || 0,
-                    tokenSymbol: (swapData as any).tokenSymbol || "MEME_COIN",
+                    amount: amountToken,
+                    tokenSymbol: tokenSymbol,
                     usdValue: usdAmount,
                     explorerUrl: `https://solscan.io/tx/${swapData.signature}`,
                   },
                 });
 
                 if (process.env.TELEGRAM_BOT_TOKEN) {
-                  const tokenAddressForDex =
-                    (swapData as any).tokenAddress || "solana";
+                  const actionText = isBuy
+                    ? "🟢 *BUY (AKUMULASI)*"
+                    : "🔴 *SELL (TAKE PROFIT/CUT LOSS)*";
                   const swapMessage =
                     `${label} ALERT!\n🚨 *SMART MONEY SWAP (SOLANA)*\n\n` +
                     `👤 *Target:* ${wallet.name}\n` +
-                    `🔄 *Aksi:* ${swapData.description}\n` +
+                    `🔄 *Aksi:* ${actionText}\n` +
                     `💵 *Estimasi USD:* $${usdAmount}\n` +
+                    `📊 *Current Win Rate:* ${winRate.toFixed(1)}%\n` +
                     `📍 *Address:* \`${wallet.address}\``;
 
                   await fetch(
@@ -88,12 +191,12 @@ export async function GET(request: Request) {
                             [
                               {
                                 text: "📈 View on DexScreener",
-                                url: `https://dexscreener.com/solana/${tokenAddressForDex}`,
+                                url: `https://dexscreener.com/solana/${tokenAddress}`,
                               },
                             ],
                             [
                               {
-                                text: "🔍 Cek TX di Solscan",
+                                text: "🔍 Cek TX",
                                 url: `https://solscan.io/tx/${swapData.signature}`,
                               },
                             ],
@@ -124,11 +227,26 @@ export async function GET(request: Request) {
             if (!isExists) {
               isSwapOrTokenAlertSent = true;
               const usdAmount = (tokenTx as any).usdValue || 0;
+              const amountToken = (tokenTx as any).amount || 0;
+              const tokenAddress = (tokenTx as any).tokenAddress;
+              const tokenSymbol = (tokenTx as any).tokenSymbol || "TOKEN";
 
-              // 🔴 PAKAI VARIABEL THRESHOLD
+              // DETEKSI BUY ATAU SELL (EVM Logic)
+              const isBuy = tokenTx.description.includes("🟢");
+
+              // 🔴 EKSEKUSI AUTO WIN-RATE
+              await processAutoWinRate(
+                wallet.id,
+                isBuy,
+                amountToken,
+                usdAmount,
+                tokenAddress,
+                tokenSymbol,
+              );
+
               if (usdAmount > 0 && usdAmount < threshold) {
                 console.log(
-                  `[SILENT SKIP] Transaksi Token receh EVM $${usdAmount} dari ${wallet.name} (Batas: $${threshold}).`,
+                  `[SILENT SKIP] Transaksi EVM receh... WR tetap diupdate.`,
                 );
               } else {
                 await prisma.transaction.create({
@@ -137,8 +255,8 @@ export async function GET(request: Request) {
                     dedupeKey: `${wallet.id}-${tokenTx.signature}`,
                     signature: tokenTx.signature,
                     type: "ERC20_TRANSFER",
-                    amount: (tokenTx as any).amount || 0,
-                    tokenSymbol: (tokenTx as any).tokenSymbol || "TOKEN",
+                    amount: amountToken,
+                    tokenSymbol: tokenSymbol,
                     usdValue: usdAmount,
                     explorerUrl: tokenTx.explorerUrl,
                   },
@@ -150,6 +268,7 @@ export async function GET(request: Request) {
                     `👤 *Target:* ${wallet.name}\n` +
                     `🔄 *Aksi:* ${tokenTx.description}\n` +
                     `💵 *Estimasi USD:* $${usdAmount}\n` +
+                    `📊 *Current Win Rate:* ${winRate.toFixed(1)}%\n` +
                     `📍 *Address:* \`${wallet.address}\``;
 
                   await fetch(
@@ -210,8 +329,6 @@ export async function GET(request: Request) {
             wallet.chatId &&
             process.env.TELEGRAM_BOT_TOKEN
           ) {
-            const action =
-              diff > 0 ? "🟢 BUY/RECEIVE (MASUK)" : "🔴 SELL/SEND (KELUAR)";
             const sym =
               wallet.network === "BITCOIN"
                 ? "₿"
