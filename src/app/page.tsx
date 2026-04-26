@@ -9,6 +9,7 @@ import {
   Radio,
   Activity,
   ChevronRight,
+  ChevronLeft,
   CheckCircle2,
   AlertCircle,
   Trash2,
@@ -98,14 +99,13 @@ async function createWalletAction(formData: FormData) {
         : address.toLowerCase();
     let balance = 0;
 
-    // TRY CATCH KHUSUS BIAR GAK CORE ERROR KALAU API SIBUK
     try {
       if (network === "BITCOIN") balance = await getBTCBalance(normalized);
       else if (network === "SOLANA")
         balance = await getSolanaBalance(normalized);
       else balance = await getEVMBalance(normalized, network);
     } catch (apiError) {
-      balance = 0; // Kasih 0 dulu, biar UptimeRobot yang benerin nanti
+      balance = 0;
     }
 
     await prisma.wallet.upsert({
@@ -165,9 +165,24 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const feedback = params.feedback
     ? FEEDBACK_COPY[params.feedback as string]
     : null;
-  const wallets = await prisma.wallet
-    .findMany({ orderBy: { createdAt: "desc" } })
-    .catch(() => []);
+
+  // LOGIKA PAGINATION MAKSIMAL 5 DATA PER HALAMAN
+  const page = parseInt(params?.page as string) || 1;
+  const limit = 5;
+  const skip = (page - 1) * limit;
+
+  const [wallets, totalWallets] = await Promise.all([
+    prisma.wallet
+      .findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+      })
+      .catch(() => []),
+    prisma.wallet.count().catch(() => 0),
+  ]);
+
+  const totalPages = Math.ceil(totalWallets / limit);
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#050505] text-white overflow-x-hidden">
@@ -186,7 +201,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
             Monitored
           </p>
           <p className="text-xl font-black">
-            {wallets.length}{" "}
+            {totalWallets}{" "}
             <span className="text-xs font-normal text-white/40 italic">
               WHALES
             </span>
@@ -289,73 +304,146 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               Scanning Targets...
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-1">
-              {wallets.map((w) => {
-                const config = NETWORK_OPTIONS.find(
-                  (n) => n.value === w.network,
-                );
-                return (
-                  <div
-                    key={w.id}
-                    className="group bg-white/5 border border-white/10 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden"
-                  >
-                    <div className="flex justify-between items-start mb-4 relative z-10">
-                      <div className="w-full">
-                        <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
-                          Target Whale
-                        </p>
-                        <h4 className="text-xl font-black group-hover:text-emerald-400 transition-colors uppercase truncate pr-4">
-                          {w.name}
-                        </h4>
-                        <div className="flex items-center gap-3 mt-3">
-                          <img
-                            src={NETWORK_LOGOS[w.network as WalletNetwork]}
-                            alt=""
-                            className="w-6 h-6 rounded-full bg-white p-0.5"
-                          />
-                          <span
-                            className={`text-lg font-black tracking-tight ${config?.color}`}
-                          >
-                            {w.network === "BITCOIN"
-                              ? `₿ ${Number(w.lastBalance).toFixed(8)}`
-                              : w.network === "SOLANA"
-                                ? `◎ ${Number(w.lastBalance).toFixed(2)}`
-                                : `Ξ ${Number(w.lastBalance).toFixed(4)}`}
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-1">
+                {wallets.map((w) => {
+                  const config = NETWORK_OPTIONS.find(
+                    (n) => n.value === w.network,
+                  );
+                  return (
+                    <div
+                      key={w.id}
+                      className="group bg-white/5 border border-white/10 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex justify-between items-start mb-4 relative z-10">
+                          <div className="w-full">
+                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                              Target Whale
+                            </p>
+                            <h4 className="text-xl font-black group-hover:text-emerald-400 transition-colors uppercase truncate pr-4">
+                              {w.name}
+                            </h4>
+                            <div className="flex items-center gap-3 mt-3">
+                              <img
+                                src={NETWORK_LOGOS[w.network as WalletNetwork]}
+                                alt=""
+                                className="w-6 h-6 rounded-full bg-white p-0.5"
+                              />
+                              <span
+                                className={`text-lg font-black tracking-tight ${config?.color}`}
+                              >
+                                {w.network === "BITCOIN"
+                                  ? `₿ ${Number(w.lastBalance).toFixed(8)}`
+                                  : w.network === "SOLANA"
+                                    ? `◎ ${Number(w.lastBalance).toFixed(2)}`
+                                    : `Ξ ${Number(w.lastBalance).toFixed(4)}`}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <span
+                              className={`text-[9px] font-black px-3 py-1 rounded-full border border-white/10 bg-black/60 tracking-tighter uppercase ${config?.color}`}
+                            >
+                              {w.network}
+                            </span>
+                            <form action={deleteWalletAction}>
+                              <input type="hidden" name="id" value={w.id} />
+                              <button
+                                type="submit"
+                                className="p-2 text-white/20 hover:text-rose-500 cursor-pointer transition-colors"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+
+                        {/* WARNA DITERANGKAN BIAR JELAS DI LAYAR HP */}
+                        <div className="flex items-center gap-3 mt-5 relative z-10">
+                          <div className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-center">
+                            <p className="text-[9px] font-black text-white/70 uppercase tracking-widest mb-1">
+                              Win Rate
+                            </p>
+                            <p
+                              className={`text-base font-black tracking-tight ${w.winRate >= 50 ? "text-emerald-400" : w.winRate > 0 ? "text-amber-400" : "text-white"}`}
+                            >
+                              {Number(w.winRate).toFixed(1)}%
+                            </p>
+                          </div>
+                          <div className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-center">
+                            <p className="text-[9px] font-black text-white/70 uppercase tracking-widest mb-1">
+                              Trades (W/Total)
+                            </p>
+                            <p className="text-base font-black tracking-tight text-white">
+                              <span
+                                className={
+                                  w.successTrades > 0
+                                    ? "text-emerald-400"
+                                    : "text-white"
+                                }
+                              >
+                                {w.successTrades}
+                              </span>
+                              <span className="text-white/40 mx-1.5">/</span>
+                              <span>{w.totalTrades}</span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5 relative z-10">
+                        <code className="text-[10px] text-white/60 font-mono tracking-tighter">
+                          {formatAddress(w.address)}
+                        </code>
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                          <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">
+                            Live
                           </span>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-2 shrink-0">
-                        <span
-                          className={`text-[9px] font-black px-3 py-1 rounded-full border border-white/10 bg-black/60 tracking-tighter uppercase ${config?.color}`}
-                        >
-                          {w.network}
-                        </span>
-                        <form action={deleteWalletAction}>
-                          <input type="hidden" name="id" value={w.id} />
-                          <button
-                            type="submit"
-                            className="p-2 text-white/20 hover:text-rose-500 cursor-pointer transition-colors"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </form>
-                      </div>
                     </div>
-                    <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5 relative z-10">
-                      <code className="text-[10px] text-white/40 font-mono tracking-tighter">
-                        {formatAddress(w.address)}
-                      </code>
-                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                        <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">
-                          Live
-                        </span>
-                      </div>
+                  );
+                })}
+              </div>
+
+              {/* PAGINATION NAVIGATION BUTTONS < > */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-6 pt-8 pb-4">
+                  {page > 1 ? (
+                    <a
+                      href={`/?page=${page - 1}`}
+                      className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-white" />
+                    </a>
+                  ) : (
+                    <div className="p-3 bg-white/5 opacity-30 rounded-xl border border-white/10 cursor-not-allowed">
+                      <ChevronLeft className="w-5 h-5 text-white/30" />
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  )}
+
+                  <span className="text-sm font-bold text-white/80 uppercase tracking-widest">
+                    Page {page} <span className="text-white/30 mx-1">/</span>{" "}
+                    {totalPages}
+                  </span>
+
+                  {page < totalPages ? (
+                    <a
+                      href={`/?page=${page + 1}`}
+                      className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors"
+                    >
+                      <ChevronRight className="w-5 h-5 text-white" />
+                    </a>
+                  ) : (
+                    <div className="p-3 bg-white/5 opacity-30 rounded-xl border border-white/10 cursor-not-allowed">
+                      <ChevronRight className="w-5 h-5 text-white/30" />
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </section>
       </div>
