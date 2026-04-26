@@ -34,6 +34,9 @@ const NETWORK_LOGOS: Record<WalletNetwork, string> = {
   BASE: "https://raw.githubusercontent.com/base-org/brand-kit/main/logo/symbol/Base_Symbol_Blue.svg",
 };
 
+// 🔥 TULIS ID TELEGRAM LO DISINI (Sebagai Admin)
+const ADMIN_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "12345678";
+
 const FEEDBACK_COPY: Record<
   string,
   { title: string; description: string; icon: any; color: string }
@@ -78,12 +81,12 @@ function formatAddress(address: string): string {
     : `${address.slice(0, 6)}...${address.slice(-6)}`;
 }
 
-// 🔥 LOGIKA SMART TAGGING SESUAI DOKUMEN LO
 function getWhaleTag(winRate: number, totalTrades: number) {
   if (totalTrades < 3)
     return {
       text: "UNRANKED",
-      style: "bg-white/5 text-white/40 border-white/10",
+      style:
+        "bg-white text-black font-black border-none shadow-[0_0_12px_rgba(255,255,255,0.4)]",
     };
   if (winRate >= 70)
     return {
@@ -112,9 +115,8 @@ async function createWalletAction(formData: FormData) {
     formData.get("network") ?? "",
   ).toUpperCase() as WalletNetwork;
 
-  if (!address || !name || !network || !isValidAddress(address, network)) {
+  if (!address || !name || !network || !isValidAddress(address, network))
     redirect("/?feedback=invalid");
-  }
 
   try {
     const normalized =
@@ -179,34 +181,38 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const limit = 5;
   const skip = (page - 1) * limit;
 
-  // 🔥 UPDATE: KITA TARIK 10 TRANSAKSI TERAKHIR BUAT HISTORICAL LOG
+  // 🔥 ADMIN ISOLATION: Cuma narik data milik Admin Chat ID
   const [wallets, totalWallets] = await Promise.all([
     prisma.wallet
       .findMany({
+        where: { chatId: ADMIN_CHAT_ID },
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
           transactions: {
             orderBy: { createdAt: "desc" },
-            take: 10, // Limit 10 transaksi terakhir
+            take: 10,
           },
         },
       })
       .catch(() => []),
-    prisma.wallet.count().catch(() => 0),
+    prisma.wallet
+      .count({
+        where: { chatId: ADMIN_CHAT_ID },
+      })
+      .catch(() => 0),
   ]);
 
   const totalPages = Math.ceil(totalWallets / limit);
 
   return (
-    <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#050505] text-white overflow-x-hidden">
-      {/* HEADER SECTION (TIDAK BERUBAH) */}
+    <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#080808] text-white overflow-x-hidden">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-white/10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] uppercase mb-4">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />{" "}
-            Neural Link
+            Neural Link (Admin)
           </div>
           <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase">
             Predator <span className="text-emerald-400">Tracker</span>
@@ -240,8 +246,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
-        <section className="lg:col-span-4 h-fit sticky top-10">
-          <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 md:p-8 shadow-2xl backdrop-blur-3xl">
+        <section className="lg:col-span-4 h-fit lg:sticky lg:top-10">
+          <div className="bg-[#121212] border border-white/10 rounded-[32px] p-6 md:p-8 shadow-2xl">
             <h2 className="text-xl font-black uppercase mb-8 flex items-center gap-4">
               <Shield className="text-emerald-400" /> Acquisition
             </h2>
@@ -254,7 +260,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   name="address"
                   required
                   placeholder="BTC, SOL, or EVM..."
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none font-mono text-sm focus:border-emerald-500/50 transition-all"
+                  className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none font-mono text-sm focus:border-emerald-500/50 transition-all"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -264,7 +270,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   </label>
                   <select
                     name="network"
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-4 font-bold outline-none cursor-pointer text-sm"
+                    className="w-full bg-black/60 border border-white/10 rounded-2xl px-4 py-4 font-bold outline-none cursor-pointer text-sm"
                   >
                     {NETWORK_OPTIONS.map((n) => (
                       <option
@@ -285,19 +291,19 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     name="name"
                     required
                     placeholder="Whale #1"
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-emerald-500/50 transition-all"
+                    className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-emerald-500/50 transition-all"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black opacity-60 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  <Send className="w-3 h-3 text-cyan-400" /> Telegram ID
+                  <Send className="w-3 h-3 text-cyan-400" /> Telegram ID (Admin)
                 </label>
                 <input
                   name="chatId"
                   required
-                  placeholder="12345678"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-cyan-500/50 transition-all"
+                  defaultValue={ADMIN_CHAT_ID}
+                  className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-cyan-500/50 transition-all text-emerald-400"
                 />
               </div>
               <button
@@ -312,12 +318,12 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
         <section className="lg:col-span-8 space-y-6">
           <h3 className="flex items-center gap-2 text-sm font-black opacity-60 uppercase tracking-[0.2em] px-2">
-            <Activity className="text-cyan-400" /> Live Watchlist
+            <Activity className="text-cyan-400" /> Admin Watchlist
           </h3>
           {wallets.length === 0 ? (
             <div className="border-2 border-dashed border-white/5 rounded-[32px] p-20 text-center text-white/40 italic uppercase tracking-widest text-xs">
               <Radio className="mx-auto mb-4 animate-pulse" />
-              Scanning Targets...
+              Scanning Admin Targets...
             </div>
           ) : (
             <>
@@ -327,37 +333,40 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     (n) => n.value === w.network,
                   );
                   const whaleTag = getWhaleTag(w.winRate, w.totalTrades);
+                  const safeName = w.name || "Target";
 
                   return (
                     <div
                       key={w.id}
-                      className="group bg-white/5 border border-white/10 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between"
+                      className="group bg-[#121212] border border-white/5 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between transform-gpu will-change-transform"
                     >
                       <div>
-                        <div className="flex justify-between items-start mb-4 relative z-10">
-                          <div className="w-full">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                        <div className="flex justify-between items-start mb-4 relative z-10 gap-3">
+                          <div className="flex-1 min-w-0 pr-2">
+                            <div className="flex items-center gap-2 mb-2">
+                              <p className="text-[9px] font-black text-white/40 uppercase tracking-widest whitespace-nowrap">
                                 Target Whale
                               </p>
-                              {/* LABEL SMART TAGGING */}
                               <span
-                                className={`text-[8px] px-2 py-0.5 rounded border font-black tracking-widest ${whaleTag.style}`}
+                                className={`text-[8px] px-2 py-0.5 rounded border tracking-widest whitespace-nowrap ${whaleTag.style}`}
                               >
                                 {whaleTag.text}
                               </span>
                             </div>
-                            <h4 className="text-xl font-black group-hover:text-emerald-400 transition-colors uppercase truncate pr-4">
-                              {w.name}
+                            <h4
+                              className="text-xl font-black group-hover:text-emerald-400 transition-colors uppercase truncate w-full block"
+                              title={safeName}
+                            >
+                              {safeName}
                             </h4>
                             <div className="flex items-center gap-3 mt-3">
                               <img
                                 src={NETWORK_LOGOS[w.network as WalletNetwork]}
                                 alt=""
-                                className="w-6 h-6 rounded-full bg-white p-0.5"
+                                className="w-6 h-6 rounded-full bg-white p-0.5 shrink-0"
                               />
                               <span
-                                className={`text-lg font-black tracking-tight ${config?.color}`}
+                                className={`text-lg font-black tracking-tight truncate ${config?.color}`}
                               >
                                 {w.network === "BITCOIN"
                                   ? `₿ ${Number(w.lastBalance).toFixed(8)}`
@@ -385,9 +394,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           </div>
                         </div>
 
-                        {/* STATS WR & TRADES */}
                         <div className="flex items-center gap-3 mt-5 relative z-10">
-                          <div className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-center">
+                          <div className="flex-1 bg-black/40 border border-white/5 rounded-xl p-3 text-center">
                             <p className="text-[9px] font-black text-white/70 uppercase tracking-widest mb-1">
                               Win Rate
                             </p>
@@ -397,7 +405,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               {Number(w.winRate).toFixed(1)}%
                             </p>
                           </div>
-                          <div className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-center">
+                          <div className="flex-1 bg-black/40 border border-white/5 rounded-xl p-3 text-center">
                             <p className="text-[9px] font-black text-white/70 uppercase tracking-widest mb-1">
                               Trades (W/Total)
                             </p>
@@ -417,22 +425,26 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           </div>
                         </div>
 
-                        {/* 🔥 HISTORICAL LOG: 10 TRANSAKSI TERAKHIR (MINI TREND) */}
                         <div className="mt-4 pt-4 border-t border-white/5">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-2 flex justify-between">
                             <span>Recent Activity (Last 10)</span>
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {w.transactions.length > 0 ? (
-                              w.transactions.map((tx) => (
+                              w.transactions.map((tx, idx) => (
                                 <a
                                   key={tx.id}
                                   href={tx.explorerUrl}
                                   target="_blank"
                                   rel="noreferrer"
                                   title={`${tx.type} ${tx.tokenSymbol}`}
-                                  className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-bold border transition-colors hover:brightness-125 ${tx.type === "BUY" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border-rose-500/30"}`}
+                                  className={`relative text-[9px] px-1.5 py-0.5 rounded uppercase font-bold border transition-all hover:brightness-125 
+                                ${tx.type === "BUY" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border-rose-500/30"}
+                                ${idx === 0 ? "ring-1 ring-white shadow-[0_0_8px_rgba(255,255,255,0.4)] opacity-100" : "opacity-60"}`}
                                 >
+                                  {idx === 0 && (
+                                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full"></span>
+                                  )}
                                   {tx.type === "BUY" ? "🟢" : "🔴"}{" "}
                                   {tx.tokenSymbol.slice(0, 5)}
                                 </a>
@@ -447,10 +459,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       </div>
 
                       <div className="flex items-center justify-between mt-5 pt-5 border-t border-white/5 relative z-10">
-                        <code className="text-[10px] text-white/60 font-mono tracking-tighter">
+                        <code className="text-[10px] text-white/60 font-mono tracking-tighter truncate max-w-[150px]">
                           {formatAddress(w.address)}
                         </code>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
                           <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">
                             Live
@@ -462,6 +474,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 })}
               </div>
 
+              {/* 🔥 BLOK PAGINATION DIKEMBALIKAN 🔥 */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-6 pt-8 pb-4">
                   {page > 1 ? (

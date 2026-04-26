@@ -3,7 +3,6 @@ import { Network, Prisma } from "@prisma/client";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 import { prisma } from "../prisma";
-import { sendTelegramMessage } from "../telegram";
 import { resolveAsset } from "./pricing";
 import type {
   AlchemyAddressActivityPayload,
@@ -13,7 +12,6 @@ import type {
   WhaleAction,
 } from "./types";
 
-// ✅ 1. FILTER TRANSAKSI RECEH (Abaikan di bawah $100)
 const MIN_ALERT_USD = 100;
 
 type AlchemyActivity = NonNullable<
@@ -25,22 +23,13 @@ function normalizeAddress(address: string, network: Network): string {
 }
 
 function explorerUrlFor(network: Network, signature: string): string {
-  if (network === Network.SOLANA) {
-    return `https://solscan.io/tx/${signature}`;
-  }
-
-  if (network === Network.BASE) {
-    return `https://basescan.org/tx/${signature}`;
-  }
-
+  if (network === Network.SOLANA) return `https://solscan.io/tx/${signature}`;
+  if (network === Network.BASE) return `https://basescan.org/tx/${signature}`;
   return `https://etherscan.io/tx/${signature}`;
 }
 
 function hexToNumber(value?: string, decimals = 18): number | null {
-  if (!value) {
-    return null;
-  }
-
+  if (!value) return null;
   try {
     const raw = BigInt(value);
     const base = BigInt(10) ** BigInt(decimals);
@@ -50,7 +39,6 @@ function hexToNumber(value?: string, decimals = 18): number | null {
       .toString()
       .padStart(decimals, "0")
       .slice(0, 8);
-
     return Number(`${whole.toString()}.${fractionString || "0"}`);
   } catch {
     return null;
@@ -60,11 +48,7 @@ function hexToNumber(value?: string, decimals = 18): number | null {
 function safeEqual(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
   const rightBuffer = Buffer.from(right);
-
-  if (leftBuffer.length !== rightBuffer.length) {
-    return false;
-  }
-
+  if (leftBuffer.length !== rightBuffer.length) return false;
   return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
@@ -77,17 +61,9 @@ function getAlchemySigningKeys(): string[] {
 
 function verifyHeliusAuth(headers: Headers): boolean {
   const sharedSecret = process.env.WEBHOOK_SHARED_SECRET?.trim();
-
-  if (!sharedSecret) {
-    return true;
-  }
-
+  if (!sharedSecret) return true;
   const authorization = headers.get("authorization")?.trim();
-
-  if (!authorization) {
-    return false;
-  }
-
+  if (!authorization) return false;
   return (
     safeEqual(authorization, sharedSecret) ||
     safeEqual(authorization, `Bearer ${sharedSecret}`)
@@ -96,17 +72,9 @@ function verifyHeliusAuth(headers: Headers): boolean {
 
 function verifyAlchemySignature(headers: Headers, rawBody: string): boolean {
   const signingKeys = getAlchemySigningKeys();
-
-  if (signingKeys.length === 0) {
-    return true;
-  }
-
+  if (signingKeys.length === 0) return true;
   const signature = headers.get("x-alchemy-signature")?.trim();
-
-  if (!signature) {
-    return false;
-  }
-
+  if (!signature) return false;
   return signingKeys.some((signingKey) => {
     const digest = createHmac("sha256", signingKey)
       .update(rawBody)
@@ -116,19 +84,14 @@ function verifyAlchemySignature(headers: Headers, rawBody: string): boolean {
 }
 
 export function detectWebhookSource(payload: unknown): WebhookSource | null {
-  if (Array.isArray(payload)) {
-    return "HELIUS";
-  }
-
+  if (Array.isArray(payload)) return "HELIUS";
   if (
     payload &&
     typeof payload === "object" &&
     "type" in payload &&
     "event" in payload
-  ) {
+  )
     return "ALCHEMY";
-  }
-
   return null;
 }
 
@@ -137,10 +100,7 @@ export function verifyWebhookRequest(params: {
   headers: Headers;
   rawBody: string;
 }): boolean {
-  if (params.source === "HELIUS") {
-    return verifyHeliusAuth(params.headers);
-  }
-
+  if (params.source === "HELIUS") return verifyHeliusAuth(params.headers);
   return verifyAlchemySignature(params.headers, params.rawBody);
 }
 
@@ -148,23 +108,17 @@ function parseHeliusTransfers(
   payload: HeliusEnhancedTransaction[],
 ): TransferCandidate[] {
   const candidates: TransferCandidate[] = [];
-
   payload.forEach((transaction, txIndex) => {
     const signature = transaction.signature;
-
-    if (!signature) {
-      return;
-    }
+    if (!signature) return;
 
     transaction.nativeTransfers?.forEach((transfer, transferIndex) => {
       if (
         !transfer.amount ||
         !transfer.fromUserAccount ||
         !transfer.toUserAccount
-      ) {
+      )
         return;
-      }
-
       candidates.push({
         source: "HELIUS",
         network: Network.SOLANA,
@@ -184,10 +138,8 @@ function parseHeliusTransfers(
         !transfer.tokenAmount ||
         !transfer.fromUserAccount ||
         !transfer.toUserAccount
-      ) {
+      )
         return;
-      }
-
       candidates.push({
         source: "HELIUS",
         network: Network.SOLANA,
@@ -202,23 +154,13 @@ function parseHeliusTransfers(
       });
     });
   });
-
   return candidates;
 }
 
 function mapAlchemyNetwork(network?: string): Network | null {
-  if (!network) {
-    return null;
-  }
-
-  if (network.startsWith("BASE")) {
-    return Network.BASE;
-  }
-
-  if (network.startsWith("ETH")) {
-    return Network.ETHEREUM;
-  }
-
+  if (!network) return null;
+  if (network.startsWith("BASE")) return Network.BASE;
+  if (network.startsWith("ETH")) return Network.ETHEREUM;
   return null;
 }
 
@@ -227,10 +169,8 @@ function parseAlchemyAmount(activity: AlchemyActivity): number | null {
     typeof activity.value === "number" &&
     Number.isFinite(activity.value) &&
     activity.value > 0
-  ) {
+  )
     return activity.value;
-  }
-
   const rawValue = hexToNumber(
     activity.rawContract?.rawValue,
     activity.rawContract?.decimals ?? 18,
@@ -242,26 +182,15 @@ function parseAlchemyTransfers(
   payload: AlchemyAddressActivityPayload,
 ): TransferCandidate[] {
   const network = mapAlchemyNetwork(payload.event?.network);
-
-  if (!network) {
-    return [];
-  }
-
+  if (!network) return [];
   const eventId = payload.id ?? randomUUID();
 
   return (
     payload.event?.activity?.flatMap((activity, index) => {
       const signature = activity.hash;
       const amount = parseAlchemyAmount(activity);
-
-      if (
-        !signature ||
-        !amount ||
-        !activity.fromAddress ||
-        !activity.toAddress
-      ) {
+      if (!signature || !amount || !activity.fromAddress || !activity.toAddress)
         return [];
-      }
 
       return [
         {
@@ -285,10 +214,8 @@ function extractCandidates(
   source: WebhookSource,
   payload: unknown,
 ): TransferCandidate[] {
-  if (source === "HELIUS") {
+  if (source === "HELIUS")
     return parseHeliusTransfers(payload as HeliusEnhancedTransaction[]);
-  }
-
   return parseAlchemyTransfers(payload as AlchemyAddressActivityPayload);
 }
 
@@ -298,15 +225,10 @@ async function loadTrackedWallets(candidates: TransferCandidate[]) {
   for (const candidate of candidates) {
     const addresses =
       addressesByNetwork.get(candidate.network) ?? new Set<string>();
-
-    if (candidate.fromAddress) {
+    if (candidate.fromAddress)
       addresses.add(normalizeAddress(candidate.fromAddress, candidate.network));
-    }
-
-    if (candidate.toAddress) {
+    if (candidate.toAddress)
       addresses.add(normalizeAddress(candidate.toAddress, candidate.network));
-    }
-
     addressesByNetwork.set(candidate.network, addresses);
   }
 
@@ -314,28 +236,29 @@ async function loadTrackedWallets(candidates: TransferCandidate[]) {
     .filter(([, addresses]) => addresses.size > 0)
     .map(([network, addresses]) => ({
       network,
-      address: {
-        in: Array.from(addresses),
-      },
+      address: { in: Array.from(addresses) },
     }));
 
-  if (networkClauses.length === 0) {
+  if (networkClauses.length === 0)
     return new Map<
       string,
-      { id: string; address: string; name: string | null; network: Network }
+      {
+        id: string;
+        address: string;
+        name: string | null;
+        network: Network;
+        chatId: string | null;
+      }
     >();
-  }
 
   const wallets = await prisma.wallet.findMany({
-    where: {
-      isActive: true,
-      OR: networkClauses,
-    },
+    where: { isActive: true, OR: networkClauses },
     select: {
       id: true,
       address: true,
       name: true,
       network: true,
+      chatId: true,
     },
   });
 
@@ -361,6 +284,7 @@ async function saveTransactionAndNotify(params: {
     address: string;
     name: string | null;
     network: Network;
+    chatId: string | null;
   };
   action: WhaleAction;
   symbol: string;
@@ -369,7 +293,6 @@ async function saveTransactionAndNotify(params: {
   const dedupeKey = `${params.candidate.dedupeBase}:${params.wallet.address}:${params.action}`;
 
   try {
-    // 1. Simpan Transaksi ke Database
     await prisma.transaction.create({
       data: {
         walletId: params.wallet.id,
@@ -386,13 +309,10 @@ async function saveTransactionAndNotify(params: {
 
     let isFirstTimeBuy = false;
     let liquidityUsd = 0;
-
-    // VARIABEL METRIK ON-CHAIN (MODUL 4)
     let multibaggerScore = 0;
     let volumeMcapRatio = 0;
     let tokenAgeHours = 0;
     let smartMoneyCount = 0;
-    let mcapUsd = 0;
 
     if (params.candidate.tokenIdentifier) {
       try {
@@ -405,10 +325,7 @@ async function saveTransactionAndNotify(params: {
           },
         });
 
-        // ACTION FILTER: Deteksi First Time Buy
-        if (!existingPosition && params.action === "BUY") {
-          isFirstTimeBuy = true;
-        }
+        if (!existingPosition && params.action === "BUY") isFirstTimeBuy = true;
 
         await processWhaleTrade(
           params.wallet.id,
@@ -419,18 +336,15 @@ async function saveTransactionAndNotify(params: {
           params.usdValue,
         );
 
-        // 🔥 ANALISA ON-CHAIN VIA DEXSCREENER & PRISMA (MODUL 4) 🔥
         if (params.action === "BUY") {
-          // A. Cek Jumlah Paus (Smart Money Count)
           smartMoneyCount = await prisma.tokenPosition.count({
             where: {
               tokenAddress: params.candidate.tokenIdentifier,
-              tokenAmount: { gt: 0 }, // Hitung yang saldo koinnya masih ada
+              tokenAmount: { gt: 0 },
             },
           });
-          if (smartMoneyCount >= 2) multibaggerScore += 2; // Poin +2
+          if (smartMoneyCount >= 2) multibaggerScore += 2;
 
-          // B. Tarik Metrik DexScreener
           const dexRes = await fetch(
             `https://api.dexscreener.com/latest/dex/tokens/${params.candidate.tokenIdentifier}`,
           );
@@ -439,41 +353,33 @@ async function saveTransactionAndNotify(params: {
           if (dexData.pairs && dexData.pairs.length > 0) {
             const pair = dexData.pairs[0];
             liquidityUsd = pair.liquidity?.usd || 0;
-            mcapUsd = pair.fdv || pair.marketCap || 0;
+            const mcapUsd = pair.fdv || pair.marketCap || 0;
             const volume24h = pair.volume?.h24 || 0;
 
-            // Hitung Umur Token
             if (pair.pairCreatedAt) {
-              const ageMs = Date.now() - pair.pairCreatedAt;
-              tokenAgeHours = ageMs / (1000 * 60 * 60);
-              if (tokenAgeHours < 24) multibaggerScore += 1; // Poin +1
+              tokenAgeHours =
+                (Date.now() - pair.pairCreatedAt) / (1000 * 60 * 60);
+              if (tokenAgeHours < 24) multibaggerScore += 1;
             }
-
-            // Hitung Rasio Vol/MCap
-            if (mcapUsd > 0) {
-              volumeMcapRatio = (volume24h / mcapUsd) * 100;
-            }
+            if (mcapUsd > 0) volumeMcapRatio = (volume24h / mcapUsd) * 100;
           }
         }
       } catch (error) {
-        console.error(`[Predator System] Gagal proses Metrik On-Chain:`, error);
+        console.error(`[Predator System] Gagal proses Metrik:`, error);
       }
     }
 
-    // 3. RAKIT PESAN TELEGRAM
     let actionLabel = params.action === "BUY" ? "🟢 BUY" : "🔴 SELL";
     if (isFirstTimeBuy) actionLabel = "🔥 FIRST TIME BUY 🔥";
 
     let liquidityWarning = "";
     if (params.action === "BUY" && params.candidate.tokenIdentifier) {
-      if (liquidityUsd < 10000 && liquidityUsd > 0) {
+      if (liquidityUsd < 10000 && liquidityUsd > 0)
         liquidityWarning = `\n⚠️ *LIQUIDITY:* [HIGH RISK] < $10k`;
-      } else if (liquidityUsd >= 10000) {
+      else if (liquidityUsd >= 10000)
         liquidityWarning = `\n💧 *Liquidity:* $${(liquidityUsd / 1000).toFixed(1)}k`;
-      }
     }
 
-    // Blok Metrik Khusus (Cuma muncul pas BUY)
     let metricsBlock = "";
     if (params.action === "BUY" && params.candidate.tokenIdentifier) {
       metricsBlock =
@@ -485,19 +391,48 @@ async function saveTransactionAndNotify(params: {
         (volumeMcapRatio > 50 ? `(🔥 Panas)` : `(🧊 Normal)`);
     }
 
+    // 🔥 MODUL 5: FORMAT MONOSPACE BIAR GAMPANG DI COPY
     const message =
       `🚨 *WHALE ALERT* 🚨\n\n` +
-      `👤 *Whale:* ${params.wallet.name ?? params.wallet.address}\n` +
+      `👤 *Whale:* ${params.wallet.name ?? "Target"}\n` +
+      `📍 *Address:* \`${params.wallet.address}\`\n` +
       `📈 *Action:* ${actionLabel}\n` +
       `🪙 *Token:* ${params.symbol}\n` +
       `💰 *Value:* $${params.usdValue.toFixed(2)}${liquidityWarning}` +
-      metricsBlock +
-      `\n\n🔗 [View TX](${params.candidate.explorerUrl})\n` +
-      (params.candidate.tokenIdentifier
-        ? `📊 [DexScreener](https://dexscreener.com/solana/${params.candidate.tokenIdentifier})`
-        : "");
+      metricsBlock;
 
-    await sendTelegramMessage(message);
+    // 🔥 MODUL 5: TAMBAHIN INLINE BUTTON DEXSCREENER/SOLSCAN
+    const inlineKeyboard = [];
+    inlineKeyboard.push([
+      { text: "🔍 View Transaction", url: params.candidate.explorerUrl },
+    ]);
+
+    if (params.candidate.tokenIdentifier) {
+      inlineKeyboard.push([
+        {
+          text: "📊 Chart on DexScreener",
+          url: `https://dexscreener.com/solana/${params.candidate.tokenIdentifier}`,
+        },
+      ]);
+    }
+
+    const chatId = params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
+    if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
+      await fetch(
+        `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: message,
+            parse_mode: "Markdown",
+            disable_web_page_preview: true,
+            reply_markup: { inline_keyboard: inlineKeyboard },
+          }),
+        },
+      );
+    }
   } catch (error) {
     if (isDuplicateError(error)) return;
     throw error;
@@ -509,10 +444,7 @@ export async function processWebhookPayload(
   payload: unknown,
 ): Promise<void> {
   const candidates = extractCandidates(source, payload);
-
-  if (candidates.length === 0) {
-    return;
-  }
+  if (candidates.length === 0) return;
 
   const walletMap = await loadTrackedWallets(candidates);
 
@@ -528,25 +460,16 @@ export async function processWebhookPayload(
         )
       : undefined;
 
-    if (!fromWallet && !toWallet) {
-      continue;
-    }
+    if (!fromWallet && !toWallet) continue;
 
     const asset = await resolveAsset({
       symbol: candidate.symbol,
       identifier: candidate.tokenIdentifier,
     });
-
-    if (asset.usdPrice === null) {
-      continue;
-    }
+    if (asset.usdPrice === null) continue;
 
     const usdValue = candidate.amount * asset.usdPrice;
-
-    // Filter transaksi berdasarkan MIN_ALERT_USD
-    if (usdValue < MIN_ALERT_USD) {
-      continue;
-    }
+    if (usdValue < MIN_ALERT_USD) continue;
 
     if (fromWallet && (!toWallet || fromWallet.id !== toWallet.id)) {
       await saveTransactionAndNotify({
