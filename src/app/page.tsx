@@ -78,6 +78,30 @@ function formatAddress(address: string): string {
     : `${address.slice(0, 6)}...${address.slice(-6)}`;
 }
 
+// 🔥 LOGIKA SMART TAGGING SESUAI DOKUMEN LO
+function getWhaleTag(winRate: number, totalTrades: number) {
+  if (totalTrades < 3)
+    return {
+      text: "UNRANKED",
+      style: "bg-white/5 text-white/40 border-white/10",
+    };
+  if (winRate >= 70)
+    return {
+      text: "THE ORACLE",
+      style:
+        "bg-amber-500/10 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(251,191,36,0.2)]",
+    };
+  if (winRate >= 40)
+    return {
+      text: "THE GRINDER",
+      style: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
+    };
+  return {
+    text: "EXIT LIQUIDITY",
+    style: "bg-rose-500/10 text-rose-400 border-rose-500/30",
+  };
+}
+
 async function createWalletAction(formData: FormData) {
   "use server";
   let feedback = "failed";
@@ -121,21 +145,6 @@ async function createWalletAction(formData: FormData) {
       },
     });
 
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (botToken && chatId) {
-      const sym =
-        network === "BITCOIN" ? "₿" : network === "SOLANA" ? "◎" : "Ξ";
-      const msg = `🎯 *TARGET LOCKED*\n👤 *Name:* ${name}\n💰 *Bal:* ${sym} ${Number(balance).toFixed(4)}`;
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: msg,
-          parse_mode: "Markdown",
-        }),
-      });
-    }
     revalidatePath("/");
     feedback = "created";
   } catch (e) {
@@ -166,17 +175,23 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     ? FEEDBACK_COPY[params.feedback as string]
     : null;
 
-  // LOGIKA PAGINATION MAKSIMAL 5 DATA PER HALAMAN
   const page = parseInt(params?.page as string) || 1;
   const limit = 5;
   const skip = (page - 1) * limit;
 
+  // 🔥 UPDATE: KITA TARIK 10 TRANSAKSI TERAKHIR BUAT HISTORICAL LOG
   const [wallets, totalWallets] = await Promise.all([
     prisma.wallet
       .findMany({
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
+        include: {
+          transactions: {
+            orderBy: { createdAt: "desc" },
+            take: 10, // Limit 10 transaksi terakhir
+          },
+        },
       })
       .catch(() => []),
     prisma.wallet.count().catch(() => 0),
@@ -186,6 +201,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#050505] text-white overflow-x-hidden">
+      {/* HEADER SECTION (TIDAK BERUBAH) */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-white/10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] uppercase mb-4">
@@ -310,6 +326,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   const config = NETWORK_OPTIONS.find(
                     (n) => n.value === w.network,
                   );
+                  const whaleTag = getWhaleTag(w.winRate, w.totalTrades);
+
                   return (
                     <div
                       key={w.id}
@@ -318,9 +336,17 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       <div>
                         <div className="flex justify-between items-start mb-4 relative z-10">
                           <div className="w-full">
-                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
-                              Target Whale
-                            </p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                Target Whale
+                              </p>
+                              {/* LABEL SMART TAGGING */}
+                              <span
+                                className={`text-[8px] px-2 py-0.5 rounded border font-black tracking-widest ${whaleTag.style}`}
+                              >
+                                {whaleTag.text}
+                              </span>
+                            </div>
                             <h4 className="text-xl font-black group-hover:text-emerald-400 transition-colors uppercase truncate pr-4">
                               {w.name}
                             </h4>
@@ -359,14 +385,14 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           </div>
                         </div>
 
-                        {/* WARNA DITERANGKAN BIAR JELAS DI LAYAR HP */}
+                        {/* STATS WR & TRADES */}
                         <div className="flex items-center gap-3 mt-5 relative z-10">
                           <div className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-center">
                             <p className="text-[9px] font-black text-white/70 uppercase tracking-widest mb-1">
                               Win Rate
                             </p>
                             <p
-                              className={`text-base font-black tracking-tight ${w.winRate >= 50 ? "text-emerald-400" : w.winRate > 0 ? "text-amber-400" : "text-white"}`}
+                              className={`text-base font-black tracking-tight ${w.winRate >= 70 ? "text-amber-400" : w.winRate >= 40 ? "text-cyan-400" : w.winRate > 0 ? "text-rose-400" : "text-white"}`}
                             >
                               {Number(w.winRate).toFixed(1)}%
                             </p>
@@ -390,14 +416,42 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                             </p>
                           </div>
                         </div>
+
+                        {/* 🔥 HISTORICAL LOG: 10 TRANSAKSI TERAKHIR (MINI TREND) */}
+                        <div className="mt-4 pt-4 border-t border-white/5">
+                          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-2 flex justify-between">
+                            <span>Recent Activity (Last 10)</span>
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {w.transactions.length > 0 ? (
+                              w.transactions.map((tx) => (
+                                <a
+                                  key={tx.id}
+                                  href={tx.explorerUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title={`${tx.type} ${tx.tokenSymbol}`}
+                                  className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-bold border transition-colors hover:brightness-125 ${tx.type === "BUY" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border-rose-500/30"}`}
+                                >
+                                  {tx.type === "BUY" ? "🟢" : "🔴"}{" "}
+                                  {tx.tokenSymbol.slice(0, 5)}
+                                </a>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-white/20 italic">
+                                No recent trades detected
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5 relative z-10">
+                      <div className="flex items-center justify-between mt-5 pt-5 border-t border-white/5 relative z-10">
                         <code className="text-[10px] text-white/60 font-mono tracking-tighter">
                           {formatAddress(w.address)}
                         </code>
                         <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
                           <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">
                             Live
                           </span>
@@ -408,7 +462,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 })}
               </div>
 
-              {/* PAGINATION NAVIGATION BUTTONS < > */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-6 pt-8 pb-4">
                   {page > 1 ? (
