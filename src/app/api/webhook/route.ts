@@ -30,7 +30,6 @@ async function processAutoWinRate(
     });
 
     if (isBuy) {
-      // PAUS BELI (AKUMULASI) -> Catat modalnya
       if (position) {
         await prisma.tokenPosition.update({
           where: { id: position.id },
@@ -51,13 +50,12 @@ async function processAutoWinRate(
         });
       }
     } else {
-      // PAUS JUAL (TAKE PROFIT / CUT LOSS) -> Kalkulasi WR!
       if (position && Number(position.tokenAmount) > 0) {
         const avgBuyPrice =
           Number(position.totalInvestedUsd) / Number(position.tokenAmount);
         const costOfSoldTokens = avgBuyPrice * amountToken;
-        const pnl = usdValue - costOfSoldTokens; // Profit atau Minus?
-        const isWin = pnl > 0; // Cuan!
+        const pnl = usdValue - costOfSoldTokens;
+        const isWin = pnl > 0;
 
         const walletStats = await prisma.wallet.findUnique({
           where: { id: walletId },
@@ -65,9 +63,8 @@ async function processAutoWinRate(
         if (walletStats) {
           const newTotalTrades = walletStats.totalTrades + 1;
           const newSuccessTrades = walletStats.successTrades + (isWin ? 1 : 0);
-          const newWinRate = (newSuccessTrades / newTotalTrades) * 100; // Hitung persentase
+          const newWinRate = (newSuccessTrades / newTotalTrades) * 100;
 
-          // UPDATE REPUTASI PAUS REAL-TIME
           await prisma.wallet.update({
             where: { id: walletId },
             data: {
@@ -77,7 +74,6 @@ async function processAutoWinRate(
             },
           });
 
-          // Update Sisa Posisi Koin
           const remainingAmount = Math.max(
             0,
             Number(position.tokenAmount) - amountToken,
@@ -100,12 +96,15 @@ async function processAutoWinRate(
 export async function GET(request: Request) {
   try {
     const wallets = await prisma.wallet.findMany({ where: { isActive: true } });
-    const ALPHA_CHANNEL_ID = "-1003737826938";
 
     for (const wallet of wallets) {
       try {
         const winRate = (wallet as any).winRate || 0;
         const threshold = (wallet as any).minAlertUsd || 100;
+
+        // 🔴 KUNCI SAAS: Ambil Channel ID dari user. Kalau kosong, lari ke channel utama lo
+        const ALPHA_CHANNEL_ID =
+          (wallet as any).alphaChannelId || "-1003737826938";
 
         let label = "🐋 THE WHALE";
         if (winRate > 70) label = "🥇 THE ORACLE";
@@ -131,12 +130,10 @@ export async function GET(request: Request) {
               const tokenAddress = (swapData as any).tokenAddress || "solana";
               const tokenSymbol = (swapData as any).tokenSymbol || "MEME_COIN";
 
-              // DETEKSI BUY ATAU SELL (Solana Logic)
               const isBuy =
                 !swapData.description.toUpperCase().includes("FOR SOL") &&
                 !swapData.description.toUpperCase().includes("FOR USDC");
 
-              // 🔴 EKSEKUSI AUTO WIN-RATE
               await processAutoWinRate(
                 wallet.id,
                 isBuy,
@@ -231,10 +228,8 @@ export async function GET(request: Request) {
               const tokenAddress = (tokenTx as any).tokenAddress;
               const tokenSymbol = (tokenTx as any).tokenSymbol || "TOKEN";
 
-              // DETEKSI BUY ATAU SELL (EVM Logic)
               const isBuy = tokenTx.description.includes("🟢");
 
-              // 🔴 EKSEKUSI AUTO WIN-RATE
               await processAutoWinRate(
                 wallet.id,
                 isBuy,

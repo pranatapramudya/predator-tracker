@@ -16,10 +16,11 @@ model Wallet {
   isActive      Boolean         @default(true)
   
   // Fitur Notifikasi & Caching
-  chatId        String?         // ID Telegram User 
+  chatId        String?         // ID Telegram User (Japri/Asisten)
+  alphaChannelId String?        // 🔴 ID Telegram Channel (Alpha Feed Khusus User Ini)
   lastBalance   Decimal         @default(0) @db.Decimal(38, 18)
   
-  // 🔴 FILTER DINAMIS: Batas minimal transaksi buat tembus ke Alpha Feed
+  // FILTER DINAMIS: Batas minimal transaksi buat tembus ke Alpha Feed
   minAlertUsd   Float?          @default(100)
   
   // MODUL BARU: Win Rate (WR) & Performa Paus
