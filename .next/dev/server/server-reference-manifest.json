@@ -35,18 +35,6 @@
       },
       "filename": "src/app/invite/page.tsx",
       "exportedName": "$$RSC_SERVER_ACTION_0"
-    },
-    "409ca885b0648db43422c3acf2d35c3c12f1b6fe0a": {
-      "workers": {
-        "app/invite/[chatId]/page": {
-          "moduleId": "[project]/.next-internal/server/app/invite/[chatId]/page/actions.js { ACTIONS_MODULE0 => \"[project]/src/app/invite/[chatId]/page.tsx [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
-          "async": false,
-          "exportedName": "$$RSC_SERVER_ACTION_0",
-          "filename": "src/app/invite/[chatId]/page.tsx"
-        }
-      },
-      "filename": "src/app/invite/[chatId]/page.tsx",
-      "exportedName": "$$RSC_SERVER_ACTION_0"
     }
   },
   "edge": {},
