@@ -19,6 +19,9 @@ model Wallet {
   chatId        String?         // ID Telegram User 
   lastBalance   Decimal         @default(0) @db.Decimal(38, 18)
   
+  // 🔴 FILTER DINAMIS: Batas minimal transaksi buat tembus ke Alpha Feed
+  minAlertUsd   Float?          @default(100)
+  
   // MODUL BARU: Win Rate (WR) & Performa Paus
   winRate       Float           @default(0.0) 
   totalTrades   Int             @default(0)   
@@ -41,8 +44,7 @@ model TokenPosition {
   walletId         String
   
   tokenAddress     String   
-  tokenSymbol      String?  
-  
+  tokenSymbol      String?
   tokenAmount      Decimal  @default(0) @db.Decimal(38, 18) 
   totalInvestedUsd Decimal  @default(0) @db.Decimal(38, 18) 
   avgBuyPriceUsd   Decimal  @default(0) @db.Decimal(38, 18) 
@@ -65,7 +67,7 @@ model Transaction {
   type         String   
   amount       Decimal  @db.Decimal(38, 18)
   tokenSymbol  String
-  tokenAddress String?  
+  tokenAddress String?
   usdValue     Decimal  @db.Decimal(18, 2)
   explorerUrl  String
   

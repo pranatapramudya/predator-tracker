@@ -1,53 +1,67 @@
-# 🎯 Predator Tracker (Smart Money & Whale Watcher)
+🎯 Predator Tracker (Smart Money & Whale Watcher)
+Sebuah arsitektur SaaS premium untuk melacak pergerakan dompet kripto raksasa (Whales) dan mendeteksi aktivitas Smart Money secara real-time lintas jaringan (BTC, ETH, SOL, BASE). Sistem ini dirancang untuk memberikan sinyal "Alpha" yang bersih dan akurat langsung ke Telegram Anda.
 
-Aplikasi SaaS untuk melacak pergerakan dompet kripto raksasa (Whales) dan mendeteksi aktivitas _Smart Money_ secara _real-time_ lintas jaringan (BTC, ETH, SOL, BASE).
+🚀 Fitur Unggulan (Final Version)
 
-## 🚀 Fitur Saat Ini (Status Terkini)
+1. Jalur Notifikasi Ganda (Dual-Channel Isolation)
+   Sistem memisahkan informasi menjadi dua jalur agar Anda tetap fokus:
 
-Sistem ini memiliki kapabilitas analitik otomatis yang berjalan 24/7 dengan arsitektur yang tahan banting:
+Predator Alpha Feed (Channel): Jalur eksklusif untuk sinyal beli/jual koin baru (Swap/Token) di atas batas minimal USD. Dilengkapi tombol View on DexScreener.
 
-### 1. Multi-Network Balance Tracker
+Asisten Crypto Prana (Personal Bot): Jalur laporan harian untuk perubahan saldo utama (Transfer) agar Anda tetap bisa memantau aktivitas paus tanpa mengganggu Feed Alpha.
 
-Memantau perubahan saldo utama (Native Coin) dengan tingkat akurasi tinggi:
+2. Filter Anti-Berisik Dinamis (minAlertUsd)
+   Setiap paus memiliki karakter berbeda. Kini Anda bisa mengatur batas minimal notifikasi per dompet di database:
 
-- **Bitcoin (BTC):** Menggunakan mesin Blockchain.info & Mempool.space.
-- **Solana (SOL):** Menggunakan Helius RPC.
-- **Ethereum (ETH) & Base:** Menggunakan sistem **Round-Robin RPC Fallback** (Llamarpc, Ankr, PublicNode, 1rpc) untuk menjamin stabilitas data dan menghindari _rate-limit_ dari penyedia RPC tunggal.
+Paus A (Batas $1,000): Hanya bunyi jika dia transaksi besar.
 
-### 2. Smart Money Tracker (Swap & Token)
+Paus B (Batas $100): Cocok untuk memantau paus yang suka mencicil (DCA).
 
-Melacak aktivitas transaksi spesifik untuk melihat strategi akumulasi paus:
+Silent Update: Transaksi di bawah batas tetap dicatat di database secara diam-diam tanpa mengirim notif yang mengganggu.
 
-- **Solana Swaps:** Deteksi Jual/Beli koin micin via _Helius Enriched API_. Notifikasi otomatis diterjemahkan (Contoh: "Swapped 10 SOL for 5000 WIF").
-- **EVM ERC-20 Transfers:** Memantau pergerakan token di jaringan Ethereum dan Base menggunakan Etherscan/Basescan API.
+3. Real-Time Pricing via DexScreener
+   Bot tidak lagi "buta" harga. Setiap ada transaksi token/micin di Solana, ETH, atau Base, bot otomatis menembak API DexScreener untuk mendapatkan:
 
-### 3. Autopilot Webhook & Telegram Alerts
+Estimasi nilai transaksi dalam USD.
 
-- **Bypass Cron Limit:** Menggunakan UptimeRobot untuk memicu `/api/webhook` setiap 5 menit, melampaui batasan Cron Job pada Vercel Hobby Plan.
-- **Anti-False Alarm:** Sistem dilengkapi _fail-safe_ yang otomatis men-_skip_ pengecekan jika API sedang limit, mencegah notifikasi palsu "Saldo 0".
+Simbol koin terbaru secara akurat.
 
----
+Link langsung ke grafik koin tersebut.
 
-## 🏗️ Teknologi yang Digunakan
+4. Smart Tagging & Reputation System
+   Pelabelan otomatis berdasarkan performa paus di masa lalu:
 
-- **Framework:** Next.js 14 (App Router)
-- **Database:** Prisma ORM dengan PostgreSQL (Neon DB)
-- **Deployment:** Vercel
-- **Integrasi:** Telegram Bot API & UptimeRobot
-- **External APIs:** Helius (Solana), Etherscan (ETH), Basescan (Base)
+🥇 THE ORACLE (Win Rate > 70%) - Sinyal prioritas tinggi.
 
----
+🥈 THE GRINDER (Win Rate 40% - 60%) - Sinyal untuk dipantau.
 
-## 🛠️ Cara Kerja Sistem
+💀 EXIT LIQUIDITY (Win Rate < 30%) - Sinyal peringatan.
 
-1. **Acquisition:** User memasukkan alamat via Web UI. Sistem melakukan validasi alamat berdasarkan network yang dipilih.
-2. **Radar Sweeping:** UptimeRobot memanggil webhook secara berkala.
-3. **Analisis Data:** Sistem membandingkan saldo lama vs baru, serta mengecek _signature_ transaksi terbaru di database menggunakan kunci unik (`dedupeKey`) untuk menghindari notifikasi duplikat.
+🏗️ Teknologi yang Digunakan
+Framework: Next.js 14 (App Router)
 
----
+Database: Prisma ORM & PostgreSQL (Neon DB)
 
-## 🗺️ Roadmap Selanjutnya
+Engine: Helius Enriched API (Solana), Etherscan/Basescan (EVM), DexScreener (Pricing)
 
-- [ ] **PNL Tracker:** Fitur untuk menghitung estimasi keuntungan/kerugian (Profit & Loss) dari transaksi paus.
-- [ ] **Multi-user Authentication:** Watchlist pribadi menggunakan Clerk atau NextAuth.
-- [ ] **Custom Threshold:** Pengaturan batas minimum notifikasi transaksi (Contoh: Notifikasi hanya dikirim jika transaksi > $10,000).
+Bot: Telegram Bot API (Inline Keyboards & Markdown)
+
+🛠️ Alur Kerja Sistem (The Predator Logic)
+Sweeping: UptimeRobot memicu /api/webhook setiap 5 menit.
+
+Analysis: Sistem mengecek aktivitas terbaru via RPC.
+
+Valuation: Jika ditemukan Swap, bot mencari harga real-time di DexScreener.
+
+Bouncer: Jika nilai < minAlertUsd, notif Alpha dibatalkan (Silent).
+
+Execution: Jika lolos filter, sinyal dikirim ke Channel Alpha dengan tombol interaktif, dan notif saldo di DM personal otomatis dibungkam (Anti-Double Notif).
+
+🗺️ Roadmap (Completed)
+[x] Filter Anti-Berisik Dinamis per dompet.
+
+[x] Integrasi DexScreener untuk kalkulasi USD otomatis.
+
+[x] Inline Keyboard (Tombol DexScreener & Solscan).
+
+[x] Dual-Channel Alert (Pemisahan Sinyal vs Log Saldo).
