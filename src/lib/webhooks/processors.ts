@@ -387,7 +387,13 @@ async function saveTransactionAndNotify(params: {
     let isFirstTimeBuy = false;
     let liquidityUsd = 0;
 
-    // 2. INJEKSI PNL, CEK "FIRST TIME BUY", & CEK LIKUIDITAS
+    // VARIABEL METRIK ON-CHAIN (MODUL 4)
+    let multibaggerScore = 0;
+    let volumeMcapRatio = 0;
+    let tokenAgeHours = 0;
+    let smartMoneyCount = 0;
+    let mcapUsd = 0;
+
     if (params.candidate.tokenIdentifier) {
       try {
         const existingPosition = await prisma.tokenPosition.findUnique({
@@ -399,12 +405,11 @@ async function saveTransactionAndNotify(params: {
           },
         });
 
-        // ✅ 2. ACTION FILTER: Deteksi First Time Buy
+        // ACTION FILTER: Deteksi First Time Buy
         if (!existingPosition && params.action === "BUY") {
           isFirstTimeBuy = true;
         }
 
-        // Jalankan mesin PnL
         await processWhaleTrade(
           params.wallet.id,
           params.candidate.tokenIdentifier,
@@ -414,57 +419,87 @@ async function saveTransactionAndNotify(params: {
           params.usdValue,
         );
 
-        // ✅ 3. LIQUIDITY CHECK: Tarik Data dari DexScreener
+        // 🔥 ANALISA ON-CHAIN VIA DEXSCREENER & PRISMA (MODUL 4) 🔥
         if (params.action === "BUY") {
+          // A. Cek Jumlah Paus (Smart Money Count)
+          smartMoneyCount = await prisma.tokenPosition.count({
+            where: {
+              tokenAddress: params.candidate.tokenIdentifier,
+              tokenAmount: { gt: 0 }, // Hitung yang saldo koinnya masih ada
+            },
+          });
+          if (smartMoneyCount >= 2) multibaggerScore += 2; // Poin +2
+
+          // B. Tarik Metrik DexScreener
           const dexRes = await fetch(
             `https://api.dexscreener.com/latest/dex/tokens/${params.candidate.tokenIdentifier}`,
           );
           const dexData = await dexRes.json();
+
           if (dexData.pairs && dexData.pairs.length > 0) {
-            liquidityUsd = dexData.pairs[0].liquidity?.usd || 0;
+            const pair = dexData.pairs[0];
+            liquidityUsd = pair.liquidity?.usd || 0;
+            mcapUsd = pair.fdv || pair.marketCap || 0;
+            const volume24h = pair.volume?.h24 || 0;
+
+            // Hitung Umur Token
+            if (pair.pairCreatedAt) {
+              const ageMs = Date.now() - pair.pairCreatedAt;
+              tokenAgeHours = ageMs / (1000 * 60 * 60);
+              if (tokenAgeHours < 24) multibaggerScore += 1; // Poin +1
+            }
+
+            // Hitung Rasio Vol/MCap
+            if (mcapUsd > 0) {
+              volumeMcapRatio = (volume24h / mcapUsd) * 100;
+            }
           }
         }
-      } catch (pnlError) {
-        console.error(
-          `[Predator System] Gagal proses PnL/Liquidity:`,
-          pnlError,
-        );
+      } catch (error) {
+        console.error(`[Predator System] Gagal proses Metrik On-Chain:`, error);
       }
     }
 
-    // 3. Modifikasi Pesan Telegram dengan Filter Cerdas
+    // 3. RAKIT PESAN TELEGRAM
     let actionLabel = params.action === "BUY" ? "🟢 BUY" : "🔴 SELL";
-
-    // Override label kalau First Time Buy
     if (isFirstTimeBuy) actionLabel = "🔥 FIRST TIME BUY 🔥";
 
-    // Tambah Peringatan Likuiditas
     let liquidityWarning = "";
     if (params.action === "BUY" && params.candidate.tokenIdentifier) {
       if (liquidityUsd < 10000 && liquidityUsd > 0) {
-        liquidityWarning = `\n⚠️ *LIQUIDITY WARNING:* [HIGH RISK] < $10k`;
+        liquidityWarning = `\n⚠️ *LIQUIDITY:* [HIGH RISK] < $10k`;
       } else if (liquidityUsd >= 10000) {
-        liquidityWarning = `\n💧 *Liquidity:* $${liquidityUsd.toLocaleString()}`;
+        liquidityWarning = `\n💧 *Liquidity:* $${(liquidityUsd / 1000).toFixed(1)}k`;
       }
     }
 
-    // Rakit Notifikasi Final
+    // Blok Metrik Khusus (Cuma muncul pas BUY)
+    let metricsBlock = "";
+    if (params.action === "BUY" && params.candidate.tokenIdentifier) {
+      metricsBlock =
+        `\n\n📊 *ON-CHAIN METRICS*` +
+        `\n💎 *Score:* ${multibaggerScore}/3 Poin` +
+        `\n🐳 *Smart Money:* ${smartMoneyCount} Wallets` +
+        `\n⏳ *Age:* ${tokenAgeHours > 0 ? tokenAgeHours.toFixed(1) + "h" : "N/A"}` +
+        `\n📈 *Vol/MCap:* ${volumeMcapRatio > 0 ? volumeMcapRatio.toFixed(1) + "%" : "N/A"} ` +
+        (volumeMcapRatio > 50 ? `(🔥 Panas)` : `(🧊 Normal)`);
+    }
+
     const message =
       `🚨 *WHALE ALERT* 🚨\n\n` +
       `👤 *Whale:* ${params.wallet.name ?? params.wallet.address}\n` +
       `📈 *Action:* ${actionLabel}\n` +
       `🪙 *Token:* ${params.symbol}\n` +
-      `💰 *Value:* $${params.usdValue.toFixed(2)}${liquidityWarning}\n\n` +
-      `🔗 [View TX](${params.candidate.explorerUrl})\n` +
+      `💰 *Value:* $${params.usdValue.toFixed(2)}${liquidityWarning}` +
+      metricsBlock +
+      `\n\n🔗 [View TX](${params.candidate.explorerUrl})\n` +
       (params.candidate.tokenIdentifier
         ? `📊 [DexScreener](https://dexscreener.com/solana/${params.candidate.tokenIdentifier})`
         : "");
 
     await sendTelegramMessage(message);
   } catch (error) {
-    if (isDuplicateError(error)) {
-      return; // Kalau transaksi duplikat, stop di sini
-    }
+    if (isDuplicateError(error)) return;
     throw error;
   }
 }
