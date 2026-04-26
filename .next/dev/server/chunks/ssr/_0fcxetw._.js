@@ -121,9 +121,42 @@ async function getSolanaLatestSwap(address) {
         const txs = await res.json();
         if (txs && txs.length > 0) {
             const latestTx = txs[0];
+            let tokenAddress = "solana";
+            let tokenAmount = 0;
+            let tokenSymbol = "MEME_COIN";
+            let usdValue = 0;
+            // 1. Ekstraksi Token Address & Amount
+            if (latestTx.tokenTransfers && latestTx.tokenTransfers.length > 0) {
+                const transfer = latestTx.tokenTransfers.find((t)=>t.mint !== "So11111111111111111111111111111111111111112") || latestTx.tokenTransfers[0];
+                tokenAddress = transfer.mint;
+                tokenAmount = transfer.tokenAmount;
+            }
+            // 2. Integrasi DexScreener untuk Harga Real-time
+            if (tokenAddress && tokenAddress !== "solana") {
+                try {
+                    const dexRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`, {
+                        cache: "no-store"
+                    });
+                    if (dexRes.ok) {
+                        const dexData = await dexRes.json();
+                        if (dexData.pairs && dexData.pairs.length > 0) {
+                            const pair = dexData.pairs[0];
+                            const priceUsd = parseFloat(pair.priceUsd || "0");
+                            usdValue = priceUsd * tokenAmount;
+                            tokenSymbol = pair.baseToken.symbol || "TOKEN";
+                        }
+                    }
+                } catch (dexError) {
+                    console.error("DexScreener Fetch Error:", dexError);
+                }
+            }
             return {
                 signature: latestTx.signature,
-                description: latestTx.description || "Melakukan aktivitas Swap Token"
+                description: latestTx.description || "Melakukan aktivitas Swap Token",
+                amount: tokenAmount,
+                tokenSymbol: tokenSymbol,
+                tokenAddress: tokenAddress,
+                usdValue: usdValue > 0 ? Number(usdValue.toFixed(2)) : 0
             };
         }
     } catch (e) {
@@ -147,17 +180,42 @@ async function getEVMLatestTokenTx(address, network) {
             const isReceive = tx.to.toLowerCase() === address.toLowerCase();
             const action = isReceive ? "🟢 TERIMA/BELI" : "🔴 KIRIM/JUAL";
             const amount = Number(tx.value) / Math.pow(10, Number(tx.tokenDecimal));
+            const tokenAddress = tx.contractAddress;
+            let usdValue = 0;
+            let finalTokenSymbol = tx.tokenSymbol || "TOKEN";
+            // Integrasi DexScreener untuk EVM
+            if (tokenAddress) {
+                try {
+                    const dexRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`, {
+                        cache: "no-store"
+                    });
+                    if (dexRes.ok) {
+                        const dexData = await dexRes.json();
+                        if (dexData.pairs && dexData.pairs.length > 0) {
+                            const pair = dexData.pairs[0];
+                            const priceUsd = parseFloat(pair.priceUsd || "0");
+                            usdValue = priceUsd * amount;
+                            finalTokenSymbol = pair.baseToken.symbol || finalTokenSymbol;
+                        }
+                    }
+                } catch (dexError) {
+                    console.error(`DexScreener EVM Fetch Error (${network}):`, dexError);
+                }
+            }
             return {
                 signature: tx.hash,
-                tokenSymbol: tx.tokenSymbol || "TOKEN",
+                tokenSymbol: finalTokenSymbol,
                 description: `${action} ${amount.toLocaleString("en-US", {
                     maximumFractionDigits: 2
-                })} ${tx.tokenSymbol}`,
-                explorerUrl: `${explorer}/${tx.hash}`
+                })} ${finalTokenSymbol}`,
+                explorerUrl: `${explorer}/${tx.hash}`,
+                amount: amount,
+                tokenAddress: tokenAddress,
+                usdValue: usdValue > 0 ? Number(usdValue.toFixed(2)) : 0
             };
         }
     } catch (e) {
-        console.error("EVM Token Tx Error:", e);
+        console.error(`EVM Token Tx Error (${network}):`, e);
     }
     return null;
 }
