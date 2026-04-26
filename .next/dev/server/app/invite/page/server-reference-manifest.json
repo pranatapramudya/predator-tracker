@@ -1,0 +1,17 @@
+{
+  "node": {
+    "400c42f5605b1a333220d64374fc953c8c8e695b4c": {
+      "workers": {
+        "app/invite/page": {
+          "moduleId": "[project]/.next-internal/server/app/invite/page/actions.js { ACTIONS_MODULE0 => \"[project]/src/app/invite/page.tsx [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "$$RSC_SERVER_ACTION_0",
+          "filename": "src/app/invite/page.tsx"
+        }
+      },
+      "exportedName": "$$RSC_SERVER_ACTION_0",
+      "filename": "src/app/invite/page.tsx"
+    }
+  },
+  "edge": {}
+}

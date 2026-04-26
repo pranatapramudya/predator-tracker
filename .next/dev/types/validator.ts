@@ -47,6 +47,24 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 }
 
 
+// Validate ../../../src/app/invite/[chatId]/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/invite/[chatId]">> = Specific
+  const handler = {} as typeof import("../../../src/app/invite/[chatId]/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/invite/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/invite">> = Specific
+  const handler = {} as typeof import("../../../src/app/invite/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../src/app/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/">> = Specific
