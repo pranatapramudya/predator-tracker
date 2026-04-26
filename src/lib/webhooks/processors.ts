@@ -3,7 +3,7 @@ import { Network, Prisma } from "@prisma/client";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 import { prisma } from "../prisma";
-import { buildWhaleAlertMessage, sendTelegramMessage } from "../telegram";
+import { sendTelegramMessage } from "../telegram";
 import { resolveAsset } from "./pricing";
 import type {
   AlchemyAddressActivityPayload,
@@ -13,7 +13,8 @@ import type {
   WhaleAction,
 } from "./types";
 
-const MIN_ALERT_USD = 500;
+// ✅ 1. FILTER TRANSAKSI RECEH (Abaikan di bawah $100)
+const MIN_ALERT_USD = 100;
 
 type AlchemyActivity = NonNullable<
   NonNullable<AlchemyAddressActivityPayload["event"]>["activity"]
@@ -379,15 +380,31 @@ async function saveTransactionAndNotify(params: {
         tokenSymbol: params.symbol,
         usdValue: new Prisma.Decimal(params.usdValue.toFixed(2)),
         explorerUrl: params.candidate.explorerUrl,
-        // Pastikan tokenAddress ikut disave sesuai schema baru
         tokenAddress: params.candidate.tokenIdentifier || null,
       },
     });
 
-    // 🔥 2. INJEKSI MESIN PNL (PROFIT & LOSS) 🔥
-    // Kita cuma proses kalau ada tokenIdentifier (bukan transfer native SOL/ETH biasa)
+    let isFirstTimeBuy = false;
+    let liquidityUsd = 0;
+
+    // 2. INJEKSI PNL, CEK "FIRST TIME BUY", & CEK LIKUIDITAS
     if (params.candidate.tokenIdentifier) {
       try {
+        const existingPosition = await prisma.tokenPosition.findUnique({
+          where: {
+            walletId_tokenAddress: {
+              walletId: params.wallet.id,
+              tokenAddress: params.candidate.tokenIdentifier,
+            },
+          },
+        });
+
+        // ✅ 2. ACTION FILTER: Deteksi First Time Buy
+        if (!existingPosition && params.action === "BUY") {
+          isFirstTimeBuy = true;
+        }
+
+        // Jalankan mesin PnL
         await processWhaleTrade(
           params.wallet.id,
           params.candidate.tokenIdentifier,
@@ -396,31 +413,60 @@ async function saveTransactionAndNotify(params: {
           params.candidate.amount,
           params.usdValue,
         );
-        console.log(
-          `[Predator System] PnL & tas koin ${params.symbol} berhasil di-update untuk ${params.wallet.id}!`,
-        );
+
+        // ✅ 3. LIQUIDITY CHECK: Tarik Data dari DexScreener
+        if (params.action === "BUY") {
+          const dexRes = await fetch(
+            `https://api.dexscreener.com/latest/dex/tokens/${params.candidate.tokenIdentifier}`,
+          );
+          const dexData = await dexRes.json();
+          if (dexData.pairs && dexData.pairs.length > 0) {
+            liquidityUsd = dexData.pairs[0].liquidity?.usd || 0;
+          }
+        }
       } catch (pnlError) {
-        console.error(`[Predator System] Gagal proses PnL:`, pnlError);
+        console.error(
+          `[Predator System] Gagal proses PnL/Liquidity:`,
+          pnlError,
+        );
       }
     }
+
+    // 3. Modifikasi Pesan Telegram dengan Filter Cerdas
+    let actionLabel = params.action === "BUY" ? "🟢 BUY" : "🔴 SELL";
+
+    // Override label kalau First Time Buy
+    if (isFirstTimeBuy) actionLabel = "🔥 FIRST TIME BUY 🔥";
+
+    // Tambah Peringatan Likuiditas
+    let liquidityWarning = "";
+    if (params.action === "BUY" && params.candidate.tokenIdentifier) {
+      if (liquidityUsd < 10000 && liquidityUsd > 0) {
+        liquidityWarning = `\n⚠️ *LIQUIDITY WARNING:* [HIGH RISK] < $10k`;
+      } else if (liquidityUsd >= 10000) {
+        liquidityWarning = `\n💧 *Liquidity:* $${liquidityUsd.toLocaleString()}`;
+      }
+    }
+
+    // Rakit Notifikasi Final
+    const message =
+      `🚨 *WHALE ALERT* 🚨\n\n` +
+      `👤 *Whale:* ${params.wallet.name ?? params.wallet.address}\n` +
+      `📈 *Action:* ${actionLabel}\n` +
+      `🪙 *Token:* ${params.symbol}\n` +
+      `💰 *Value:* $${params.usdValue.toFixed(2)}${liquidityWarning}\n\n` +
+      `🔗 [View TX](${params.candidate.explorerUrl})\n` +
+      (params.candidate.tokenIdentifier
+        ? `📊 [DexScreener](https://dexscreener.com/solana/${params.candidate.tokenIdentifier})`
+        : "");
+
+    await sendTelegramMessage(message);
   } catch (error) {
     if (isDuplicateError(error)) {
       return; // Kalau transaksi duplikat, stop di sini
     }
     throw error;
   }
-
-  // 3. Kirim Notif ke Telegram HP Lo
-  await sendTelegramMessage(
-    buildWhaleAlertMessage({
-      network: params.wallet.network,
-      walletLabel: params.wallet.name ?? params.wallet.address,
-      action: params.action,
-      amount: params.candidate.amount,
-      tokenSymbol: params.symbol,
-      txUrl: params.candidate.explorerUrl,
-    }),
-  );
 }
 
 export async function processWebhookPayload(
@@ -462,6 +508,7 @@ export async function processWebhookPayload(
 
     const usdValue = candidate.amount * asset.usdPrice;
 
+    // Filter transaksi berdasarkan MIN_ALERT_USD
     if (usdValue < MIN_ALERT_USD) {
       continue;
     }
