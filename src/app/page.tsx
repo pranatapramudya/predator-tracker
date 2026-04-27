@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
-import PnLChart from "@/components/PnLChart"; // 🔥 FIXED: Pake alias standar Next.js
+import PnLChart from "@/components/PnLChart";
 import {
   Shield,
   Radio,
@@ -34,7 +34,7 @@ const NETWORK_LOGOS: Record<WalletNetwork, string> = {
   BITCOIN: "https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=035",
   SOLANA: "https://cryptologos.cc/logos/solana-sol-logo.svg?v=035",
   ETHEREUM: "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=035",
-  BASE: "https://raw.githubusercontent.com/base-org/brand-kit/main/logo/symbol/Base_Symbol_Blue.svg",
+  BASE: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png",
 };
 
 const FEEDBACK_COPY: Record<
@@ -113,13 +113,25 @@ async function createWalletAction(formData: FormData) {
   let feedback = "failed";
   const address = String(formData.get("address") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
-  const chatId = String(formData.get("chatId") ?? "").trim();
+  let chatId = String(formData.get("chatId") ?? "").trim();
   const network = String(
     formData.get("network") ?? "",
   ).toUpperCase() as WalletNetwork;
 
-  if (!address || !name || !network || !isValidAddress(address, network))
+  // Lapis keamanan S.Kom: Auto-fill fallback di server
+  if (!chatId) {
+    const existingWallet = await prisma.wallet.findFirst({
+      where: { userId: userId, chatId: { not: "" } },
+      orderBy: { createdAt: "asc" },
+    });
+    if (existingWallet && existingWallet.chatId) {
+      chatId = existingWallet.chatId;
+    }
+  }
+
+  if (!address || !name || !network || !isValidAddress(address, network)) {
     redirect("/?feedback=invalid");
+  }
 
   try {
     const normalized =
@@ -206,7 +218,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const limit = 5;
   const skip = (page - 1) * limit;
 
-  const [wallets, totalWallets] = await Promise.all([
+  // 🔥 TARIK DATA CHAT ID DARI SERVER BUAT NGUNCI FORM
+  const [wallets, totalWallets, existingChatIdRecord] = await Promise.all([
     prisma.wallet
       .findMany({
         where: { userId: userId },
@@ -214,22 +227,22 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          transactions: {
-            orderBy: { createdAt: "desc" },
-            take: 10,
-          },
-          positions: true, // Ambil data untuk grafik PnL
+          transactions: { orderBy: { createdAt: "desc" }, take: 10 },
+          positions: true,
         },
       })
       .catch(() => []),
+    prisma.wallet.count({ where: { userId: userId } }).catch(() => 0),
     prisma.wallet
-      .count({
-        where: { userId: userId },
+      .findFirst({
+        where: { userId: userId, chatId: { not: "" } },
+        select: { chatId: true },
       })
-      .catch(() => 0),
+      .catch(() => null),
   ]);
 
   const totalPages = Math.ceil(totalWallets / limit);
+  const savedChatId = existingChatIdRecord?.chatId || ""; // Data ID Tele user
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#080808] text-white overflow-x-hidden">
@@ -260,9 +273,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           <div className="border border-white/20 rounded-full p-1 hover:border-emerald-500/50 transition-colors bg-white/5">
             <UserButton
               appearance={{
-                elements: {
-                  userButtonAvatarBox: "w-10 h-10 md:w-12 md:h-12",
-                },
+                elements: { userButtonAvatarBox: "w-10 h-10 md:w-12 md:h-12" },
               }}
             />
           </div>
@@ -289,7 +300,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
             <h2 className="text-xl font-black uppercase mb-8 flex items-center gap-4">
               <Shield className="text-emerald-400" /> Acquisition
             </h2>
-            <form action={createWalletAction} className="space-y-6">
+            <form
+              action={createWalletAction}
+              className="space-y-6"
+              autoComplete="off"
+            >
               <div className="space-y-2">
                 <label className="text-[10px] font-black opacity-60 uppercase tracking-widest ml-1">
                   Wallet Address
@@ -297,6 +312,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 <input
                   name="address"
                   required
+                  autoComplete="new-password"
                   placeholder="BTC, SOL, or EVM..."
                   className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none font-mono text-sm focus:border-emerald-500/50 transition-all"
                 />
@@ -328,22 +344,37 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   <input
                     name="name"
                     required
+                    autoComplete="off"
                     placeholder="Whale #1"
                     className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-emerald-500/50 transition-all"
                   />
                 </div>
               </div>
+
+              {/* 🔥 FITUR TELEGRAM TERKUNCI (LOCKED & PRE-FILLED) */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black opacity-60 uppercase tracking-widest ml-1 flex items-center gap-2">
                   <Send className="w-3 h-3 text-cyan-400" /> Telegram ID
                 </label>
                 <input
                   name="chatId"
-                  required
+                  required={!savedChatId}
+                  defaultValue={savedChatId}
+                  readOnly={!!savedChatId}
                   placeholder="Contoh: 12345678"
-                  className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-cyan-500/50 transition-all text-emerald-400"
+                  className={`w-full rounded-2xl px-5 py-4 font-bold outline-none text-sm transition-all ${
+                    savedChatId
+                      ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-not-allowed" // Warna terkunci
+                      : "bg-black/60 border border-white/10 text-white focus:border-cyan-500/50" // Warna normal
+                  }`}
                 />
+                {savedChatId && (
+                  <p className="text-[8px] text-emerald-400/80 uppercase tracking-widest mt-2 ml-1 italic font-bold">
+                    🔒 ID Terkunci (Auto-Sync)
+                  </p>
+                )}
               </div>
+
               <button
                 type="submit"
                 className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 uppercase tracking-tighter"
@@ -463,7 +494,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           </div>
                         </div>
 
-                        {/* AREA GRAFIK PnL */}
                         <div className="mt-4">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">
                             PnL Performance
