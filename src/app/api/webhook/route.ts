@@ -12,7 +12,7 @@ import {
 export const dynamic = "force-dynamic";
 
 // ==========================================
-// 🔥 MODUL BARU: DEXSCREENER API (ANTI-HIDE & MARKET CAP)
+// 🔥 MODUL: DEXSCREENER API (MARKET CAP)
 // ==========================================
 async function getTokenMarketInfo(tokenAddress: string) {
   if (!tokenAddress || tokenAddress === "solana") return null;
@@ -31,9 +31,7 @@ async function getTokenMarketInfo(tokenAddress: string) {
     }
     return null;
   } catch (error) {
-    console.error(
-      `[DEXSCREENER] Gagal narik data market token ${tokenAddress}`,
-    );
+    console.error(`[DEXSCREENER] Error token ${tokenAddress}`);
     return null;
   }
 }
@@ -45,7 +43,7 @@ function formatCurrency(value: number) {
 }
 
 // ==========================================
-// AUTO WIN-RATE & PnL ENGINE (REAL-TIME)
+// AUTO WIN-RATE & PnL ENGINE
 // ==========================================
 async function processAutoWinRate(
   walletId: string,
@@ -135,7 +133,7 @@ export async function GET(request: Request) {
         const winRate = (wallet as any).winRate || 0;
         const threshold = (wallet as any).minAlertUsd || 100;
 
-        // 🔥 FIX MUTLAK: Pake chatId milik user, data terisolasi!
+        // 🔥 KUNCI ISOLASI: Target notif sesuai pemilik wallet di DB
         const targetChatId = wallet.chatId;
 
         let label = "🐋 THE WHALE";
@@ -180,9 +178,7 @@ export async function GET(request: Request) {
                 tokenSymbol,
               );
 
-              if (usdAmount > 0 && usdAmount < threshold) {
-                console.log(`[SILENT SKIP] Transaksi Swap receh...`);
-              } else {
+              if (usdAmount > 0 && usdAmount >= threshold) {
                 await prisma.transaction.create({
                   data: {
                     walletId: wallet.id,
@@ -219,7 +215,7 @@ export async function GET(request: Request) {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        chat_id: targetChatId, // ✅ Terkunci ke pemilik wallet
+                        chat_id: targetChatId,
                         text: swapMessage,
                         parse_mode: "Markdown",
                         disable_web_page_preview: true,
@@ -227,14 +223,23 @@ export async function GET(request: Request) {
                           inline_keyboard: [
                             [
                               {
-                                text: "📈 View on DexScreener",
+                                text: "📈 DexScreener",
                                 url: `https://dexscreener.com/solana/${tokenAddress}`,
                               },
-                            ],
-                            [
                               {
                                 text: "🔍 Cek TX",
                                 url: `https://solscan.io/tx/${swapData.signature}`,
+                              },
+                            ],
+                            // 🔥 TOMBOL EKSEKUSI 1-KLIK (SOLANA)
+                            [
+                              {
+                                text: "⚡ Web3: Jupiter DEX",
+                                url: `https://jup.ag/swap/SOL-${tokenAddress}`,
+                              },
+                              {
+                                text: "🤖 TG Bot: BonkBot",
+                                url: `https://t.me/bonkbot_bot?start=${tokenAddress}`,
                               },
                             ],
                           ],
@@ -284,9 +289,7 @@ export async function GET(request: Request) {
                 tokenSymbol,
               );
 
-              if (usdAmount > 0 && usdAmount < threshold) {
-                console.log(`[SILENT SKIP] Transaksi Token EVM receh...`);
-              } else {
+              if (usdAmount > 0 && usdAmount >= threshold) {
                 await prisma.transaction.create({
                   data: {
                     walletId: wallet.id,
@@ -319,7 +322,7 @@ export async function GET(request: Request) {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        chat_id: targetChatId, // ✅ Terkunci ke pemilik wallet
+                        chat_id: targetChatId,
                         text: tokenMessage,
                         parse_mode: "Markdown",
                         disable_web_page_preview: true,
@@ -329,6 +332,17 @@ export async function GET(request: Request) {
                               {
                                 text: "🔍 Cek TX di Explorer",
                                 url: tokenTx.explorerUrl,
+                              },
+                            ],
+                            // 🔥 TOMBOL EKSEKUSI 1-KLIK (ETH & BASE)
+                            [
+                              {
+                                text: "⚡ Web3: Uniswap",
+                                url: `https://app.uniswap.org/swap?outputCurrency=${tokenAddress}&chain=${wallet.network === "BASE" ? "base" : "mainnet"}`,
+                              },
+                              {
+                                text: "🤖 TG Bot: Maestro Sniper",
+                                url: `https://t.me/maestro?start=${tokenAddress}`,
                               },
                             ],
                           ],
@@ -403,21 +417,20 @@ export async function GET(request: Request) {
               `📊 *Perubahan:* ${sym} ${Math.abs(diff).toFixed(8)}\n` +
               `📍 *Address:* \`${wallet.address}\``;
 
-            // 🔥 TOMBOL PELACAK OTOMATIS: Langsung nuju ke tab transfers biar gampang ngejar
             await fetch(
               `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  chat_id: targetChatId, // ✅ Terkunci ke pemilik wallet
+                  chat_id: targetChatId,
                   text: message,
                   parse_mode: "Markdown",
                   reply_markup: {
                     inline_keyboard: [
                       [
                         {
-                          text: "🔍 Pelacak Aliran Dana",
+                          text: "🔍 Pelacak Aliran Dana / Explorer",
                           url:
                             wallet.network === "SOLANA"
                               ? `https://solscan.io/account/${wallet.address}#transfers`
