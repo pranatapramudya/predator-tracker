@@ -4,6 +4,23 @@ import { Shield, Activity } from "lucide-react";
 export default function SignInPage() {
   return (
     <main className="min-h-screen bg-[#080808] text-white flex flex-col lg:flex-row overflow-x-hidden">
+      {/* 🔥 JURUS DOBRAK CSS (HACK CLERK) 🔥 */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+          .cl-badge {
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            color: #34d399 !important;
+            border: 1px solid rgba(16, 185, 129, 0.4) !important;
+            font-weight: 800 !important;
+          }
+          .cl-userPreviewSecondaryIdentifier {
+            color: rgba(255, 255, 255, 0.8) !important;
+          }
+        `,
+        }}
+      />
+
       <div className="flex-1 p-8 lg:p-12 flex-col justify-center relative overflow-hidden hidden lg:flex border-r border-white/10">
         <div className="absolute inset-0 bg-emerald-500/5 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#080808] to-[#080808]"></div>
         <div className="relative z-10 max-w-lg mx-auto w-full">
@@ -66,13 +83,16 @@ export default function SignInPage() {
                 dividerText:
                   "text-white font-black uppercase text-xs opacity-100",
                 formFieldLabel:
-                  "text-white font-black uppercase tracking-widest text-[10px] mb-2 opacity-100",
-                formFieldInput:
-                  "bg-[#1e1e20] border border-white/30 text-white font-bold focus:border-emerald-500 rounded-xl py-3 px-4 placeholder:text-white/40",
+                  "!text-white !font-black uppercase tracking-widest text-[10px] mb-2 opacity-100",
 
-                // FIXED: Icon mata show/hide password
+                formFieldInput:
+                  "!bg-[#1e1e20] !border !border-white/30 !text-white !font-bold focus:!border-emerald-500 rounded-xl py-3 px-4 placeholder:!text-white/40",
+
+                otpCodeFieldInput:
+                  "!bg-[#1e1e20] !border !border-white/30 !text-white !font-black !text-2xl focus:!border-emerald-500 rounded-xl",
+
                 formFieldInputShowPasswordButton:
-                  "text-white/80 hover:text-white transition-colors",
+                  "!text-white/80 hover:!text-white transition-colors",
 
                 formButtonPrimary:
                   "bg-white text-black hover:bg-emerald-400 font-black uppercase tracking-tighter py-3 rounded-xl transition-colors mt-2",
@@ -81,9 +101,12 @@ export default function SignInPage() {
                 footerActionLink:
                   "text-emerald-400 hover:text-emerald-300 font-black",
 
-                // FIXED: Watermark dipaksa putih
+                identityPreviewText: "!text-white !font-bold",
+                identifier: "!text-white !font-bold",
+                userPreviewMainIdentifier: "!text-white !font-bold",
+
                 watermark:
-                  "invert brightness-200 opacity-50 hover:opacity-100 transition-all",
+                  "!text-white !invert !brightness-200 !opacity-100 hover:!opacity-100 transition-all",
               },
             }}
           />

@@ -66,13 +66,16 @@ export default function SignUpPage() {
                 dividerText:
                   "text-white font-black uppercase text-xs opacity-100",
                 formFieldLabel:
-                  "text-white font-black uppercase tracking-widest text-[10px] mb-2 opacity-100",
-                formFieldInput:
-                  "bg-[#1e1e20] border border-white/30 text-white font-bold focus:border-emerald-500 rounded-xl py-3 px-4 placeholder:text-white/40",
+                  "!text-white !font-black uppercase tracking-widest text-[10px] mb-2 opacity-100",
 
-                // FIXED: Icon mata show/hide password
+                formFieldInput:
+                  "!bg-[#1e1e20] !border !border-white/30 !text-white !font-bold focus:!border-emerald-500 rounded-xl py-3 px-4 placeholder:!text-white/40",
+
+                otpCodeFieldInput:
+                  "!bg-[#1e1e20] !border !border-white/30 !text-white !font-black !text-2xl focus:!border-emerald-500 rounded-xl",
+
                 formFieldInputShowPasswordButton:
-                  "text-white/80 hover:text-white transition-colors",
+                  "!text-white/80 hover:!text-white transition-colors",
 
                 formButtonPrimary:
                   "bg-white text-black hover:bg-emerald-400 font-black uppercase tracking-tighter py-3 rounded-xl transition-colors mt-2",
@@ -81,9 +84,16 @@ export default function SignUpPage() {
                 footerActionLink:
                   "text-emerald-400 hover:text-emerald-300 font-black",
 
-                // FIXED: Watermark dipaksa putih pakai invert & brightness tinggi tanpa plugin tema
+                // 🔥 JURUS PAKSA: Bikin semua teks jadi putih
+                identityPreviewText: "!text-white !font-bold",
+                identifier: "!text-white !font-bold",
+                userPreviewMainIdentifier: "!text-white !font-bold",
+                userPreviewSecondaryIdentifier: "!text-white/80",
+                badge: "!text-white !bg-white/10 !border !border-white/20",
+
+                // 🔥 JURUS PAKSA: Secured by Clerk WAJIB PUTIH (invert + brightness)
                 watermark:
-                  "invert brightness-200 opacity-50 hover:opacity-100 transition-all",
+                  "!text-white !invert !brightness-200 !opacity-100 hover:!opacity-100 transition-all",
               },
             }}
           />
