@@ -135,8 +135,8 @@ export async function GET(request: Request) {
         const winRate = (wallet as any).winRate || 0;
         const threshold = (wallet as any).minAlertUsd || 100;
 
-        const ALPHA_CHANNEL_ID =
-          (wallet as any).alphaChannelId || "-1003737826938";
+        // 🔥 FIX MUTLAK: Pake chatId milik user, nggak ada lagi ID nyasar!
+        const targetChatId = wallet.chatId;
 
         let label = "🐋 THE WHALE";
         if (winRate > 70) label = "🥇 THE ORACLE";
@@ -196,7 +196,8 @@ export async function GET(request: Request) {
                   },
                 });
 
-                if (process.env.TELEGRAM_BOT_TOKEN) {
+                // Cek apakah user punya Telegram ID sebelum kirim
+                if (targetChatId && process.env.TELEGRAM_BOT_TOKEN) {
                   const actionText = isBuy
                     ? "🟢 *BUY (AKUMULASI)*"
                     : "🔴 *SELL (TAKE PROFIT/CUT LOSS)*";
@@ -219,7 +220,7 @@ export async function GET(request: Request) {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        chat_id: ALPHA_CHANNEL_ID,
+                        chat_id: targetChatId,
                         text: swapMessage,
                         parse_mode: "Markdown",
                         disable_web_page_preview: true,
@@ -300,7 +301,7 @@ export async function GET(request: Request) {
                   },
                 });
 
-                if (process.env.TELEGRAM_BOT_TOKEN) {
+                if (targetChatId && process.env.TELEGRAM_BOT_TOKEN) {
                   const mktCapText =
                     marketInfo && marketInfo.marketCap > 0
                       ? `\n📊 *Market Cap:* ${formatCurrency(marketInfo.marketCap)}`
@@ -319,7 +320,7 @@ export async function GET(request: Request) {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        chat_id: ALPHA_CHANNEL_ID,
+                        chat_id: targetChatId,
                         text: tokenMessage,
                         parse_mode: "Markdown",
                         disable_web_page_preview: true,
@@ -344,7 +345,6 @@ export async function GET(request: Request) {
 
         // ==========================================
         // 3. WHALE ALERT SALDO UMUM (HISTORY & TELEGRAM)
-        // 🔥 FIX: Smart Dust Filter (Anti-Berisik)
         // ==========================================
         let currentBalance = 0;
         if (wallet.network === "SOLANA")
@@ -360,18 +360,7 @@ export async function GET(request: Request) {
         const oldBalance = Number(wallet.lastBalance || 0);
         const diff = currentBalance - oldBalance;
 
-        // Batas minimal perubahan saldo biar Telegram nggak bunyi buat Gas Fee
-        const NATIVE_THRESHOLDS: Record<string, number> = {
-          BITCOIN: 0.01,
-          ETHEREUM: 0.05,
-          BASE: 0.05,
-          SOLANA: 1.0,
-        };
-
-        const minDiffToAlert = NATIVE_THRESHOLDS[wallet.network] || 0.01;
-
         if (Math.abs(diff) > 0.00000001) {
-          // Selalu update DB buat keperluan PnL Chart (Silent Mode)
           await prisma.wallet.update({
             where: { id: wallet.id },
             data: { lastBalance: currentBalance },
@@ -395,11 +384,9 @@ export async function GET(request: Request) {
             },
           });
 
-          // 🚨 TAPI, Telegram CUMA BUNYI kalau lewat threshold & bukan transaksi Token/Swap
           if (
-            Math.abs(diff) >= minDiffToAlert &&
             !isSwapOrTokenAlertSent &&
-            wallet.chatId &&
+            targetChatId &&
             process.env.TELEGRAM_BOT_TOKEN
           ) {
             const sym =
@@ -412,9 +399,9 @@ export async function GET(request: Request) {
               `${label} ALERT!\n🚨 *WHALE BALANCE UPDATE*\n\n` +
               `👤 *Target:* ${wallet.name}\n` +
               `🌐 *Network:* ${wallet.network}\n` +
-              `💼 *Saldo Lama:* ${sym} ${oldBalance.toFixed(4)}\n` +
-              `💰 *Saldo Baru:* ${sym} ${currentBalance.toFixed(4)}\n` +
-              `📊 *Perubahan:* ${sym} ${Math.abs(diff).toFixed(4)}\n` +
+              `💼 *Saldo Lama:* ${sym} ${oldBalance.toFixed(8)}\n` +
+              `💰 *Saldo Baru:* ${sym} ${currentBalance.toFixed(8)}\n` +
+              `📊 *Perubahan:* ${sym} ${Math.abs(diff).toFixed(8)}\n` +
               `📍 *Address:* \`${wallet.address}\``;
 
             await fetch(
@@ -423,15 +410,11 @@ export async function GET(request: Request) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  chat_id: wallet.chatId,
+                  chat_id: targetChatId,
                   text: message,
                   parse_mode: "Markdown",
                 }),
               },
-            );
-          } else {
-            console.log(
-              `[SILENT MODE] Perubahan saldo native ${wallet.name} di bawah batas alert atau numpuk sama Token TX.`,
             );
           }
         }
