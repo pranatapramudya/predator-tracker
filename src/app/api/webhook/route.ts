@@ -135,7 +135,7 @@ export async function GET(request: Request) {
         const winRate = (wallet as any).winRate || 0;
         const threshold = (wallet as any).minAlertUsd || 100;
 
-        // 🔥 FIX MUTLAK: Pake chatId milik user, nggak ada lagi ID nyasar!
+        // 🔥 FIX MUTLAK: Pake chatId milik user, data terisolasi!
         const targetChatId = wallet.chatId;
 
         let label = "🐋 THE WHALE";
@@ -196,7 +196,6 @@ export async function GET(request: Request) {
                   },
                 });
 
-                // Cek apakah user punya Telegram ID sebelum kirim
                 if (targetChatId && process.env.TELEGRAM_BOT_TOKEN) {
                   const actionText = isBuy
                     ? "🟢 *BUY (AKUMULASI)*"
@@ -220,7 +219,7 @@ export async function GET(request: Request) {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        chat_id: targetChatId,
+                        chat_id: targetChatId, // ✅ Terkunci ke pemilik wallet
                         text: swapMessage,
                         parse_mode: "Markdown",
                         disable_web_page_preview: true,
@@ -320,7 +319,7 @@ export async function GET(request: Request) {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        chat_id: targetChatId,
+                        chat_id: targetChatId, // ✅ Terkunci ke pemilik wallet
                         text: tokenMessage,
                         parse_mode: "Markdown",
                         disable_web_page_preview: true,
@@ -404,24 +403,24 @@ export async function GET(request: Request) {
               `📊 *Perubahan:* ${sym} ${Math.abs(diff).toFixed(8)}\n` +
               `📍 *Address:* \`${wallet.address}\``;
 
-            // 🔥 INI DIA UPDATE-NYA: TAMBAHAN TOMBOL EXPLORER DI SALDO UMUM
+            // 🔥 TOMBOL PELACAK OTOMATIS: Langsung nuju ke tab transfers biar gampang ngejar
             await fetch(
               `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  chat_id: targetChatId,
+                  chat_id: targetChatId, // ✅ Terkunci ke pemilik wallet
                   text: message,
                   parse_mode: "Markdown",
                   reply_markup: {
                     inline_keyboard: [
                       [
                         {
-                          text: "🔍 Cek Alamat di Explorer",
+                          text: "🔍 Pelacak Aliran Dana",
                           url:
                             wallet.network === "SOLANA"
-                              ? `https://solscan.io/account/${wallet.address}`
+                              ? `https://solscan.io/account/${wallet.address}#transfers`
                               : wallet.network === "BITCOIN"
                                 ? `https://www.blockchain.com/explorer/addresses/btc/${wallet.address}`
                                 : `https://etherscan.io/address/${wallet.address}`,
