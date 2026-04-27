@@ -162,7 +162,6 @@ export async function GET(request: Request) {
               const tokenAddress = (swapData as any).tokenAddress || "solana";
               const tokenSymbol = (swapData as any).tokenSymbol || "MEME_COIN";
 
-              // 🔥 TARIK DATA MARKET CAP & HARGA
               const marketInfo = await getTokenMarketInfo(tokenAddress);
               if (usdAmount === 0 && tokenAddress !== "solana" && marketInfo) {
                 usdAmount = amountToken * marketInfo.priceUsd;
@@ -345,6 +344,7 @@ export async function GET(request: Request) {
 
         // ==========================================
         // 3. WHALE ALERT SALDO UMUM (HISTORY & TELEGRAM)
+        // 🔥 FIX: Smart Dust Filter (Anti-Berisik)
         // ==========================================
         let currentBalance = 0;
         if (wallet.network === "SOLANA")
@@ -360,7 +360,18 @@ export async function GET(request: Request) {
         const oldBalance = Number(wallet.lastBalance || 0);
         const diff = currentBalance - oldBalance;
 
+        // Batas minimal perubahan saldo biar Telegram nggak bunyi buat Gas Fee
+        const NATIVE_THRESHOLDS: Record<string, number> = {
+          BITCOIN: 0.01,
+          ETHEREUM: 0.05,
+          BASE: 0.05,
+          SOLANA: 1.0,
+        };
+
+        const minDiffToAlert = NATIVE_THRESHOLDS[wallet.network] || 0.01;
+
         if (Math.abs(diff) > 0.00000001) {
+          // Selalu update DB buat keperluan PnL Chart (Silent Mode)
           await prisma.wallet.update({
             where: { id: wallet.id },
             data: { lastBalance: currentBalance },
@@ -384,7 +395,9 @@ export async function GET(request: Request) {
             },
           });
 
+          // 🚨 TAPI, Telegram CUMA BUNYI kalau lewat threshold & bukan transaksi Token/Swap
           if (
+            Math.abs(diff) >= minDiffToAlert &&
             !isSwapOrTokenAlertSent &&
             wallet.chatId &&
             process.env.TELEGRAM_BOT_TOKEN
@@ -399,9 +412,9 @@ export async function GET(request: Request) {
               `${label} ALERT!\n🚨 *WHALE BALANCE UPDATE*\n\n` +
               `👤 *Target:* ${wallet.name}\n` +
               `🌐 *Network:* ${wallet.network}\n` +
-              `💼 *Saldo Lama:* ${sym} ${oldBalance.toFixed(8)}\n` +
-              `💰 *Saldo Baru:* ${sym} ${currentBalance.toFixed(8)}\n` +
-              `📊 *Perubahan:* ${sym} ${Math.abs(diff).toFixed(8)}\n` +
+              `💼 *Saldo Lama:* ${sym} ${oldBalance.toFixed(4)}\n` +
+              `💰 *Saldo Baru:* ${sym} ${currentBalance.toFixed(4)}\n` +
+              `📊 *Perubahan:* ${sym} ${Math.abs(diff).toFixed(4)}\n` +
               `📍 *Address:* \`${wallet.address}\``;
 
             await fetch(
@@ -415,6 +428,10 @@ export async function GET(request: Request) {
                   parse_mode: "Markdown",
                 }),
               },
+            );
+          } else {
+            console.log(
+              `[SILENT MODE] Perubahan saldo native ${wallet.name} di bawah batas alert atau numpuk sama Token TX.`,
             );
           }
         }
