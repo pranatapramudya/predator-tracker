@@ -1,5 +1,5 @@
-🎯 LumeStack Predator Tracker (SaaS Smart Money & Whale Watcher)
-Sebuah modul arsitektur SaaS premium dari LumeStack untuk melacak pergerakan dompet kripto raksasa (Whales) dan mendeteksi aktivitas Smart Money secara real-time lintas jaringan (BTC, ETH, SOL, BASE). Sistem ini dirancang untuk memberikan sinyal "Alpha" yang bersih, akurat, dan dapat dieksekusi dalam 1 klik, langsung dari Telegram pengguna.
+🎯 Predator Tracker (SaaS Smart Money & Whale Watcher)
+Sebuah arsitektur SaaS premium untuk melacak pergerakan dompet kripto raksasa (Whales) dan mendeteksi aktivitas Smart Money secara real-time lintas jaringan (BTC, ETH, SOL, BASE). Sistem ini dirancang untuk memberikan sinyal "Alpha" yang bersih, akurat, dan dapat dieksekusi dalam 1 klik, langsung dari Telegram pengguna.
 
 🚀 Fitur Unggulan (Final Version)
 
@@ -54,7 +54,7 @@ Bot: Telegram Bot API (Inline Keyboards, Markdown, & Deep Linking)
 Architecture: Isolated Multi-Tenant Webhook
 
 🛠️ Alur Kerja Sistem (The SaaS Logic)
-Sweeping: UptimeRobot memicu /api/webhook setiap 5 menit (atau sesuai interval).
+Sweeping: UptimeRobot memicu /api/webhook setiap interval yang ditentukan.
 
 Analysis & Enrichment: Sistem mengecek aktivitas terbaru via RPC dan menghitung kalkulasi USD via DexScreener.
 
