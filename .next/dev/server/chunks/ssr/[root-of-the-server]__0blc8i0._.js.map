@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 22, "column": 0}, "map": {"version":3,"sources":["file:///D:/predator-tracker/src/app/layout.tsx"],"sourcesContent":["import { ClerkProvider } from \"@clerk/nextjs\";\r\nimport \"./globals.css\"; // <-- INI KABEL POWERNYA BRE! Wajib ada!\r\n\r\nexport const metadata = {\r\n  title: \"Predator Tracker\",\r\n  description: \"Whale Watching System\",\r\n};\r\n\r\nexport default function RootLayout({\r\n  children,\r\n}: {\r\n  children: React.ReactNode;\r\n}) {\r\n  return (\r\n    <ClerkProvider>\r\n      <html lang=\"en\">\r\n        <body className=\"antialiased\">{children}</body>\r\n      </html>\r\n    </ClerkProvider>\r\n  );\r\n}\r\n"],"names":["metadata","title","description","RootLayout","children","lang","className"],"mappings":";;;;;;;AAAA;;;;AAGO,MAAMA,WAAW;IACtBC,OAAO;IACPC,aAAa;AACf;AAEe,SAASC,WAAW,EACjCC,QAAQ,EAGT;IACC,qBACE,8OAAC,0LAAa;kBACZ,cAAA,8OAAC;YAAKC,MAAK;sBACT,cAAA,8OAAC;gBAAKC,WAAU;0BAAeF;;;;;;;;;;;;;;;;AAIvC"}}]
-}
