@@ -7,6 +7,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==========================================
+// MODUL BARU: Sistem Autentikasi (SaaS Ready)
+// ==========================================
+model User {
+  id            String   @id // Diisi dengan Clerk User ID (user_2...)
+  email         String   @unique
+  name          String?
+  role          Role     @default(MEMBER)
+  
+  wallets       Wallet[] // Relasi: 1 User bisa punya banyak Wallet
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum Role {
+  OWNER
+  MEMBER
+}
+
+// ==========================================
+// MODUL UTAMA: Wallet & Radar
+// ==========================================
 model Wallet {
   id            String          @id @default(cuid())
   /// Store EVM addresses in lowercase. Untuk BTC & SOL tetap Case-Sensitive.
@@ -15,6 +38,10 @@ model Wallet {
   network       Network
   isActive      Boolean         @default(true)
   
+  // 🔴 PENENTU KEPEMILIKAN: Hubungkan ke User
+  userId        String?         // ID User pemilik wallet ini
+  user          User?           @relation(fields: [userId], references: [id])
+
   // Fitur Notifikasi & Caching
   chatId        String?         // ID Telegram User (Japri/Asisten)
   alphaChannelId String?        // 🔴 ID Telegram Channel (Alpha Feed Khusus User Ini)
@@ -36,10 +63,13 @@ model Wallet {
 
   @@unique([address, network])
   @@index([network, isActive])
-  @@index([chatId])             
+  @@index([chatId])
+  @@index([userId]) // Index biar load dashboard user makin kenceng             
 }
 
-// MODUL BARU: Portfolio & PnL Tracker per Koin
+// ==========================================
+// MODUL TRACKING: Portfolio & History
+// ==========================================
 model TokenPosition {
   id               String   @id @default(cuid())
   walletId         String

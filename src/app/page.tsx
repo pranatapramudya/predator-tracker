@@ -4,6 +4,9 @@ import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { UserButton } from "@clerk/nextjs";
+import PnLChart from "@/components/PnLChart"; // 🔥 FIXED: Pake alias standar Next.js
 import {
   Shield,
   Radio,
@@ -33,9 +36,6 @@ const NETWORK_LOGOS: Record<WalletNetwork, string> = {
   ETHEREUM: "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=035",
   BASE: "https://raw.githubusercontent.com/base-org/brand-kit/main/logo/symbol/Base_Symbol_Blue.svg",
 };
-
-// 🔥 TULIS ID TELEGRAM LO DISINI (Sebagai Admin)
-const ADMIN_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "12345678";
 
 const FEEDBACK_COPY: Record<
   string,
@@ -107,6 +107,9 @@ function getWhaleTag(winRate: number, totalTrades: number) {
 
 async function createWalletAction(formData: FormData) {
   "use server";
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
   let feedback = "failed";
   const address = String(formData.get("address") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
@@ -136,7 +139,7 @@ async function createWalletAction(formData: FormData) {
 
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
-      update: { name, chatId, lastBalance: balance, isActive: true },
+      update: { name, chatId, lastBalance: balance, isActive: true, userId },
       create: {
         address: normalized,
         name,
@@ -144,6 +147,7 @@ async function createWalletAction(formData: FormData) {
         chatId,
         lastBalance: balance,
         isActive: true,
+        userId,
       },
     });
 
@@ -157,11 +161,13 @@ async function createWalletAction(formData: FormData) {
 
 async function deleteWalletAction(formData: FormData) {
   "use server";
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
   let feedback = "failed";
   try {
     const id = String(formData.get("id"));
-    await prisma.transaction.deleteMany({ where: { walletId: id } });
-    await prisma.wallet.delete({ where: { id } });
+    await prisma.wallet.deleteMany({ where: { id, userId } });
     revalidatePath("/");
     feedback = "deleted";
   } catch (e) {
@@ -172,6 +178,25 @@ async function deleteWalletAction(formData: FormData) {
 
 export default async function Page({ searchParams }: { searchParams: any }) {
   noStore();
+
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const clerkUser = await currentUser();
+
+  await prisma.user.upsert({
+    where: { id: userId },
+    update: {
+      email: clerkUser?.emailAddresses[0]?.emailAddress || "no-email",
+      name: clerkUser?.firstName || "Whale Hunter",
+    },
+    create: {
+      id: userId,
+      email: clerkUser?.emailAddresses[0]?.emailAddress || "no-email",
+      name: clerkUser?.firstName || "Whale Hunter",
+    },
+  });
+
   const params = await searchParams;
   const feedback = params.feedback
     ? FEEDBACK_COPY[params.feedback as string]
@@ -181,11 +206,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const limit = 5;
   const skip = (page - 1) * limit;
 
-  // 🔥 ADMIN ISOLATION: Cuma narik data milik Admin Chat ID
   const [wallets, totalWallets] = await Promise.all([
     prisma.wallet
       .findMany({
-        where: { chatId: ADMIN_CHAT_ID },
+        where: { userId: userId },
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
@@ -194,12 +218,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
             orderBy: { createdAt: "desc" },
             take: 10,
           },
+          positions: true, // Ambil data untuk grafik PnL
         },
       })
       .catch(() => []),
     prisma.wallet
       .count({
-        where: { chatId: ADMIN_CHAT_ID },
+        where: { userId: userId },
       })
       .catch(() => 0),
   ]);
@@ -208,26 +233,39 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#080808] text-white overflow-x-hidden">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-white/10">
+      <header className="flex flex-row items-center justify-between gap-4 pb-8 border-b border-white/10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] uppercase mb-4">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />{" "}
-            Neural Link (Admin)
+            Targeting System Online
           </div>
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-none">
             Predator <span className="text-emerald-400">Tracker</span>
           </h1>
         </div>
-        <div className="px-5 py-3 bg-white/5 border border-white/10 rounded-2xl w-fit">
-          <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold">
-            Monitored
-          </p>
-          <p className="text-xl font-black">
-            {totalWallets}{" "}
-            <span className="text-xs font-normal text-white/40 italic">
-              WHALES
-            </span>
-          </p>
+
+        <div className="flex items-center gap-4 md:gap-6">
+          <div className="hidden md:block px-5 py-3 bg-white/5 border border-white/10 rounded-2xl text-right">
+            <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold">
+              Your Whales
+            </p>
+            <p className="text-xl font-black">
+              {totalWallets}{" "}
+              <span className="text-xs font-normal text-white/40 italic">
+                TARGETS
+              </span>
+            </p>
+          </div>
+
+          <div className="border border-white/20 rounded-full p-1 hover:border-emerald-500/50 transition-colors bg-white/5">
+            <UserButton
+              appearance={{
+                elements: {
+                  userButtonAvatarBox: "w-10 h-10 md:w-12 md:h-12",
+                },
+              }}
+            />
+          </div>
         </div>
       </header>
 
@@ -297,12 +335,12 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black opacity-60 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  <Send className="w-3 h-3 text-cyan-400" /> Telegram ID (Admin)
+                  <Send className="w-3 h-3 text-cyan-400" /> Telegram ID
                 </label>
                 <input
                   name="chatId"
                   required
-                  defaultValue={ADMIN_CHAT_ID}
+                  placeholder="Contoh: 12345678"
                   className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-cyan-500/50 transition-all text-emerald-400"
                 />
               </div>
@@ -318,12 +356,12 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
         <section className="lg:col-span-8 space-y-6">
           <h3 className="flex items-center gap-2 text-sm font-black opacity-60 uppercase tracking-[0.2em] px-2">
-            <Activity className="text-cyan-400" /> Admin Watchlist
+            <Activity className="text-cyan-400" /> Your Watchlist
           </h3>
           {wallets.length === 0 ? (
             <div className="border-2 border-dashed border-white/5 rounded-[32px] p-20 text-center text-white/40 italic uppercase tracking-widest text-xs">
               <Radio className="mx-auto mb-4 animate-pulse" />
-              Scanning Admin Targets...
+              Scanning Targets...
             </div>
           ) : (
             <>
@@ -338,7 +376,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   return (
                     <div
                       key={w.id}
-                      className="group bg-[#121212] border border-white/5 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between transform-gpu will-change-transform"
+                      className="group bg-[#121212] border border-white/5 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between"
                     >
                       <div>
                         <div className="flex justify-between items-start mb-4 relative z-10 gap-3">
@@ -354,7 +392,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               </span>
                             </div>
                             <h4
-                              className="text-xl font-black group-hover:text-emerald-400 transition-colors uppercase truncate w-full block"
+                              className="text-xl font-black group-hover:text-emerald-400 transition-colors uppercase truncate block"
                               title={safeName}
                             >
                               {safeName}
@@ -407,7 +445,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           </div>
                           <div className="flex-1 bg-black/40 border border-white/5 rounded-xl p-3 text-center">
                             <p className="text-[9px] font-black text-white/70 uppercase tracking-widest mb-1">
-                              Trades (W/Total)
+                              Trades
                             </p>
                             <p className="text-base font-black tracking-tight text-white">
                               <span
@@ -425,9 +463,22 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           </div>
                         </div>
 
+                        {/* AREA GRAFIK PnL */}
+                        <div className="mt-4">
+                          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">
+                            PnL Performance
+                          </p>
+                          <PnLChart
+                            data={(w.positions || []).map((p) => ({
+                              tokenSymbol: p.tokenSymbol || "TOKEN",
+                              pnl: Number(p.realizedPnlUsd) || 0,
+                            }))}
+                          />
+                        </div>
+
                         <div className="mt-4 pt-4 border-t border-white/5">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-2 flex justify-between">
-                            <span>Recent Activity (Last 10)</span>
+                            <span>Recent Activity</span>
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {w.transactions.length > 0 ? (
@@ -442,16 +493,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                                 ${tx.type === "BUY" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border-rose-500/30"}
                                 ${idx === 0 ? "ring-1 ring-white shadow-[0_0_8px_rgba(255,255,255,0.4)] opacity-100" : "opacity-60"}`}
                                 >
-                                  {idx === 0 && (
-                                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full"></span>
-                                  )}
                                   {tx.type === "BUY" ? "🟢" : "🔴"}{" "}
                                   {tx.tokenSymbol.slice(0, 5)}
                                 </a>
                               ))
                             ) : (
                               <span className="text-[10px] text-white/20 italic">
-                                No recent trades detected
+                                No recent trades
                               </span>
                             )}
                           </div>
@@ -474,7 +522,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 })}
               </div>
 
-              {/* 🔥 BLOK PAGINATION DIKEMBALIKAN 🔥 */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-6 pt-8 pb-4">
                   {page > 1 ? (
@@ -489,12 +536,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       <ChevronLeft className="w-5 h-5 text-white/30" />
                     </div>
                   )}
-
                   <span className="text-sm font-bold text-white/80 uppercase tracking-widest">
                     Page {page} <span className="text-white/30 mx-1">/</span>{" "}
                     {totalPages}
                   </span>
-
                   {page < totalPages ? (
                     <a
                       href={`/?page=${page + 1}`}

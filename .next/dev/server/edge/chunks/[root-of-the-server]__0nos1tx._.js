@@ -17,33 +17,30 @@ module.exports = mod;
 __turbopack_context__.s([
     "config",
     ()=>config,
-    "middleware",
-    ()=>middleware
+    "default",
+    ()=>__TURBOPACK__default__export__
 ]);
-// src/middleware.ts
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$esm$2f$api$2f$server$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/next/dist/esm/api/server.js [middleware-edge] (ecmascript) <locals>");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$esm$2f$server$2f$web$2f$spec$2d$extension$2f$response$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/esm/server/web/spec-extension/response.js [middleware-edge] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$clerk$2f$nextjs$2f$dist$2f$esm$2f$server$2f$clerkMiddleware$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@clerk/nextjs/dist/esm/server/clerkMiddleware.js [middleware-edge] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$clerk$2f$nextjs$2f$dist$2f$esm$2f$server$2f$routeMatcher$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@clerk/nextjs/dist/esm/server/routeMatcher.js [middleware-edge] (ecmascript)");
 ;
-function middleware(req) {
-    const basicAuth = req.headers.get("authorization");
-    if (basicAuth) {
-        const authValue = basicAuth.split(" ")[1];
-        const [user, pwd] = atob(authValue).split(":");
-        // 🔥 GANTI USERNAME & PASSWORD ADMIN LU DI SINI
-        if (user === "admin" && pwd === "bosbesar") {
-            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$esm$2f$server$2f$web$2f$spec$2d$extension$2f$response$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__["NextResponse"].next();
-        }
+// 🔥 DAFTAR HALAMAN PUBLIK (Bisa diakses tanpa login)
+const isPublicRoute = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$clerk$2f$nextjs$2f$dist$2f$esm$2f$server$2f$routeMatcher$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__["createRouteMatcher"])([
+    "/sign-in(.*)",
+    "/sign-up(.*)",
+    "/invite(.*)",
+    "/api/webhook(.*)"
+]);
+const __TURBOPACK__default__export__ = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$clerk$2f$nextjs$2f$dist$2f$esm$2f$server$2f$clerkMiddleware$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__["clerkMiddleware"])(async (auth, request)=>{
+    if (!isPublicRoute(request)) {
+        await auth.protect();
     }
-    // Kalau password salah atau belum diisi, blokir aksesnya!
-    return new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$esm$2f$server$2f$web$2f$spec$2d$extension$2f$response$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__["NextResponse"]("Akses Ditolak. Area Khusus Admin.", {
-        status: 401,
-        headers: {
-            "WWW-Authenticate": 'Basic realm="Secure Admin Area"'
-        }
-    });
-}
+});
 const config = {
-    matcher: "/"
+    matcher: [
+        "/((?!.*\\..*|_next).*)",
+        "/",
+        "/(api|trpc)(.*)"
+    ]
 };
 }),
 ]);
