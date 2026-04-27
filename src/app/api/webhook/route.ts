@@ -404,6 +404,7 @@ export async function GET(request: Request) {
               `📊 *Perubahan:* ${sym} ${Math.abs(diff).toFixed(8)}\n` +
               `📍 *Address:* \`${wallet.address}\``;
 
+            // 🔥 INI DIA UPDATE-NYA: TAMBAHAN TOMBOL EXPLORER DI SALDO UMUM
             await fetch(
               `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
               {
@@ -413,6 +414,21 @@ export async function GET(request: Request) {
                   chat_id: targetChatId,
                   text: message,
                   parse_mode: "Markdown",
+                  reply_markup: {
+                    inline_keyboard: [
+                      [
+                        {
+                          text: "🔍 Cek Alamat di Explorer",
+                          url:
+                            wallet.network === "SOLANA"
+                              ? `https://solscan.io/account/${wallet.address}`
+                              : wallet.network === "BITCOIN"
+                                ? `https://www.blockchain.com/explorer/addresses/btc/${wallet.address}`
+                                : `https://etherscan.io/address/${wallet.address}`,
+                        },
+                      ],
+                    ],
+                  },
                 }),
               },
             );
