@@ -1,58 +1,76 @@
-# 🎯 Predator Tracker (Smart Money & Whale Watcher)
+🎯 LumeStack Predator Tracker (SaaS Smart Money & Whale Watcher)
+Sebuah modul arsitektur SaaS premium dari LumeStack untuk melacak pergerakan dompet kripto raksasa (Whales) dan mendeteksi aktivitas Smart Money secara real-time lintas jaringan (BTC, ETH, SOL, BASE). Sistem ini dirancang untuk memberikan sinyal "Alpha" yang bersih, akurat, dan dapat dieksekusi dalam 1 klik, langsung dari Telegram pengguna.
 
-Sebuah arsitektur SaaS premium untuk melacak pergerakan dompet kripto raksasa (Whales) dan mendeteksi aktivitas Smart Money secara real-time lintas jaringan (BTC, ETH, SOL, BASE). Sistem ini dirancang untuk memberikan sinyal "Alpha" yang bersih dan akurat langsung ke Telegram Anda.
+🚀 Fitur Unggulan (Final Version)
 
-## 🚀 Fitur Unggulan (Final Version)
+1. Multi-Tenant Data Isolation (SaaS Ready) 🔐
+   Sistem dirancang untuk melayani banyak pengguna sekaligus dengan tingkat privasi maksimal.
 
-### 1. Jalur Notifikasi Ganda (Dual-Channel Isolation)
+Isolated chatId Mapping: Setiap dompet yang didaftarkan akan mengikat notifikasi ke ID Telegram masing-masing pengguna.
 
-Sistem memisahkan informasi menjadi dua jalur agar Anda tetap fokus:
+100% Private: Pengguna A tidak akan pernah melihat sinyal paus milik Pengguna B. Sangat aman untuk model bisnis langganan (subscription-based).
 
-- **Predator Alpha Feed (Channel):** Jalur eksklusif untuk sinyal beli/jual koin baru (Swap/Token) di atas batas minimal USD. Dilengkapi tombol _View on DexScreener_.
-- **Asisten Crypto Prana (Personal Bot):** Jalur laporan harian untuk perubahan saldo utama (Transfer) agar Anda tetap bisa memantau aktivitas paus tanpa mengganggu Feed Alpha.
+2. 1-Click Execution Terminal (Sniper Bot Integration) ⚡
+   Tidak perlu lagi berpindah aplikasi atau copy-paste contract address. Setiap notifikasi dilengkapi dengan Deep Link eksekusi instan:
 
-### 2. Filter Anti-Berisik Dinamis (`minAlertUsd`)
+Solana Ecosystem: Eksekusi via Web3 (Jupiter DEX) atau Telegram Bot (BonkBot).
 
-Setiap paus memiliki karakter berbeda. Kini Anda bisa mengatur batas minimal notifikasi per dompet di database:
+EVM Ecosystem (ETH & Base): Eksekusi via Web3 (Uniswap) atau Telegram Bot (Maestro Sniper).
 
-- **Paus A (Batas $1,000):** Hanya bunyi jika dia transaksi besar.
-- **Paus B (Batas $100):** Cocok untuk memantau paus yang suka mencicil (DCA).
-- **Silent Update:** Transaksi di bawah batas tetap dicatat di database secara diam-diam tanpa mengirim notif yang mengganggu.
+3. Filter Anti-Berisik Dinamis (minAlertUsd) 🎚️
+   Setiap paus memiliki karakter berbeda. Pengguna bisa mengatur batas minimal notifikasi per dompet di database:
 
-### 3. Real-Time Pricing via DexScreener
+Paus A (Batas $1,000): Hanya bunyi jika ada transaksi besar.
 
-Bot tidak lagi "buta" harga. Setiap ada transaksi token/micin di Solana, ETH, atau Base, bot otomatis menembak API DexScreener untuk mendapatkan:
+Paus B (Batas $100): Cocok untuk memantau paus yang suka mencicil (DCA).
 
-- Estimasi nilai transaksi dalam USD.
-- Simbol koin terbaru secara akurat.
-- Link langsung ke grafik koin tersebut.
+Silent Update: Transaksi di bawah batas tetap dicatat di database secara diam-diam tanpa mengirim notif yang mengganggu.
 
-### 4. Smart Tagging & Reputation System
+4. Real-Time Pricing via DexScreener 📈
+   Bot tidak lagi "buta" harga. Setiap ada transaksi token/micin di Solana, ETH, atau Base, bot otomatis menembak API DexScreener untuk mendapatkan:
 
-Pelabelan otomatis berdasarkan performa paus di masa lalu:
+Estimasi nilai transaksi dalam USD secara presisi.
 
-- 🥇 **THE ORACLE (Win Rate > 70%)** - Sinyal prioritas tinggi.
-- 🥈 **THE GRINDER (Win Rate 40% - 60%)** - Sinyal untuk dipantau.
-- 💀 **EXIT LIQUIDITY (Win Rate < 30%)** - Sinyal peringatan.
+Market Cap real-time saat paus melakukan akumulasi/distribusi.
 
-## 🏗️ Teknologi yang Digunakan
+5. Smart Tagging & Reputation System 🏆
+   Pelabelan otomatis berdasarkan Win Rate (PnL) paus di masa lalu:
 
-- **Framework:** Next.js 14 (App Router)
-- **Database:** Prisma ORM & PostgreSQL (Neon DB)
-- **Engine:** Helius Enriched API (Solana), Etherscan/Basescan (EVM), DexScreener (Pricing)
-- **Bot:** Telegram Bot API (Inline Keyboards & Markdown)
+🥇 THE ORACLE (Win Rate > 70%) - Sinyal prioritas tinggi (Wajib di-snipe).
 
-## 🛠️ Alur Kerja Sistem (The Predator Logic)
+🥈 THE GRINDER (Win Rate 40% - 60%) - Sinyal untuk dipantau.
 
-1. **Sweeping:** UptimeRobot memicu `/api/webhook` setiap 5 menit.
-2. **Analysis:** Sistem mengecek aktivitas terbaru via RPC.
-3. **Valuation:** Jika ditemukan Swap, bot mencari harga real-time di DexScreener.
-4. **Bouncer:** Jika nilai < `minAlertUsd`, notif Alpha dibatalkan (Silent).
-5. **Execution:** Jika lolos filter, sinyal dikirim ke Channel Alpha dengan tombol interaktif, dan notif saldo di DM personal otomatis dibungkam (Anti-Double Notif).
+💀 EXIT LIQUIDITY (Win Rate < 30%) - Sinyal peringatan.
 
-## 🗺️ Roadmap (Completed)
+🏗️ Teknologi yang Digunakan
+Framework: Next.js 14 (App Router)
 
-- [x] Filter Anti-Berisik Dinamis per dompet.
-- [x] Integrasi DexScreener untuk kalkulasi USD otomatis.
-- [x] Inline Keyboard (Tombol DexScreener & Solscan).
-- [x] Dual-Channel Alert (Pemisahan Sinyal vs Log Saldo).
+Database: Prisma ORM & PostgreSQL (Neon DB)
+
+Engine: Helius Enriched API (Solana), Etherscan/Basescan (EVM), DexScreener API (Pricing)
+
+Bot: Telegram Bot API (Inline Keyboards, Markdown, & Deep Linking)
+
+Architecture: Isolated Multi-Tenant Webhook
+
+🛠️ Alur Kerja Sistem (The SaaS Logic)
+Sweeping: UptimeRobot memicu /api/webhook setiap 5 menit (atau sesuai interval).
+
+Analysis & Enrichment: Sistem mengecek aktivitas terbaru via RPC dan menghitung kalkulasi USD via DexScreener.
+
+Bouncer: Jika nilai < minAlertUsd, notifikasi dibatalkan (Silent Update).
+
+Routing: Sistem memetakan targetChatId berdasarkan kepemilikan dompet di database.
+
+Execution: Sinyal dikirim secara private ke pengguna lengkap dengan tombol Sniper Bot/DEX.
+
+🗺️ Roadmap (Completed)
+[x] Filter Anti-Berisik Dinamis per dompet.
+
+[x] Integrasi DexScreener untuk kalkulasi USD & Market Cap otomatis.
+
+[x] Multi-Tenant Telegram Isolation (SaaS Ready).
+
+[x] 1-Click Execution Buttons (Jupiter, Uniswap, BonkBot, Maestro).
+
+[x] Smart Tracking Buttons untuk pengejaran dompet (Explorer).
