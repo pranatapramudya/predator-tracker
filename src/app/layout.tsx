@@ -1,3 +1,4 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css"; // <-- INI KABEL POWERNYA BRE! Wajib ada!
 
 export const metadata = {
@@ -11,8 +12,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="antialiased">{children}</body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body className="antialiased">{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }

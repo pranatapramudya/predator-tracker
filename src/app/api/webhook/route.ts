@@ -12,6 +12,39 @@ import {
 export const dynamic = "force-dynamic";
 
 // ==========================================
+// 🔥 MODUL BARU: DEXSCREENER API (ANTI-HIDE & MARKET CAP)
+// ==========================================
+async function getTokenMarketInfo(tokenAddress: string) {
+  if (!tokenAddress || tokenAddress === "solana") return null;
+  try {
+    const res = await fetch(
+      `https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`,
+    );
+    const data = await res.json();
+    if (data.pairs && data.pairs.length > 0) {
+      const pair = data.pairs[0];
+      return {
+        priceUsd: parseFloat(pair.priceUsd || "0"),
+        fdv: pair.fdv || 0,
+        marketCap: pair.marketCap || pair.fdv || 0,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error(
+      `[DEXSCREENER] Gagal narik data market token ${tokenAddress}`,
+    );
+    return null;
+  }
+}
+
+function formatCurrency(value: number) {
+  if (value >= 1000000) return `$${(value / 1000000).toFixed(2)}M`;
+  if (value >= 1000) return `$${(value / 1000).toFixed(2)}K`;
+  return `$${value.toFixed(2)}`;
+}
+
+// ==========================================
 // AUTO WIN-RATE & PnL ENGINE (REAL-TIME)
 // ==========================================
 async function processAutoWinRate(
@@ -124,10 +157,16 @@ export async function GET(request: Request) {
 
             if (!isExists) {
               isSwapOrTokenAlertSent = true;
-              const usdAmount = (swapData as any).usdValue || 0;
+              let usdAmount = (swapData as any).usdValue || 0;
               const amountToken = (swapData as any).amount || 0;
               const tokenAddress = (swapData as any).tokenAddress || "solana";
               const tokenSymbol = (swapData as any).tokenSymbol || "MEME_COIN";
+
+              // 🔥 TARIK DATA MARKET CAP & HARGA
+              const marketInfo = await getTokenMarketInfo(tokenAddress);
+              if (usdAmount === 0 && tokenAddress !== "solana" && marketInfo) {
+                usdAmount = amountToken * marketInfo.priceUsd;
+              }
 
               const isBuy =
                 !swapData.description.toUpperCase().includes("FOR SOL") &&
@@ -162,12 +201,17 @@ export async function GET(request: Request) {
                   const actionText = isBuy
                     ? "🟢 *BUY (AKUMULASI)*"
                     : "🔴 *SELL (TAKE PROFIT/CUT LOSS)*";
+                  const mktCapText =
+                    marketInfo && marketInfo.marketCap > 0
+                      ? `\n📊 *Market Cap:* ${formatCurrency(marketInfo.marketCap)}`
+                      : "";
+
                   const swapMessage =
                     `${label} ALERT!\n🚨 *SMART MONEY SWAP (SOLANA)*\n\n` +
                     `👤 *Target:* ${wallet.name}\n` +
                     `🔄 *Aksi:* ${actionText}\n` +
-                    `💵 *Estimasi USD:* $${usdAmount}\n` +
-                    `📊 *Current Win Rate:* ${winRate.toFixed(1)}%\n` +
+                    `💵 *Estimasi USD:* $${usdAmount.toFixed(2)}${mktCapText}\n` +
+                    `📈 *Current Win Rate:* ${winRate.toFixed(1)}%\n` +
                     `📍 *Address:* \`${wallet.address}\``;
 
                   await fetch(
@@ -220,10 +264,15 @@ export async function GET(request: Request) {
 
             if (!isExists) {
               isSwapOrTokenAlertSent = true;
-              const usdAmount = (tokenTx as any).usdValue || 0;
+              let usdAmount = (tokenTx as any).usdValue || 0;
               const amountToken = (tokenTx as any).amount || 0;
               const tokenAddress = (tokenTx as any).tokenAddress;
               const tokenSymbol = (tokenTx as any).tokenSymbol || "TOKEN";
+
+              const marketInfo = await getTokenMarketInfo(tokenAddress);
+              if (usdAmount === 0 && tokenAddress && marketInfo) {
+                usdAmount = amountToken * marketInfo.priceUsd;
+              }
 
               const isBuy = tokenTx.description.includes("🟢");
 
@@ -253,12 +302,16 @@ export async function GET(request: Request) {
                 });
 
                 if (process.env.TELEGRAM_BOT_TOKEN) {
+                  const mktCapText =
+                    marketInfo && marketInfo.marketCap > 0
+                      ? `\n📊 *Market Cap:* ${formatCurrency(marketInfo.marketCap)}`
+                      : "";
                   const tokenMessage =
                     `${label} ALERT!\n🚨 *SMART MONEY TOKEN (${wallet.network})*\n\n` +
                     `👤 *Target:* ${wallet.name}\n` +
                     `🔄 *Aksi:* ${tokenTx.description}\n` +
-                    `💵 *Estimasi USD:* $${usdAmount}\n` +
-                    `📊 *Current Win Rate:* ${winRate.toFixed(1)}%\n` +
+                    `💵 *Estimasi USD:* $${usdAmount.toFixed(2)}${mktCapText}\n` +
+                    `📈 *Current Win Rate:* ${winRate.toFixed(1)}%\n` +
                     `📍 *Address:* \`${wallet.address}\``;
 
                   await fetch(
@@ -294,28 +347,25 @@ export async function GET(request: Request) {
         // 3. WHALE ALERT SALDO UMUM (HISTORY & TELEGRAM)
         // ==========================================
         let currentBalance = 0;
-        if (wallet.network === "SOLANA") {
+        if (wallet.network === "SOLANA")
           currentBalance = await getSolanaBalance(wallet.address);
-        } else if (wallet.network === "ETHEREUM" || wallet.network === "BASE") {
+        else if (wallet.network === "ETHEREUM" || wallet.network === "BASE")
           currentBalance = await getEVMBalance(
             wallet.address,
             wallet.network as any,
           );
-        } else if (wallet.network === "BITCOIN") {
+        else if (wallet.network === "BITCOIN")
           currentBalance = await getBTCBalance(wallet.address);
-        }
 
         const oldBalance = Number(wallet.lastBalance || 0);
         const diff = currentBalance - oldBalance;
 
         if (Math.abs(diff) > 0.00000001) {
-          // Update saldo terakhir di database profil wallet
           await prisma.wallet.update({
             where: { id: wallet.id },
             data: { lastBalance: currentBalance },
           });
 
-          // 🔴 TAMBAHAN: Simpan ke tabel Transaction agar muncul di Recent Activity dashboard
           await prisma.transaction.create({
             data: {
               walletId: wallet.id,
@@ -345,7 +395,6 @@ export async function GET(request: Request) {
                 : wallet.network === "SOLANA"
                   ? "◎"
                   : "Ξ";
-
             const message =
               `${label} ALERT!\n🚨 *WHALE BALANCE UPDATE*\n\n` +
               `👤 *Target:* ${wallet.name}\n` +

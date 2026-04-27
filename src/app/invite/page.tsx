@@ -3,6 +3,7 @@
 import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server"; // 🔥 IMPOR CLERK
 import {
   Shield,
   Search,
@@ -33,6 +34,13 @@ function isValidAddress(address: string, network: WalletNetwork): boolean {
 
 async function registerPublicWalletAction(formData: FormData) {
   "use server";
+
+  // 🔥 CEK AUTHENTICATION SEBELUM INSERT DATA
+  const { userId } = await auth();
+  if (!userId) {
+    redirect("/sign-in?redirect_url=/invite");
+  }
+
   const address = String(formData.get("address") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const chatId = String(formData.get("chatId") ?? "").trim();
@@ -50,7 +58,7 @@ async function registerPublicWalletAction(formData: FormData) {
     redirect("/invite?status=invalid");
   }
 
-  let isSuccess = false; // Pengaman redirect
+  let isSuccess = false;
 
   try {
     const normalized =
@@ -68,9 +76,10 @@ async function registerPublicWalletAction(formData: FormData) {
       balance = 0;
     }
 
+    // 🔥 INJEKSI userId KE DALAM DATABASE
     await prisma.wallet.upsert({
       where: { address_network: { address: normalized, network } },
-      update: { name, chatId, lastBalance: balance, isActive: true },
+      update: { name, chatId, lastBalance: balance, isActive: true, userId },
       create: {
         address: normalized,
         name,
@@ -78,12 +87,13 @@ async function registerPublicWalletAction(formData: FormData) {
         chatId,
         lastBalance: balance,
         isActive: true,
+        userId, // Nempel ke akun temen lu
       },
     });
 
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (botToken && chatId) {
-      const msg = `🎉 *WELCOME TO PREDATOR RADAR* 🎉\n\nHalo ${name}! Dompet target lo \`${normalized}\` udah berhasil masuk ke sistem pengawasan gue.\n\nTunggu notif paus pergerakan selanjutya! 🐳💸`;
+      const msg = `🎯 *WELCOME TO PREDATOR RADAR* 🎯\n\nHalo ${name}! Dompet target lo \`${normalized}\` udah berhasil masuk ke sistem pengawasan gue.\n\nTunggu notif paus pergerakan selanjutya! 🚨💸`;
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,9 +109,9 @@ async function registerPublicWalletAction(formData: FormData) {
     console.error(e);
   }
 
-  // 🔥 PERBAIKAN BUGS: Redirect dipindah ke luar blok try/catch
   if (isSuccess) {
-    redirect(`/invite/${chatId}`);
+    // 🔥 REDIRECT KE DASHBOARD UTAMA SETELAH BERHASIL
+    redirect(`/`);
   } else {
     redirect("/invite?status=failed");
   }
@@ -112,6 +122,12 @@ export default async function PublicInvitePage({
 }: {
   searchParams: any;
 }) {
+  // 🔥 WAJIB LOGIN BUAT BUKA HALAMAN INI
+  const { userId } = await auth();
+  if (!userId) {
+    redirect("/sign-in?redirect_url=/invite");
+  }
+
   const params = await searchParams;
   const status = params.status;
 
