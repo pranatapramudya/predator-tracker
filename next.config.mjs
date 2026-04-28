@@ -6,7 +6,7 @@ const withPWA = withPWAInit({
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
   swMinify: true,
-  disable: process.env.NODE_ENV === "development", // Biar ga error pas lu testing di localhost
+  disable: process.env.NODE_ENV === "development",
   workboxOptions: {
     disableDevLogs: true,
   },
@@ -14,7 +14,7 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Kosongin aja karena lu sebelumnya nggak punya config apa-apa
+  turbopack: {}, // 🔥 INI OBATNYA BRE! Biar Vercel gak bingung.
 };
 
 export default withPWA(nextConfig);
