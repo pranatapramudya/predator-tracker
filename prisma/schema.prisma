@@ -40,7 +40,10 @@ model Wallet {
   
   // 🔴 PENENTU KEPEMILIKAN: Hubungkan ke User
   userId        String?         // ID User pemilik wallet ini
-  user          User?           @relation(fields: [userId], references: [id])
+  
+  // 🔥 FIX 1: Tambah onDelete: Cascade. 
+  // Kalau User dihapus -> Wallet lenyap -> Transaction & Position ikut lenyap.
+  user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Fitur Notifikasi & Caching
   chatId        String?         // ID Telegram User (Japri/Asisten)

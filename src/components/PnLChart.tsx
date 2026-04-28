@@ -29,10 +29,23 @@ export default function PnLChart({ data }: { data: any[] }) {
           <Tooltip
             cursor={{ fill: "#ffffff05" }}
             contentStyle={{
-              backgroundColor: "#0a0a0a",
-              borderColor: "#ffffff10",
+              backgroundColor: "#000000",
+              borderColor: "#000000",
               borderRadius: "8px",
               fontSize: "10px",
+              color: "#ffffff", // 🔥 Paksa warna dasar jadi putih
+            }}
+            // 🔥 Paksa warna angka PnL jadi putih tebal
+            itemStyle={{
+              color: "#02ff1f",
+              fontWeight: "900",
+              textTransform: "uppercase",
+            }}
+            // 🔥 Paksa warna judul (Token Symbol) jadi putih keabuan biar beda
+            labelStyle={{
+              color: "#ffffff",
+              fontWeight: "900",
+              marginBottom: "4px",
             }}
             formatter={(value: any) => [`$${Number(value).toFixed(2)}`, "PNL"]}
           />
@@ -40,7 +53,7 @@ export default function PnLChart({ data }: { data: any[] }) {
             {data.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={entry.pnl >= 0 ? "#10b981" : "#f43f5e"}
+                fill={entry.pnl >= 0 ? "#15ff00" : "#ff002b"}
               />
             ))}
           </Bar>
