@@ -1,18 +1,9 @@
 import { ClerkProvider } from "@clerk/nextjs";
-import "./globals.css"; // <-- INI KABEL POWERNYA BRE! Wajib ada!
+import "./globals.css";
 
 export const metadata = {
   title: "Predator Tracker",
   description: "Whale Watching System",
-  manifest: "/manifest.json", // 🔥 Ini KTP PWA-nya
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Predator Tracker",
-  },
-  formatDetection: {
-    telephone: false,
-  },
 };
 
 export default function RootLayout({
@@ -22,8 +13,11 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body className="antialiased">{children}</body>
+      {/* 🔥 INI JURUS KEBALNYA BRE! Wajib ada biar Phantom/Metamask ga bikin error 🔥 */}
+      <html lang="en" suppressHydrationWarning>
+        <body className="antialiased" suppressHydrationWarning>
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );
