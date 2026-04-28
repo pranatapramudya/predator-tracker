@@ -155,7 +155,8 @@ async function sendTelegramAlert({
 
   if (isAlphaWorthy) {
     let sentToAlpha = false;
-    // Cek ID Grup Alpha punya User
+
+    // PRIORITAS 1: Cek ID Grup Alpha spesifik punya User di Database
     if (userAlphaChatId && userAlphaChatId !== targetChatId) {
       notificationTargets.push({
         id: userAlphaChatId,
@@ -163,19 +164,16 @@ async function sendTelegramAlert({
       });
       sentToAlpha = true;
     }
-    // Cek ID Grup Alpha Global (.env)
-    if (
-      alphaChatId &&
-      alphaChatId !== targetChatId &&
-      alphaChatId !== userAlphaChatId
-    ) {
+    // PRIORITAS 2: Cek ID Grup Alpha Global (.env) -- HANYA jalan kalau Prioritas 1 kosong
+    else if (alphaChatId && alphaChatId !== targetChatId) {
       notificationTargets.push({
         id: alphaChatId,
         customLabel: "👑 ALPHA PREDATOR",
       });
       sentToAlpha = true;
     }
-    // Fallback: Kalau nggak punya grup alpha sama sekali, tetep masukin ke japri dengan label Alpha
+
+    // PRIORITAS 3: Fallback. Kalau nggak punya grup alpha sama sekali, tetep masukin ke japri dengan label Alpha
     if (!sentToAlpha && targetChatId) {
       notificationTargets.push({
         id: targetChatId,
