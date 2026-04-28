@@ -41,7 +41,7 @@ model Wallet {
   // 🔴 PENENTU KEPEMILIKAN: Hubungkan ke User
   userId        String?         // ID User pemilik wallet ini
   
-  // 🔥 FIX 1: Tambah onDelete: Cascade. 
+  // 🔥 FIX 1: Tambah onDelete: Cascade.
   // Kalau User dihapus -> Wallet lenyap -> Transaction & Position ikut lenyap.
   user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -64,7 +64,8 @@ model Wallet {
   transactions  Transaction[]
   positions     TokenPosition[] 
 
-  @@unique([address, network])
+  // 🔥 INI FIX NYA: Gabungan Address + Network + UserID jadi gembok unik 🔥
+  @@unique([address, network, userId])
   @@index([network, isActive])
   @@index([chatId])
   @@index([userId]) // Index biar load dashboard user makin kenceng             
