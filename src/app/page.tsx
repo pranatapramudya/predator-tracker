@@ -149,9 +149,16 @@ async function createWalletAction(formData: FormData) {
       balance = 0;
     }
 
+    // 🔥 FIX SAAS MULTI-USER: Upsert pake 3 Kunci Gembok (Address + Network + UserID)
     await prisma.wallet.upsert({
-      where: { address_network: { address: normalized, network } },
-      update: { name, chatId, lastBalance: balance, isActive: true, userId },
+      where: {
+        address_network_userId: {
+          address: normalized,
+          network,
+          userId,
+        },
+      },
+      update: { name, chatId, lastBalance: balance, isActive: true },
       create: {
         address: normalized,
         name,
