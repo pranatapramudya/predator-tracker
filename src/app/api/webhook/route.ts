@@ -94,7 +94,10 @@ async function processAutoWinRate(
         if (walletStats) {
           const newTotalTrades = walletStats.totalTrades + 1;
           const newSuccessTrades = walletStats.successTrades + (isWin ? 1 : 0);
-          const newWinRate = (newSuccessTrades / newTotalTrades) * 100;
+          const newWinRate =
+            newTotalTrades === 0
+              ? 0
+              : (newSuccessTrades / newTotalTrades) * 100;
 
           await prisma.wallet.update({
             where: { id: walletId },
@@ -124,17 +127,172 @@ async function processAutoWinRate(
   }
 }
 
+// ==========================================
+// 🔥 FUNGSI BARU: KIRIM TELEGRAM (BIAR GAK BERULANG)
+// ==========================================
+async function sendTelegramAlert({
+  wallet,
+  targetChatId,
+  alphaChatId,
+  label,
+  winRate,
+  network,
+  usdAmount,
+  tokenAddress,
+  tokenSymbol,
+  marketInfo,
+  actionText,
+  explorerUrl,
+}: any) {
+  if (!process.env.TELEGRAM_BOT_TOKEN) return;
+
+  // Logika 1000 USD:
+  // >= $1000 -> Alpha (Grup)
+  // < $1000 -> Asisten (Japri)
+  const isAlphaWorthy = usdAmount >= 1000;
+  const notificationTargets: { id: string; customLabel: string }[] = [];
+  const userAlphaChatId = wallet.alphaChannelId;
+
+  if (isAlphaWorthy) {
+    let sentToAlpha = false;
+    // Cek ID Grup Alpha punya User
+    if (userAlphaChatId && userAlphaChatId !== targetChatId) {
+      notificationTargets.push({
+        id: userAlphaChatId,
+        customLabel: "👑 ALPHA PREDATOR",
+      });
+      sentToAlpha = true;
+    }
+    // Cek ID Grup Alpha Global (.env)
+    if (
+      alphaChatId &&
+      alphaChatId !== targetChatId &&
+      alphaChatId !== userAlphaChatId
+    ) {
+      notificationTargets.push({
+        id: alphaChatId,
+        customLabel: "👑 ALPHA PREDATOR",
+      });
+      sentToAlpha = true;
+    }
+    // Fallback: Kalau nggak punya grup alpha sama sekali, tetep masukin ke japri dengan label Alpha
+    if (!sentToAlpha && targetChatId) {
+      notificationTargets.push({
+        id: targetChatId,
+        customLabel: "👑 ALPHA PREDATOR",
+      });
+    }
+  } else {
+    // Sinyal di bawah $1000 murni masuk Asisten (Japri)
+    if (targetChatId) {
+      notificationTargets.push({ id: targetChatId, customLabel: label });
+    }
+  }
+
+  // Formatting Pesan
+  const mktCapText =
+    marketInfo && marketInfo.marketCap > 0
+      ? `\n📊 *Market Cap:* ${formatCurrency(marketInfo.marketCap)}`
+      : "";
+
+  const titleText =
+    network === "SOLANA"
+      ? "🚨 *SMART MONEY SWAP (SOLANA)*"
+      : `🚨 *SMART MONEY TOKEN (${network})*`;
+
+  for (const target of notificationTargets) {
+    const message =
+      `${target.customLabel} ALERT!\n${titleText}\n\n` +
+      `👤 *Target:* ${wallet.name}\n` +
+      `🔄 *Aksi:* ${actionText}\n` +
+      `💵 *Estimasi USD:* $${usdAmount.toFixed(2)}${mktCapText}\n` +
+      `📈 *Current Win Rate:* ${winRate.toFixed(1)}%\n` +
+      `📍 *Address:* \`${wallet.address}\``;
+
+    // Keyboard Dinamis (Solana vs EVM)
+    let inline_keyboard = [];
+    if (network === "SOLANA") {
+      inline_keyboard = [
+        [
+          {
+            text: "📈 DexScreener",
+            url: `https://dexscreener.com/solana/${tokenAddress}`,
+          },
+          { text: "🔍 Cek TX", url: explorerUrl },
+        ],
+        [
+          {
+            text: "⚡ Web3: Jupiter DEX",
+            url: `https://jup.ag/swap/SOL-${tokenAddress}`,
+          },
+          {
+            text: "🤖 TG Bot: BonkBot",
+            url: `https://t.me/bonkbot_bot?start=${tokenAddress}`,
+          },
+        ],
+        [
+          {
+            text: "🐦 Cek X (Twitter)",
+            url: `https://x.com/search?q=%24${tokenSymbol}&src=typed_query`,
+          },
+          {
+            text: "🗺️ BubbleMaps",
+            url: `https://app.bubblemaps.io/sol/token/${tokenAddress}`,
+          },
+        ],
+      ];
+    } else {
+      inline_keyboard = [
+        [{ text: "🔍 Cek TX di Explorer", url: explorerUrl }],
+        [
+          {
+            text: "⚡ Web3: Uniswap",
+            url: `https://app.uniswap.org/swap?outputCurrency=${tokenAddress}&chain=${network === "BASE" ? "base" : "mainnet"}`,
+          },
+          {
+            text: "🤖 TG Bot: Maestro",
+            url: `https://t.me/maestro?start=${tokenAddress}`,
+          },
+        ],
+        [
+          {
+            text: "🐦 Cek X (Twitter)",
+            url: `https://x.com/search?q=%24${tokenSymbol}&src=typed_query`,
+          },
+        ],
+      ];
+    }
+
+    try {
+      await fetch(
+        `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: target.id,
+            text: message,
+            parse_mode: "Markdown",
+            disable_web_page_preview: true,
+            reply_markup: { inline_keyboard },
+          }),
+        },
+      );
+    } catch (err) {
+      console.error(`Gagal kirim notif ke ${target.id}`, err);
+    }
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const wallets = await prisma.wallet.findMany({ where: { isActive: true } });
-    const alphaChatId = process.env.TELEGRAM_CHAT_ID; // ID Grup -100 lu
+    const alphaChatId = process.env.TELEGRAM_CHAT_ID;
 
     for (const wallet of wallets) {
       try {
         const winRate = (wallet as any).winRate || 0;
         const threshold = (wallet as any).minAlertUsd || 100;
-
-        // Target notif pribadi
         const targetChatId = wallet.chatId;
 
         let label = "🐋 THE WHALE";
@@ -194,99 +352,24 @@ export async function GET(request: Request) {
                   },
                 });
 
-                // 🔥 LOGIKA DUAL-TARGET (Japri vs Grup Alpha)
-                const isAlphaWorthy =
-                  (isBuy && usdAmount >= 1000) || (!isBuy && usdAmount >= 500);
-                const notificationTargets = [];
+                const actionText = isBuy
+                  ? "🟢 *BUY (AKUMULASI)*"
+                  : "🔴 *SELL (TAKE PROFIT/CUT LOSS)*";
 
-                // Masukin Asisten Pribadi
-                if (targetChatId) {
-                  notificationTargets.push({
-                    id: targetChatId,
-                    customLabel: label,
-                  });
-                }
-
-                // Masukin Grup Alpha
-                if (
-                  isAlphaWorthy &&
-                  alphaChatId &&
-                  alphaChatId !== targetChatId
-                ) {
-                  notificationTargets.push({
-                    id: alphaChatId,
-                    customLabel: "👑 ALPHA PREDATOR",
-                  });
-                }
-
-                // Eksekusi pengiriman ke semua target
-                for (const target of notificationTargets) {
-                  if (process.env.TELEGRAM_BOT_TOKEN) {
-                    const actionText = isBuy
-                      ? "🟢 *BUY (AKUMULASI)*"
-                      : "🔴 *SELL (TAKE PROFIT/CUT LOSS)*";
-                    const mktCapText =
-                      marketInfo && marketInfo.marketCap > 0
-                        ? `\n📊 *Market Cap:* ${formatCurrency(marketInfo.marketCap)}`
-                        : "";
-
-                    const swapMessage =
-                      `${target.customLabel} ALERT!\n🚨 *SMART MONEY SWAP (SOLANA)*\n\n` +
-                      `👤 *Target:* ${wallet.name}\n` +
-                      `🔄 *Aksi:* ${actionText}\n` +
-                      `💵 *Estimasi USD:* $${usdAmount.toFixed(2)}${mktCapText}\n` +
-                      `📈 *Current Win Rate:* ${winRate.toFixed(1)}%\n` +
-                      `📍 *Address:* \`${wallet.address}\``;
-
-                    await fetch(
-                      `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          chat_id: target.id,
-                          text: swapMessage,
-                          parse_mode: "Markdown",
-                          disable_web_page_preview: true,
-                          reply_markup: {
-                            inline_keyboard: [
-                              [
-                                {
-                                  text: "📈 DexScreener",
-                                  url: `https://dexscreener.com/solana/${tokenAddress}`,
-                                },
-                                {
-                                  text: "🔍 Cek TX",
-                                  url: `https://solscan.io/tx/${swapData.signature}`,
-                                },
-                              ],
-                              [
-                                {
-                                  text: "⚡ Web3: Jupiter DEX",
-                                  url: `https://jup.ag/swap/SOL-${tokenAddress}`,
-                                },
-                                {
-                                  text: "🤖 TG Bot: BonkBot",
-                                  url: `https://t.me/bonkbot_bot?start=${tokenAddress}`,
-                                },
-                              ],
-                              [
-                                {
-                                  text: "🐦 Cek X (Twitter)",
-                                  url: `https://x.com/search?q=%24${tokenSymbol}&src=typed_query`,
-                                },
-                                {
-                                  text: "🗺️ BubbleMaps",
-                                  url: `https://app.bubblemaps.io/sol/token/${tokenAddress}`,
-                                },
-                              ],
-                            ],
-                          },
-                        }),
-                      },
-                    );
-                  }
-                }
+                await sendTelegramAlert({
+                  wallet,
+                  targetChatId,
+                  alphaChatId,
+                  label,
+                  winRate,
+                  network: "SOLANA",
+                  usdAmount,
+                  tokenAddress,
+                  tokenSymbol,
+                  marketInfo,
+                  actionText,
+                  explorerUrl: `https://solscan.io/tx/${swapData.signature}`,
+                });
               }
             }
           }
@@ -295,7 +378,7 @@ export async function GET(request: Request) {
         // ==========================================
         // 2. SMART MONEY TOKEN (ETH & BASE)
         // ==========================================
-        if (wallet.network === "ETHEREUM" || wallet.network === "BASE") {
+        else if (wallet.network === "ETHEREUM" || wallet.network === "BASE") {
           const tokenTx = await getEVMLatestTokenTx(
             wallet.address,
             wallet.network as any,
@@ -343,84 +426,20 @@ export async function GET(request: Request) {
                   },
                 });
 
-                // 🔥 LOGIKA DUAL-TARGET (Japri vs Grup Alpha)
-                const isAlphaWorthy =
-                  (isBuy && usdAmount >= 1000) || (!isBuy && usdAmount >= 500);
-                const notificationTargets = [];
-
-                if (targetChatId) {
-                  notificationTargets.push({
-                    id: targetChatId,
-                    customLabel: label,
-                  });
-                }
-
-                if (
-                  isAlphaWorthy &&
-                  alphaChatId &&
-                  alphaChatId !== targetChatId
-                ) {
-                  notificationTargets.push({
-                    id: alphaChatId,
-                    customLabel: "👑 ALPHA PREDATOR",
-                  });
-                }
-
-                for (const target of notificationTargets) {
-                  if (process.env.TELEGRAM_BOT_TOKEN) {
-                    const mktCapText =
-                      marketInfo && marketInfo.marketCap > 0
-                        ? `\n📊 *Market Cap:* ${formatCurrency(marketInfo.marketCap)}`
-                        : "";
-                    const tokenMessage =
-                      `${target.customLabel} ALERT!\n🚨 *SMART MONEY TOKEN (${wallet.network})*\n\n` +
-                      `👤 *Target:* ${wallet.name}\n` +
-                      `🔄 *Aksi:* ${tokenTx.description}\n` +
-                      `💵 *Estimasi USD:* $${usdAmount.toFixed(2)}${mktCapText}\n` +
-                      `📈 *Current Win Rate:* ${winRate.toFixed(1)}%\n` +
-                      `📍 *Address:* \`${wallet.address}\``;
-
-                    await fetch(
-                      `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          chat_id: target.id,
-                          text: tokenMessage,
-                          parse_mode: "Markdown",
-                          disable_web_page_preview: true,
-                          reply_markup: {
-                            inline_keyboard: [
-                              [
-                                {
-                                  text: "🔍 Cek TX di Explorer",
-                                  url: tokenTx.explorerUrl,
-                                },
-                              ],
-                              [
-                                {
-                                  text: "⚡ Web3: Uniswap",
-                                  url: `https://app.uniswap.org/swap?outputCurrency=${tokenAddress}&chain=${wallet.network === "BASE" ? "base" : "mainnet"}`,
-                                },
-                                {
-                                  text: "🤖 TG Bot: Maestro Sniper",
-                                  url: `https://t.me/maestro?start=${tokenAddress}`,
-                                },
-                              ],
-                              [
-                                {
-                                  text: "🐦 Cek X (Twitter)",
-                                  url: `https://x.com/search?q=%24${tokenSymbol}&src=typed_query`,
-                                },
-                              ],
-                            ],
-                          },
-                        }),
-                      },
-                    );
-                  }
-                }
+                await sendTelegramAlert({
+                  wallet,
+                  targetChatId,
+                  alphaChatId,
+                  label,
+                  winRate,
+                  network: wallet.network,
+                  usdAmount,
+                  tokenAddress,
+                  tokenSymbol,
+                  marketInfo,
+                  actionText: tokenTx.description,
+                  explorerUrl: tokenTx.explorerUrl,
+                });
               }
             }
           }
