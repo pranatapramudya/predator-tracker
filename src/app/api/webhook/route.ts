@@ -188,7 +188,7 @@ export async function GET(request: Request) {
                     type: "SWAP",
                     amount: amountToken,
                     tokenSymbol: tokenSymbol,
-                    tokenAddress: tokenAddress, // 🔥 FIX: Token Address nggak akan null lagi
+                    tokenAddress: tokenAddress,
                     usdValue: usdAmount,
                     explorerUrl: `https://solscan.io/tx/${swapData.signature}`,
                   },
@@ -199,7 +199,7 @@ export async function GET(request: Request) {
                   (isBuy && usdAmount >= 1000) || (!isBuy && usdAmount >= 500);
                 const notificationTargets = [];
 
-                // Masukin Asisten Pribadi (karena pasti lolos threshold $100)
+                // Masukin Asisten Pribadi
                 if (targetChatId) {
                   notificationTargets.push({
                     id: targetChatId,
@@ -207,7 +207,7 @@ export async function GET(request: Request) {
                   });
                 }
 
-                // Masukin Grup Alpha (Hanya jika pembelian > $1000 atau penjualan > $500)
+                // Masukin Grup Alpha
                 if (
                   isAlphaWorthy &&
                   alphaChatId &&
@@ -268,6 +268,16 @@ export async function GET(request: Request) {
                                 {
                                   text: "🤖 TG Bot: BonkBot",
                                   url: `https://t.me/bonkbot_bot?start=${tokenAddress}`,
+                                },
+                              ],
+                              [
+                                {
+                                  text: "🐦 Cek X (Twitter)",
+                                  url: `https://x.com/search?q=%24${tokenSymbol}&src=typed_query`,
+                                },
+                                {
+                                  text: "🗺️ BubbleMaps",
+                                  url: `https://app.bubblemaps.io/sol/token/${tokenAddress}`,
                                 },
                               ],
                             ],
@@ -396,6 +406,12 @@ export async function GET(request: Request) {
                                 {
                                   text: "🤖 TG Bot: Maestro Sniper",
                                   url: `https://t.me/maestro?start=${tokenAddress}`,
+                                },
+                              ],
+                              [
+                                {
+                                  text: "🐦 Cek X (Twitter)",
+                                  url: `https://x.com/search?q=%24${tokenSymbol}&src=typed_query`,
                                 },
                               ],
                             ],
