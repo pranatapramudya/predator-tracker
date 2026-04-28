@@ -5,6 +5,7 @@ import {
   BarChart,
   Bar,
   XAxis,
+  YAxis, // <-- TAMBAHAN: Import YAxis
   Tooltip,
   ResponsiveContainer,
   Cell,
@@ -27,7 +28,7 @@ export default function PnLChart({ data }: { data: any[] }) {
     );
   }
 
-  // Jika data kosong, tampilkan placeholder agar tidak terlihat hitam polos
+  // Jika data kosong, tampilkan placeholder
   if (!data || data.length === 0) {
     return (
       <div className="h-32 w-full flex items-center justify-center border border-white/5 bg-white/[0.02] rounded-2xl mt-2">
@@ -43,6 +44,10 @@ export default function PnLChart({ data }: { data: any[] }) {
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data}>
           <XAxis dataKey="tokenSymbol" hide={true} />
+
+          {/* 🔥 JURUS 1: Kasih YAxis biar skalanya jelas walau disembunyiin */}
+          <YAxis hide={true} />
+
           <Tooltip
             cursor={{ fill: "#ffffff05" }}
             contentStyle={{
@@ -64,7 +69,9 @@ export default function PnLChart({ data }: { data: any[] }) {
             }}
             formatter={(value: any) => [`$${Number(value).toFixed(2)}`, "PNL"]}
           />
-          <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
+
+          {/* 🔥 JURUS 2: minPointSize={2} biar nilai $0.00 tetep ada garis tipis 2 pixel */}
+          <Bar dataKey="pnl" radius={[4, 4, 0, 0]} minPointSize={2}>
             {data.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
