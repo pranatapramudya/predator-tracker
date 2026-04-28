@@ -11,7 +11,7 @@ Sebuah arsitektur SaaS premium untuk melacak pergerakan dompet kripto raksasa (W
 Sistem dirancang untuk melayani banyak pengguna sekaligus dengan tingkat privasi maksimal.
 
 - **Isolated chatId Mapping:** Setiap dompet yang didaftarkan akan mengikat notifikasi ke ID Telegram masing-masing pengguna.
-- **100% Private:** Pengguna A tidak akan pernah melihat sinyal paus milik Pengguna B. Sangat aman untuk model bisnis langganan (_subscription-based_).
+- **100% Private (Unique Constraint):** Menerapkan gembok database pada kombinasi `[address, network, userId]`. Pengguna A tidak akan pernah melihat atau menimpa sinyal paus milik Pengguna B. Sangat aman untuk model bisnis langganan (_subscription-based_).
 
 ### 2. 1-Click Execution Terminal (Sniper Bot Integration) ⚡
 
@@ -52,6 +52,12 @@ Pelabelan otomatis berdasarkan _Win Rate_ (PnL) paus di masa lalu:
 - **Frictionless Setup:** Sistem memiliki fitur _Auto-ID Finder_ terintegrasi. Pengguna baru cukup mengklik satu tombol untuk menyinkronkan ID Telegram mereka secara otomatis.
 - **Instant Feedback:** Bot akan memberikan notifikasi selamat datang _real-time_ tepat saat pengguna berhasil menambahkan target dompet ke dalam radar.
 
+### 8. Ultra-Smooth UI & Performance Optimization 🏎️
+
+- **GPU Acceleration:** Menggunakan `transform-gpu` dan `contain-content` untuk memindahkan beban rendering antarmuka ke GPU HP/Desktop.
+- **Hydration-Safe Charts:** Implementasi _Delay Mounting_ pada grafik PnL untuk mencegah _Hydration Error_ antara Server (SSR) dan Client.
+- **Zero-State Visibility:** Grafik PnL tetap mempertahankan visualisasi minimal 2px meskipun _floating profit_ berada di angka $0.00.
+
 ---
 
 ## 🏗️ Teknologi yang Digunakan
@@ -71,7 +77,7 @@ Pelabelan otomatis berdasarkan _Win Rate_ (PnL) paus di masa lalu:
 2. **Analysis & Enrichment:** Sistem mengecek aktivitas terbaru via RPC dan menghitung kalkulasi USD via DexScreener.
 3. **Bouncer:** Jika nilai < `minAlertUsd`, notifikasi dibatalkan (Silent Update).
 4. **Routing:** Sistem memetakan `targetChatId` berdasarkan kepemilikan dompet di database.
-5. **Execution:** Sinyal dikirim secara _private_ ke pengguna lengkap dengan tombol Sniper Bot/DEX.
+5. **Execution:** Sinyal dikirim secara _private_ ke pengguna lengkap dengan tombol Sniper Bot, DEX, dan pengecekan tren komunitas di X (Twitter).
 
 ---
 
@@ -81,6 +87,7 @@ Pelabelan otomatis berdasarkan _Win Rate_ (PnL) paus di masa lalu:
 - [x] Integrasi DexScreener untuk kalkulasi USD & Market Cap otomatis.
 - [x] Multi-Tenant Telegram Isolation (SaaS Ready).
 - [x] 1-Click Execution Buttons (Jupiter, Uniswap, BonkBot, Maestro).
-- [x] Smart Tracking Buttons untuk pengejaran dompet (Explorer).
+- [x] Smart Tracking Buttons untuk pengejaran dompet (Explorer & Twitter/X).
 - [x] Sistem Pembersih Database Otomatis via Clerk Webhooks.
 - [x] Integrasi Pintasan Onboarding ID Telegram Otomatis.
+- [x] Optimasi Performa UI Maksimal (Max 4 Wallets/Page & GPU Acceleration).
