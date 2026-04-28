@@ -71,7 +71,7 @@ export default function SignInPage() {
                 colorInputBackground: "#1e1e20",
               },
               elements: {
-                cardBox: "w-full shadow-2xl",
+                cardBox: "w-full shadow-2xl m-0",
                 card: "bg-[#0d0d0d] border border-white/20 shadow-2xl rounded-3xl overflow-hidden w-full m-0",
                 headerTitle:
                   "text-white font-black text-2xl uppercase tracking-tight",
@@ -96,10 +96,7 @@ export default function SignInPage() {
 
                 formButtonPrimary:
                   "bg-white text-black hover:bg-emerald-400 font-black uppercase tracking-tighter py-3 rounded-xl transition-colors mt-2",
-                footer: "bg-[#050505] border-t border-white/10",
-                footerActionText: "text-white font-bold opacity-80",
-                footerActionLink:
-                  "text-emerald-400 hover:text-emerald-300 font-black",
+                footer: "hidden", // 🔥 KITA HIDE FOOTER BAWAAN CLERK
 
                 identityPreviewText: "!text-white !font-bold",
                 identifier: "!text-white !font-bold",
@@ -110,6 +107,20 @@ export default function SignInPage() {
               },
             }}
           />
+
+          {/* 🔥 TOMBOL DAFTAR MANUAL 🔥 */}
+          <div className="mt-4 bg-[#0d0d0d] border border-white/20 rounded-3xl p-5 text-center shadow-xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-emerald-500/0 group-hover:bg-emerald-500/5 transition-colors" />
+            <p className="text-xs text-white/70 font-bold mb-3 relative z-10">
+              Belum punya akses ke sistem?
+            </p>
+            <a
+              href="/sign-up"
+              className="relative z-10 inline-block w-full py-3.5 bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/50 text-emerald-400 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all"
+            >
+              Daftar Sekarang
+            </a>
+          </div>
         </div>
       </div>
     </main>

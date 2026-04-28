@@ -219,6 +219,7 @@ function extractCandidates(
   return parseAlchemyTransfers(payload as AlchemyAddressActivityPayload);
 }
 
+// 🔥 FIX: MULTI-USER TARGETING
 async function loadTrackedWallets(candidates: TransferCandidate[]) {
   const addressesByNetwork = new Map<Network, Set<string>>();
 
@@ -239,17 +240,7 @@ async function loadTrackedWallets(candidates: TransferCandidate[]) {
       address: { in: Array.from(addresses) },
     }));
 
-  if (networkClauses.length === 0)
-    return new Map<
-      string,
-      {
-        id: string;
-        address: string;
-        name: string | null;
-        network: Network;
-        chatId: string | null;
-      }
-    >();
+  if (networkClauses.length === 0) return new Map<string, any[]>();
 
   const wallets = await prisma.wallet.findMany({
     where: { isActive: true, OR: networkClauses },
@@ -262,12 +253,13 @@ async function loadTrackedWallets(candidates: TransferCandidate[]) {
     },
   });
 
-  return new Map(
-    wallets.map((wallet) => [
-      `${wallet.network}:${normalizeAddress(wallet.address, wallet.network)}`,
-      wallet,
-    ]),
-  );
+  const walletMap = new Map<string, typeof wallets>();
+  for (const wallet of wallets) {
+    const key = `${wallet.network}:${normalizeAddress(wallet.address, wallet.network)}`;
+    if (!walletMap.has(key)) walletMap.set(key, []);
+    walletMap.get(key)!.push(wallet);
+  }
+  return walletMap;
 }
 
 function isDuplicateError(error: unknown): boolean {
@@ -290,7 +282,8 @@ async function saveTransactionAndNotify(params: {
   symbol: string;
   usdValue: number;
 }): Promise<void> {
-  const dedupeKey = `${params.candidate.dedupeBase}:${params.wallet.address}:${params.action}`;
+  // 🔥 FIX: Dedupe pake wallet.id biar ga crash kalo 2 orang track paus yg sama
+  const dedupeKey = `${params.candidate.dedupeBase}:${params.wallet.id}:${params.action}`;
 
   try {
     await prisma.transaction.create({
@@ -391,7 +384,6 @@ async function saveTransactionAndNotify(params: {
         (volumeMcapRatio > 50 ? `(🔥 Panas)` : `(🧊 Normal)`);
     }
 
-    // 🔥 MODUL 5: FORMAT MONOSPACE BIAR GAMPANG DI COPY
     const message =
       `🚨 *WHALE ALERT* 🚨\n\n` +
       `👤 *Whale:* ${params.wallet.name ?? "Target"}\n` +
@@ -401,7 +393,6 @@ async function saveTransactionAndNotify(params: {
       `💰 *Value:* $${params.usdValue.toFixed(2)}${liquidityWarning}` +
       metricsBlock;
 
-    // 🔥 MODUL 5: TAMBAHIN INLINE BUTTON DEXSCREENER/SOLSCAN
     const inlineKeyboard = [];
     inlineKeyboard.push([
       { text: "🔍 View Transaction", url: params.candidate.explorerUrl },
@@ -416,6 +407,7 @@ async function saveTransactionAndNotify(params: {
       ]);
     }
 
+    // OTOMATIS TARGETING: ngirim japri ke orang yang daftarin dompetnya
     const chatId = params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
     if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
       await fetch(
@@ -449,18 +441,19 @@ export async function processWebhookPayload(
   const walletMap = await loadTrackedWallets(candidates);
 
   for (const candidate of candidates) {
-    const fromWallet = candidate.fromAddress
+    const fromWallets = candidate.fromAddress
       ? walletMap.get(
           `${candidate.network}:${normalizeAddress(candidate.fromAddress, candidate.network)}`,
-        )
-      : undefined;
-    const toWallet = candidate.toAddress
+        ) || []
+      : [];
+
+    const toWallets = candidate.toAddress
       ? walletMap.get(
           `${candidate.network}:${normalizeAddress(candidate.toAddress, candidate.network)}`,
-        )
-      : undefined;
+        ) || []
+      : [];
 
-    if (!fromWallet && !toWallet) continue;
+    if (fromWallets.length === 0 && toWallets.length === 0) continue;
 
     const asset = await resolveAsset({
       symbol: candidate.symbol,
@@ -471,7 +464,8 @@ export async function processWebhookPayload(
     const usdValue = candidate.amount * asset.usdPrice;
     if (usdValue < MIN_ALERT_USD) continue;
 
-    if (fromWallet && (!toWallet || fromWallet.id !== toWallet.id)) {
+    // Looping eksekusi SELL ke semua kerabat yang nge-track
+    for (const fromWallet of fromWallets) {
       await saveTransactionAndNotify({
         candidate,
         wallet: fromWallet,
@@ -481,7 +475,8 @@ export async function processWebhookPayload(
       });
     }
 
-    if (toWallet && (!fromWallet || fromWallet.id !== toWallet.id)) {
+    // Looping eksekusi BUY ke semua kerabat yang nge-track
+    for (const toWallet of toWallets) {
       await saveTransactionAndNotify({
         candidate,
         wallet: toWallet,

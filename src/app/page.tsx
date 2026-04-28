@@ -163,6 +163,28 @@ async function createWalletAction(formData: FormData) {
       },
     });
 
+    // 🔥 FITUR BARU: NOTIF TELEGRAM SAAT BERHASIL ADD WALLET 🔥
+    if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
+      try {
+        const welcomeMsg = `🎯 *TARGET BERHASIL DITAMBAHKAN!*\n\nBro, lu sukses masukin target paus baru ke Predator Radar:\n\n👤 *Alias:* ${name}\n🌐 *Network:* ${network}\n📍 *Address:* \`${normalized}\`\n\nSistem sekarang mantau dompet ini 24/7. Siap-siap dapet sinyal! 🚀🐋`;
+
+        await fetch(
+          `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: welcomeMsg,
+              parse_mode: "Markdown",
+            }),
+          },
+        );
+      } catch (error) {
+        console.error("Gagal kirim notif add wallet:", error);
+      }
+    }
+
     revalidatePath("/");
     feedback = "created";
   } catch (e) {
@@ -190,22 +212,39 @@ async function deleteWalletAction(formData: FormData) {
 
 export default async function Page({ searchParams }: { searchParams: any }) {
   noStore();
-
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
   const clerkUser = await currentUser();
+  const userEmail = clerkUser?.emailAddresses[0]?.emailAddress || "no-email";
 
-  await prisma.user.upsert({
+  // Auto-Admin buat lu pribadi
+  const isAdmin = userEmail === "prapranata20@gmail.com";
+
+  // 🔥 1. SISTEM AUTO-HEAL: CEK DATA HANTU 🔥
+  const ghostUser = await prisma.user.findUnique({
+    where: { email: userEmail },
+  });
+
+  if (ghostUser && ghostUser.id !== userId) {
+    console.log("Menghapus data hantu lama untuk:", userEmail);
+    await prisma.wallet.deleteMany({ where: { userId: ghostUser.id } });
+    await prisma.user.delete({ where: { id: ghostUser.id } });
+  }
+
+  // 🔥 2. UPSERT NORMAL 🔥
+  const dbUser = await prisma.user.upsert({
     where: { id: userId },
     update: {
-      email: clerkUser?.emailAddresses[0]?.emailAddress || "no-email",
+      email: userEmail,
       name: clerkUser?.firstName || "Whale Hunter",
+      ...(isAdmin ? { role: "OWNER" } : {}),
     },
     create: {
       id: userId,
-      email: clerkUser?.emailAddresses[0]?.emailAddress || "no-email",
+      email: userEmail,
       name: clerkUser?.firstName || "Whale Hunter",
+      role: isAdmin ? "OWNER" : "MEMBER",
     },
   });
 
@@ -351,11 +390,23 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 </div>
               </div>
 
-              {/* 🔥 FITUR TELEGRAM TERKUNCI (LOCKED & PRE-FILLED) */}
+              {/* 🔥 FITUR TELEGRAM TERKUNCI DENGAN TOMBOL CARI ID 🔥 */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black opacity-60 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  <Send className="w-3 h-3 text-cyan-400" /> Telegram ID
-                </label>
+                <div className="flex items-center justify-between ml-1">
+                  <label className="text-[10px] font-black opacity-60 uppercase tracking-widest flex items-center gap-2">
+                    <Send className="w-3 h-3 text-cyan-400" /> Telegram ID
+                  </label>
+                  {!savedChatId && (
+                    <a
+                      href="https://t.me/userinfobot"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[9px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors uppercase tracking-widest bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/20 flex items-center gap-1"
+                    >
+                      🔍 Cari ID Otomatis
+                    </a>
+                  )}
+                </div>
                 <input
                   name="chatId"
                   required={!savedChatId}
@@ -364,8 +415,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   placeholder="Contoh: 12345678"
                   className={`w-full rounded-2xl px-5 py-4 font-bold outline-none text-sm transition-all ${
                     savedChatId
-                      ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-not-allowed" // Warna terkunci
-                      : "bg-black/60 border border-white/10 text-white focus:border-cyan-500/50" // Warna normal
+                      ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-not-allowed"
+                      : "bg-black/60 border border-white/10 text-white focus:border-cyan-500/50"
                   }`}
                 />
                 {savedChatId && (
