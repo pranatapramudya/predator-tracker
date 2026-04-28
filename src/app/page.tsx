@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import PnLChart from "@/components/PnLChart";
+
 import {
   Shield,
   Radio,
@@ -118,7 +119,6 @@ async function createWalletAction(formData: FormData) {
     formData.get("network") ?? "",
   ).toUpperCase() as WalletNetwork;
 
-  // Lapis keamanan S.Kom: Auto-fill fallback di server
   if (!chatId) {
     const existingWallet = await prisma.wallet.findFirst({
       where: { userId: userId, chatId: { not: "" } },
@@ -163,7 +163,6 @@ async function createWalletAction(formData: FormData) {
       },
     });
 
-    // 🔥 FITUR BARU: NOTIF TELEGRAM SAAT BERHASIL ADD WALLET 🔥
     if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
       try {
         const welcomeMsg = `🎯 *TARGET BERHASIL DITAMBAHKAN!*\n\nBro, lu sukses masukin target paus baru ke Predator Radar:\n\n👤 *Alias:* ${name}\n🌐 *Network:* ${network}\n📍 *Address:* \`${normalized}\`\n\nSistem sekarang mantau dompet ini 24/7. Siap-siap dapet sinyal! 🚀🐋`;
@@ -218,10 +217,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const clerkUser = await currentUser();
   const userEmail = clerkUser?.emailAddresses[0]?.emailAddress || "no-email";
 
-  // Auto-Admin buat lu pribadi
   const isAdmin = userEmail === "prapranata20@gmail.com";
 
-  // 🔥 1. SISTEM AUTO-HEAL: CEK DATA HANTU 🔥
   const ghostUser = await prisma.user.findUnique({
     where: { email: userEmail },
   });
@@ -232,7 +229,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     await prisma.user.delete({ where: { id: ghostUser.id } });
   }
 
-  // 🔥 2. UPSERT NORMAL 🔥
   const dbUser = await prisma.user.upsert({
     where: { id: userId },
     update: {
@@ -254,10 +250,9 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     : null;
 
   const page = parseInt(params?.page as string) || 1;
-  const limit = 5;
+  const limit = 4; // MAKS 4 BIAR ENTENG
   const skip = (page - 1) * limit;
 
-  // 🔥 TARIK DATA CHAT ID DARI SERVER BUAT NGUNCI FORM
   const [wallets, totalWallets, existingChatIdRecord] = await Promise.all([
     prisma.wallet
       .findMany({
@@ -281,14 +276,14 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   ]);
 
   const totalPages = Math.ceil(totalWallets / limit);
-  const savedChatId = existingChatIdRecord?.chatId || ""; // Data ID Tele user
+  const savedChatId = existingChatIdRecord?.chatId || ""; // Auto-fill jika sudah ada di DB
 
   return (
-    <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#080808] text-white overflow-x-hidden">
+    <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#080808] text-white overflow-x-hidden transition-colors duration-300">
       <header className="flex flex-row items-center justify-between gap-4 pb-8 border-b border-white/10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] uppercase mb-4">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />{" "}
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse will-change-opacity transform-gpu" />{" "}
             Targeting System Online
           </div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-none">
@@ -321,7 +316,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
       {feedback && (
         <div
-          className={`flex items-start gap-4 p-4 rounded-2xl border animate-in fade-in slide-in-from-top-4 ${feedback.color}`}
+          className={`flex items-start gap-4 p-4 rounded-2xl border bg-transparent animate-in fade-in slide-in-from-top-4 ${feedback.color}`}
         >
           <feedback.icon className="w-6 h-6 shrink-0" />
           <div>
@@ -335,7 +330,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
         <section className="lg:col-span-4 h-fit lg:sticky lg:top-10">
-          <div className="bg-[#121212] border border-white/10 rounded-[32px] p-6 md:p-8 shadow-2xl">
+          <div className="bg-[#121212] border border-white/10 rounded-[32px] p-6 md:p-8 shadow-2xl transition-colors">
             <h2 className="text-xl font-black uppercase mb-8 flex items-center gap-4">
               <Shield className="text-emerald-400" /> Acquisition
             </h2>
@@ -345,7 +340,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               autoComplete="off"
             >
               <div className="space-y-2">
-                <label className="text-[10px] font-black opacity-60 uppercase tracking-widest ml-1">
+                <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
                   Wallet Address
                 </label>
                 <input
@@ -353,17 +348,17 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   required
                   autoComplete="new-password"
                   placeholder="BTC, SOL, or EVM..."
-                  className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none font-mono text-sm focus:border-emerald-500/50 transition-all"
+                  className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none font-mono text-sm focus:border-emerald-500/50 transition-all text-white"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black opacity-60 uppercase tracking-widest ml-1">
+                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
                     Network
                   </label>
                   <select
                     name="network"
-                    className="w-full bg-black/60 border border-white/10 rounded-2xl px-4 py-4 font-bold outline-none cursor-pointer text-sm"
+                    className="w-full bg-black/60 border border-white/10 rounded-2xl px-4 py-4 font-bold outline-none cursor-pointer text-sm text-white"
                   >
                     {NETWORK_OPTIONS.map((n) => (
                       <option
@@ -377,7 +372,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black opacity-60 uppercase tracking-widest ml-1">
+                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
                     Alias Name
                   </label>
                   <input
@@ -385,15 +380,14 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     required
                     autoComplete="off"
                     placeholder="Whale #1"
-                    className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-emerald-500/50 transition-all"
+                    className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-emerald-500/50 transition-all text-white"
                   />
                 </div>
               </div>
 
-              {/* 🔥 FITUR TELEGRAM TERKUNCI DENGAN TOMBOL CARI ID 🔥 */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between ml-1">
-                  <label className="text-[10px] font-black opacity-60 uppercase tracking-widest flex items-center gap-2">
+                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
                     <Send className="w-3 h-3 text-cyan-400" /> Telegram ID
                   </label>
                   {!savedChatId && (
@@ -437,12 +431,12 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </section>
 
         <section className="lg:col-span-8 space-y-6">
-          <h3 className="flex items-center gap-2 text-sm font-black opacity-60 uppercase tracking-[0.2em] px-2">
+          <h3 className="flex items-center gap-2 text-sm font-black text-white/60 uppercase tracking-[0.2em] px-2">
             <Activity className="text-cyan-400" /> Your Watchlist
           </h3>
           {wallets.length === 0 ? (
             <div className="border-2 border-dashed border-white/5 rounded-[32px] p-20 text-center text-white/40 italic uppercase tracking-widest text-xs">
-              <Radio className="mx-auto mb-4 animate-pulse" />
+              <Radio className="mx-auto mb-4 animate-pulse will-change-opacity" />
               Scanning Targets...
             </div>
           ) : (
@@ -458,7 +452,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   return (
                     <div
                       key={w.id}
-                      className="group bg-[#121212] border border-white/5 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between"
+                      className="group bg-[#121212] border border-white/5 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between transform-gpu will-change-transform contain-content"
                     >
                       <div>
                         <div className="flex justify-between items-start mb-4 relative z-10 gap-3">
@@ -483,7 +477,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               <img
                                 src={NETWORK_LOGOS[w.network as WalletNetwork]}
                                 alt=""
-                                className="w-6 h-6 rounded-full bg-white p-0.5 shrink-0"
+                                className="w-6 h-6 rounded-full bg-white p-0.5 shrink-0 shadow-sm"
                               />
                               <span
                                 className={`text-lg font-black tracking-tight truncate ${config?.color}`}
@@ -564,19 +558,34 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           <div className="flex flex-wrap gap-1.5">
                             {w.transactions.length > 0 ? (
                               w.transactions.map((tx, idx) => (
-                                <a
+                                <div
                                   key={tx.id}
-                                  href={tx.explorerUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title={`${tx.type} ${tx.tokenSymbol}`}
-                                  className={`relative text-[9px] px-1.5 py-0.5 rounded uppercase font-bold border transition-all hover:brightness-125 
-                                ${tx.type === "BUY" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border-rose-500/30"}
-                                ${idx === 0 ? "ring-1 ring-white shadow-[0_0_8px_rgba(255,255,255,0.4)] opacity-100" : "opacity-60"}`}
+                                  className="flex items-center gap-1"
                                 >
-                                  {tx.type === "BUY" ? "🟢" : "🔴"}{" "}
-                                  {tx.tokenSymbol.slice(0, 5)}
-                                </a>
+                                  <a
+                                    href={tx.explorerUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    title={`${tx.type} ${tx.tokenSymbol}`}
+                                    className={`relative text-[9px] px-1.5 py-0.5 rounded uppercase font-bold border transition-all hover:brightness-110 
+                                  ${tx.type === "BUY" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border-rose-500/30"}
+                                  ${idx === 0 ? "ring-1 ring-white shadow-[0_0_8px_rgba(255,255,255,0.4)] opacity-100" : "opacity-60"}`}
+                                  >
+                                    {tx.type === "BUY" ? "🟢" : "🔴"}{" "}
+                                    {tx.tokenSymbol.slice(0, 5)}
+                                  </a>
+
+                                  {tx.type === "BUY" && (
+                                    <a
+                                      href={`https://x.com/search?q=%24${tx.tokenSymbol}&src=typed_query`}
+                                      target="_blank"
+                                      title="Cek Komunitas di X"
+                                      className="text-[10px] hover:scale-125 transition-transform origin-center"
+                                    >
+                                      🐦
+                                    </a>
+                                  )}
+                                </div>
                               ))
                             ) : (
                               <span className="text-[10px] text-white/20 italic">
@@ -592,8 +601,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           {formatAddress(w.address)}
                         </code>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
-                          <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse will-change-opacity transform-gpu" />
+                          <span className="text-[9px] font-bold text-white/60 uppercase tracking-widest">
                             Live
                           </span>
                         </div>
@@ -604,7 +613,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               </div>
 
               {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-6 pt-8 pb-4">
+                <div className="flex items-center justify-center gap-6 pt-8 pb-4 transform-gpu">
                   {page > 1 ? (
                     <a
                       href={`/?page=${page - 1}`}

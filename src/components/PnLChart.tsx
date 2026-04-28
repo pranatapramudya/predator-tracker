@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -10,6 +11,22 @@ import {
 } from "recharts";
 
 export default function PnLChart({ data }: { data: any[] }) {
+  // 🔥 JURUS VAKSIN ANTI-HYDRATION 🔥
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Pas di server (sebelum nyampe HP), tampilin animasi loading detak jantung
+  if (!isMounted) {
+    return (
+      <div className="h-32 w-full mt-2 border border-white/5 bg-white/[0.02] rounded-2xl flex items-center justify-center">
+        <span className="w-4 h-4 rounded-full bg-emerald-500 animate-ping opacity-50" />
+      </div>
+    );
+  }
+
   // Jika data kosong, tampilkan placeholder agar tidak terlihat hitam polos
   if (!data || data.length === 0) {
     return (
@@ -33,15 +50,13 @@ export default function PnLChart({ data }: { data: any[] }) {
               borderColor: "#000000",
               borderRadius: "8px",
               fontSize: "10px",
-              color: "#ffffff", // 🔥 Paksa warna dasar jadi putih
+              color: "#ffffff",
             }}
-            // 🔥 Paksa warna angka PnL jadi putih tebal
             itemStyle={{
               color: "#02ff1f",
               fontWeight: "900",
               textTransform: "uppercase",
             }}
-            // 🔥 Paksa warna judul (Token Symbol) jadi putih keabuan biar beda
             labelStyle={{
               color: "#ffffff",
               fontWeight: "900",

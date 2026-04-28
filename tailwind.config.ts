@@ -10,6 +10,5 @@ const config: Config = {
   theme: {
     extend: {},
   },
-  plugins: [], // <-- INI DIA PENYELAMATNYA (HARUS KURUNG SIKU)
 };
 export default config;
