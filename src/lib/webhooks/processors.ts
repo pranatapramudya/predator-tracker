@@ -314,11 +314,11 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
     const insiderPercentage = (insiderAmount / totalSupply) * 100;
 
     if (insiderPercentage > 30) {
-      return `\n☠️ *INSIDER RISK:* 🔴 SANGAT BAHAYA! (Top 10 pegang ${insiderPercentage.toFixed(1)}%)`;
+      return `\n☠️ *INSIDER RISK:* 🔴 EXTREME DANGER! (Top 10 holds ${insiderPercentage.toFixed(1)}%)`;
     } else if (insiderPercentage > 15) {
-      return `\n⚠️ *INSIDER RISK:* 🟡 Hati-hati (Top 10 pegang ${insiderPercentage.toFixed(1)}%)`;
+      return `\n⚠️ *INSIDER RISK:* 🟡 Caution (Top 10 holds ${insiderPercentage.toFixed(1)}%)`;
     } else {
-      return `\n🛡️ *INSIDER RISK:* 🟢 Aman (Distribusi Sehat)`;
+      return `\n🛡️ *INSIDER RISK:* 🟢 Safe (Healthy Distribution)`;
     }
   } catch (error) {
     console.error(`[Predator System] Gagal cek insider risk:`, error);
@@ -363,8 +363,9 @@ async function saveTransactionAndNotify(params: {
     let tokenAgeHours = 0;
     let smartMoneyCount = 0;
     let insiderWarning = "";
-    let whaleStatsBlock = "";
+    let metricsBlock = "";
 
+    // 1. PROSES TOKEN JIKA ADA TOKEN IDENTIFIER (Menjalankan pnl.ts & API Eksternal)
     if (params.candidate.tokenIdentifier) {
       try {
         const existingPosition = await prisma.tokenPosition.findUnique({
@@ -378,6 +379,7 @@ async function saveTransactionAndNotify(params: {
 
         if (!existingPosition && params.action === "BUY") isFirstTimeBuy = true;
 
+        // AWAIT AKUNTAN: Memastikan update database di pnl.ts selesai sebelum membaca rapor
         await processWhaleTrade(
           params.wallet.id,
           params.candidate.tokenIdentifier,
@@ -386,36 +388,6 @@ async function saveTransactionAndNotify(params: {
           params.candidate.amount,
           params.usdValue,
         );
-
-        const whaleData = await prisma.wallet.findUnique({
-          where: { id: params.wallet.id },
-          select: { winRate: true, totalTrades: true },
-        });
-
-        const allPositions = await prisma.tokenPosition.findMany({
-          where: { walletId: params.wallet.id },
-          select: { realizedPnlUsd: true },
-        });
-
-        const totalRealizedPnl = allPositions.reduce(
-          (sum, pos) => sum + Number(pos.realizedPnlUsd),
-          0,
-        );
-
-        const winRateText =
-          whaleData && whaleData.totalTrades > 0
-            ? `${Number(whaleData.winRate).toFixed(1)}%`
-            : "N/A (Belum Jual)";
-
-        const pnlText =
-          totalRealizedPnl >= 0
-            ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
-            : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
-
-        whaleStatsBlock =
-          `\n\n🏆 *WHALE RAPOR*` +
-          `\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)` +
-          `\n💰 *Total PnL:* ${pnlText}`;
 
         if (params.action === "BUY") {
           smartMoneyCount = await prisma.tokenPosition.count({
@@ -426,7 +398,7 @@ async function saveTransactionAndNotify(params: {
           });
           if (smartMoneyCount >= 2) multibaggerScore += 2;
 
-          // --- ISOLATED BLOCK 1: DEXSCREENER (PETUGAS SENSUS) ---
+          // --- ISOLATED BLOCK 1: DEXSCREENER (Aman dari error Token Baru) ---
           try {
             const dexRes = await fetch(
               `https://api.dexscreener.com/latest/dex/tokens/${params.candidate.tokenIdentifier}`,
@@ -453,7 +425,7 @@ async function saveTransactionAndNotify(params: {
             );
           }
 
-          // --- ISOLATED BLOCK 2: HELIUS RPC (DETEKTIF MAFIA) ---
+          // --- ISOLATED BLOCK 2: HELIUS RPC (Tetap berjalan walau DexScreener error) ---
           try {
             if (params.wallet.network === Network.SOLANA) {
               insiderWarning = await checkSolanaInsiderRisk(
@@ -469,6 +441,38 @@ async function saveTransactionAndNotify(params: {
       }
     }
 
+    // 2. TARIK DATA RAPOR WHALE (Berjalan untuk Token maupun Native Transfer, PASTIKAN selalu sinkron)
+    const whaleData = await prisma.wallet.findUnique({
+      where: { id: params.wallet.id },
+      select: { winRate: true, totalTrades: true },
+    });
+
+    const allPositions = await prisma.tokenPosition.findMany({
+      where: { walletId: params.wallet.id },
+      select: { realizedPnlUsd: true },
+    });
+
+    const totalRealizedPnl = allPositions.reduce(
+      (sum, pos) => sum + Number(pos.realizedPnlUsd),
+      0,
+    );
+
+    const winRateText =
+      whaleData && whaleData.totalTrades > 0
+        ? `${Number(whaleData.winRate).toFixed(1)}%`
+        : "N/A (No Sells Yet)";
+
+    const pnlText =
+      totalRealizedPnl >= 0
+        ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
+        : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
+
+    const whaleStatsBlock =
+      `\n\n🏆 *WHALE RAPOR*` +
+      `\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)` +
+      `\n💰 *Total PnL:* ${pnlText}`;
+
+    // 3. FORMATTING TELEGRAM (Konsistensi Bahasa)
     let actionLabel = params.action === "BUY" ? "🟢 BUY" : "🔴 SELL";
     if (isFirstTimeBuy) actionLabel = "🔥 FIRST TIME BUY 🔥";
 
@@ -480,15 +484,14 @@ async function saveTransactionAndNotify(params: {
         liquidityWarning = `\n💧 *Liquidity:* $${(liquidityUsd / 1000).toFixed(1)}k`;
     }
 
-    let metricsBlock = "";
     if (params.action === "BUY" && params.candidate.tokenIdentifier) {
       metricsBlock =
         `\n\n📊 *ON-CHAIN METRICS*` +
-        `\n💎 *Score:* ${multibaggerScore}/3 Poin` +
+        `\n💎 *Score:* ${multibaggerScore}/3 Points` +
         `\n🐳 *Smart Money:* ${smartMoneyCount} Wallets` +
         `\n⏳ *Age:* ${tokenAgeHours > 0 ? tokenAgeHours.toFixed(1) + "h" : "N/A"}` +
         `\n📈 *Vol/MCap:* ${volumeMcapRatio > 0 ? volumeMcapRatio.toFixed(1) + "%" : "N/A"} ` +
-        (volumeMcapRatio > 50 ? `(🔥 Panas)` : `(🧊 Normal)`) +
+        (volumeMcapRatio > 50 ? `(🔥 Hot)` : `(🧊 Normal)`) +
         insiderWarning;
     }
 
@@ -497,11 +500,11 @@ async function saveTransactionAndNotify(params: {
       ? "👑 *ALPHA PREDATOR ALERT!*"
       : "🚨 *WHALE ALERT* 🚨";
 
-    const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Data ini dihasilkan secara otomatis dari blockchain. Ini BUKAN saran finansial (NFA). Harap lakukan riset Anda sendiri (DYOR) sebelum mengambil keputusan trading!_`;
+    const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
 
     const message =
       `${title}\n\n` +
-      `👤 *Whale:* ${params.wallet.name ?? "Target"}\n` +
+      `👤 *Whale:* ${params.wallet.name ?? "Unknown Target"}\n` +
       `📍 *Address:* \`${params.wallet.address}\`\n` +
       `📈 *Action:* ${actionLabel}\n` +
       `🪙 *Token:* ${params.symbol}\n` +
