@@ -8,6 +8,7 @@ import {
   getSolanaLatestSwap,
   getEVMLatestTokenTx,
 } from "@/lib/crypto";
+import { processWhaleTrade } from "./pnl"; // Sinkronisasi dengan Akuntan PnL
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,9 @@ async function getTokenMarketInfo(tokenAddress: string) {
         priceUsd: parseFloat(pair.priceUsd || "0"),
         fdv: pair.fdv || 0,
         marketCap: pair.marketCap || pair.fdv || 0,
+        liquidityUsd: pair.liquidity?.usd || 0,
+        volume24h: pair.volume?.h24 || 0,
+        pairCreatedAt: pair.pairCreatedAt || null,
       };
     }
     return null;
@@ -36,113 +40,82 @@ async function getTokenMarketInfo(tokenAddress: string) {
   }
 }
 
-function formatCurrency(value: number) {
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(2)}M`;
-  if (value >= 1000) return `$${(value / 1000).toFixed(2)}K`;
-  return `$${value.toFixed(2)}`;
-}
-
 // ==========================================
-// AUTO WIN-RATE & PnL ENGINE
+// 🔥 MODUL: HELIUS INSIDER RISK DETECTIVE
 // ==========================================
-async function processAutoWinRate(
-  walletId: string,
-  isBuy: boolean,
-  amountToken: number,
-  usdValue: number,
-  tokenAddress: string,
-  tokenSymbol: string,
-) {
-  if (!tokenAddress || tokenAddress === "solana" || usdValue <= 0) return;
-
+async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
   try {
-    const position = await prisma.tokenPosition.findUnique({
-      where: { walletId_tokenAddress: { walletId, tokenAddress } },
+    const apiKey = process.env.HELIUS_API_KEY;
+    if (!apiKey) return "";
+
+    const rpcUrl = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
+
+    const supplyRes = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenSupply",
+        params: [tokenAddress],
+      }),
     });
+    const supplyData = await supplyRes.json();
+    const totalSupply = supplyData?.result?.value?.uiAmount;
 
-    if (isBuy) {
-      if (position) {
-        await prisma.tokenPosition.update({
-          where: { id: position.id },
-          data: {
-            tokenAmount: Number(position.tokenAmount) + amountToken,
-            totalInvestedUsd: Number(position.totalInvestedUsd) + usdValue,
-          },
-        });
-      } else {
-        await prisma.tokenPosition.create({
-          data: {
-            walletId,
-            tokenAddress,
-            tokenSymbol,
-            tokenAmount: amountToken,
-            totalInvestedUsd: usdValue,
-          },
-        });
-      }
-    } else {
-      if (position && Number(position.tokenAmount) > 0) {
-        const avgBuyPrice =
-          Number(position.totalInvestedUsd) / Number(position.tokenAmount);
-        const costOfSoldTokens = avgBuyPrice * amountToken;
-        const pnl = usdValue - costOfSoldTokens;
-        const isWin = pnl > 0;
+    if (!totalSupply) return "";
 
-        const walletStats = await prisma.wallet.findUnique({
-          where: { id: walletId },
-        });
-        if (walletStats) {
-          const newTotalTrades = walletStats.totalTrades + 1;
-          const newSuccessTrades = walletStats.successTrades + (isWin ? 1 : 0);
-          const newWinRate =
-            newTotalTrades === 0
-              ? 0
-              : (newSuccessTrades / newTotalTrades) * 100;
+    const accountsRes = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenLargestAccounts",
+        params: [tokenAddress],
+      }),
+    });
+    const accountsData = await accountsRes.json();
+    const largestAccounts = accountsData?.result?.value;
 
-          await prisma.wallet.update({
-            where: { id: walletId },
-            data: {
-              totalTrades: newTotalTrades,
-              successTrades: newSuccessTrades,
-              winRate: newWinRate,
-            },
-          });
+    if (!largestAccounts || !Array.isArray(largestAccounts)) return "";
 
-          const remainingAmount = Math.max(
-            0,
-            Number(position.tokenAmount) - amountToken,
-          );
-          await prisma.tokenPosition.update({
-            where: { id: position.id },
-            data: {
-              tokenAmount: remainingAmount,
-              realizedPnlUsd: Number(position.realizedPnlUsd) + pnl,
-            },
-          });
-        }
-      }
+    let insiderAmount = 0;
+    const top10 = largestAccounts.slice(1, 11);
+    for (const acc of top10) {
+      insiderAmount += acc.uiAmount || 0;
     }
-  } catch (e) {
-    console.error("Auto WR Error:", e);
+
+    const insiderPercentage = (insiderAmount / totalSupply) * 100;
+
+    if (insiderPercentage > 30) {
+      return `\n☠️ *INSIDER RISK:* 🔴 EXTREME DANGER! (Top 10 holds ${insiderPercentage.toFixed(1)}%)`;
+    } else if (insiderPercentage > 15) {
+      return `\n⚠️ *INSIDER RISK:* 🟡 Caution (Top 10 holds ${insiderPercentage.toFixed(1)}%)`;
+    } else {
+      return `\n🛡️ *INSIDER RISK:* 🟢 Safe (Healthy Distribution)`;
+    }
+  } catch (error) {
+    return "";
   }
 }
 
 // ==========================================
-// FUNGSI KIRIM TELEGRAM
+// 🔥 MODUL: TELEGRAM SENDER (ENGLISH FORMAT & DOUBLE ALPHA FIX)
 // ==========================================
 async function sendTelegramAlert({
   wallet,
   targetChatId,
   alphaChatId,
-  label,
-  winRate,
   network,
   usdAmount,
   tokenAddress,
   tokenSymbol,
-  marketInfo,
   actionText,
   explorerUrl,
+  whaleStatsBlock,
+  metricsBlock,
+  liquidityWarning,
 }: any) {
   if (!process.env.TELEGRAM_BOT_TOKEN) return;
 
@@ -150,6 +123,7 @@ async function sendTelegramAlert({
   const notificationTargets: { id: string; customLabel: string }[] = [];
   const userAlphaChatId = wallet.alphaChannelId;
 
+  // Fix Double Alpha: Prioritas pengiriman
   if (isAlphaWorthy) {
     let sentToAlpha = false;
     if (userAlphaChatId && userAlphaChatId !== targetChatId) {
@@ -173,38 +147,36 @@ async function sendTelegramAlert({
     }
   } else {
     if (targetChatId) {
-      notificationTargets.push({ id: targetChatId, customLabel: label });
+      notificationTargets.push({ id: targetChatId, customLabel: "🚨 WHALE" });
     }
   }
 
-  const mktCapText =
-    marketInfo && marketInfo.marketCap > 0
-      ? `\n📊 *Market Cap:* ${formatCurrency(marketInfo.marketCap)}`
-      : "";
-
-  const titleText =
-    network === "SOLANA"
-      ? "🚨 *SMART MONEY SWAP (SOLANA)*"
-      : `🚨 *SMART MONEY TOKEN (${network})*`;
+  const titleText = isAlphaWorthy
+    ? "👑 *ALPHA PREDATOR ALERT!*"
+    : "🚨 *WHALE ALERT* 🚨";
+  const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
 
   for (const target of notificationTargets) {
     const message =
-      `${target.customLabel} ALERT!\n${titleText}\n\n` +
-      `👤 *Target:* ${wallet.name}\n` +
-      `🔄 *Aksi:* ${actionText}\n` +
-      `💵 *Estimasi USD:* $${usdAmount.toFixed(2)}${mktCapText}\n` +
-      `📈 *Current Win Rate:* ${winRate.toFixed(1)}%\n` +
-      `📍 *Address:* \`${wallet.address}\``;
+      `${titleText}\n\n` +
+      `👤 *Whale:* ${wallet.name ?? "Unknown Target"}\n` +
+      `📍 *Address:* \`${wallet.address}\`\n` +
+      `📈 *Action:* ${actionText}\n` +
+      `🪙 *Token:* ${tokenSymbol}\n` +
+      `💰 *Value:* $${usdAmount.toFixed(2)}${liquidityWarning}` +
+      whaleStatsBlock +
+      metricsBlock +
+      dyorFooter;
 
     let inline_keyboard = [];
     if (network === "SOLANA") {
       inline_keyboard = [
         [
+          { text: "🔍 View Transaction", url: explorerUrl },
           {
-            text: "📈 DexScreener",
+            text: "📊 Chart on DexScreener",
             url: `https://dexscreener.com/solana/${tokenAddress}`,
           },
-          { text: "🔍 Cek TX", url: explorerUrl },
         ],
         [
           {
@@ -218,7 +190,15 @@ async function sendTelegramAlert({
         ],
       ];
     } else {
-      inline_keyboard = [[{ text: "🔍 Cek TX di Explorer", url: explorerUrl }]];
+      inline_keyboard = [
+        [{ text: "🔍 View Transaction on Explorer", url: explorerUrl }],
+        [
+          {
+            text: "📊 Chart on DexScreener",
+            url: `https://dexscreener.com/ethereum/${tokenAddress}`,
+          },
+        ],
+      ];
     }
 
     try {
@@ -236,12 +216,17 @@ async function sendTelegramAlert({
           }),
         },
       );
+      // Kasih jeda 50ms biar gak kena rate limit Telegram
+      await new Promise((resolve) => setTimeout(resolve, 50));
     } catch (err) {
       console.error(`Gagal kirim notif ke ${target.id}`, err);
     }
   }
 }
 
+// ==========================================
+// 🔥 MAIN ENGINE: SWEEPER (GET)
+// ==========================================
 export async function GET(request: Request) {
   try {
     const wallets = await prisma.wallet.findMany({ where: { isActive: true } });
@@ -249,23 +234,13 @@ export async function GET(request: Request) {
 
     for (const wallet of wallets) {
       try {
-        const winRate = (wallet as any).winRate || 0;
-
-        // 🔥 UPDATE S.KOM 1: BATAS MINIMUM DINAIKAN JADI $500 SECARA DEFAULT
-        const threshold = (wallet as any).minAlertUsd || 500;
-
+        const threshold = (wallet as any).minAlertUsd || 100;
         const targetChatId = wallet.chatId;
-
-        let label = "🐋 THE WHALE";
-        if (winRate > 70) label = "🥇 THE ORACLE";
-        else if (winRate >= 40) label = "🥈 THE GRINDER";
-        else if (winRate > 0 && winRate < 30) label = "💀 EXIT LIQUIDITY";
-
         let isSwapOrTokenAlertSent = false;
 
-        // ==========================================
+        // ------------------------------------------
         // 1. SMART MONEY SWAP (SOLANA)
-        // ==========================================
+        // ------------------------------------------
         if (wallet.network === "SOLANA") {
           const swapData = await getSolanaLatestSwap(wallet.address);
           if (swapData) {
@@ -279,26 +254,68 @@ export async function GET(request: Request) {
               const amountToken = (swapData as any).amount || 0;
               const tokenAddress = (swapData as any).tokenAddress || "solana";
               const tokenSymbol = (swapData as any).tokenSymbol || "MEME_COIN";
-
-              const marketInfo = await getTokenMarketInfo(tokenAddress);
-              if (usdAmount === 0 && tokenAddress !== "solana" && marketInfo) {
-                usdAmount = amountToken * marketInfo.priceUsd;
-              }
-
               const isBuy =
                 !swapData.description.toUpperCase().includes("FOR SOL") &&
                 !swapData.description.toUpperCase().includes("FOR USDC");
 
-              await processAutoWinRate(
-                wallet.id,
-                isBuy,
-                amountToken,
-                usdAmount,
-                tokenAddress,
-                tokenSymbol,
-              );
+              let liquidityWarning = "";
+              let metricsBlock = "";
+              const marketInfo = await getTokenMarketInfo(tokenAddress);
 
-              // SATPAM $500: Cuma jalan kalau nominal >= threshold
+              if (usdAmount === 0 && tokenAddress !== "solana" && marketInfo) {
+                usdAmount = amountToken * marketInfo.priceUsd;
+              }
+
+              if (isBuy && tokenAddress !== "solana") {
+                let multibaggerScore = 0;
+                let volumeMcapRatio = 0;
+                let tokenAgeHours = 0;
+
+                if (marketInfo) {
+                  if (
+                    marketInfo.liquidityUsd < 10000 &&
+                    marketInfo.liquidityUsd > 0
+                  )
+                    liquidityWarning = `\n⚠️ *LIQUIDITY:* [HIGH RISK] < $10k`;
+                  else if (marketInfo.liquidityUsd >= 10000)
+                    liquidityWarning = `\n💧 *Liquidity:* $${(marketInfo.liquidityUsd / 1000).toFixed(1)}k`;
+
+                  if (marketInfo.pairCreatedAt) {
+                    tokenAgeHours =
+                      (Date.now() - marketInfo.pairCreatedAt) /
+                      (1000 * 60 * 60);
+                    if (tokenAgeHours < 24) multibaggerScore += 1;
+                  }
+                  if (marketInfo.marketCap > 0)
+                    volumeMcapRatio =
+                      (marketInfo.volume24h / marketInfo.marketCap) * 100;
+                }
+
+                const insiderWarning =
+                  await checkSolanaInsiderRisk(tokenAddress);
+                const smartMoneyCount = await prisma.tokenPosition.count({
+                  where: { tokenAddress, tokenAmount: { gt: 0 } },
+                });
+                if (smartMoneyCount >= 2) multibaggerScore += 2;
+
+                metricsBlock =
+                  `\n\n📊 *ON-CHAIN METRICS*\n💎 *Score:* ${multibaggerScore}/3 Points\n🐳 *Smart Money:* ${smartMoneyCount} Wallets\n⏳ *Age:* ${tokenAgeHours > 0 ? tokenAgeHours.toFixed(1) + "h" : "N/A"}\n📈 *Vol/MCap:* ${volumeMcapRatio > 0 ? volumeMcapRatio.toFixed(1) + "%" : "N/A"} ` +
+                  (volumeMcapRatio > 50 ? `(🔥 Hot)` : `(🧊 Normal)`) +
+                  insiderWarning;
+              }
+
+              // PANGGIL AKUNTAN (pnl.ts) BUKAN NGITUNG MANUAL
+              if (tokenAddress !== "solana" && usdAmount > 0) {
+                await processWhaleTrade(
+                  wallet.id,
+                  tokenAddress,
+                  tokenSymbol,
+                  isBuy ? "BUY" : "SELL",
+                  amountToken,
+                  usdAmount,
+                );
+              }
+
               if (usdAmount > 0 && usdAmount >= threshold) {
                 await prisma.transaction.create({
                   data: {
@@ -307,43 +324,61 @@ export async function GET(request: Request) {
                     signature: swapData.signature,
                     type: "SWAP",
                     amount: amountToken,
-                    tokenSymbol: tokenSymbol,
-                    tokenAddress: tokenAddress,
+                    tokenSymbol,
+                    tokenAddress,
                     usdValue: usdAmount,
                     explorerUrl: `https://solscan.io/tx/${swapData.signature}`,
                   },
                 });
 
-                const actionText = isBuy
-                  ? "🟢 *BUY (AKUMULASI)*"
-                  : "🔴 *SELL (TAKE PROFIT/CUT LOSS)*";
+                // TARIK WHALE RAPOR DARI DB SETELAH DIHITUNG AKUNTAN
+                const whaleData = await prisma.wallet.findUnique({
+                  where: { id: wallet.id },
+                  select: { winRate: true, totalTrades: true },
+                });
+                const allPositions = await prisma.tokenPosition.findMany({
+                  where: { walletId: wallet.id },
+                  select: { realizedPnlUsd: true },
+                });
+                const totalRealizedPnl = allPositions.reduce(
+                  (sum, pos) => sum + Number(pos.realizedPnlUsd),
+                  0,
+                );
+
+                const winRateText =
+                  whaleData && whaleData.totalTrades > 0
+                    ? `${Number(whaleData.winRate).toFixed(1)}%`
+                    : "N/A (No Sells Yet)";
+                const pnlText =
+                  totalRealizedPnl >= 0
+                    ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
+                    : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
+                const whaleStatsBlock = `\n\n🏆 *WHALE RAPOR*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
+
+                const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
 
                 await sendTelegramAlert({
                   wallet,
                   targetChatId,
                   alphaChatId,
-                  label,
-                  winRate,
                   network: "SOLANA",
                   usdAmount,
                   tokenAddress,
                   tokenSymbol,
-                  marketInfo,
                   actionText,
                   explorerUrl: `https://solscan.io/tx/${swapData.signature}`,
+                  whaleStatsBlock,
+                  metricsBlock,
+                  liquidityWarning,
                 });
-              } else if (usdAmount > 0) {
-                console.log(
-                  `[SKIP SWAP] ${wallet.name} transaksi cuma $${usdAmount.toFixed(2)} (di bawah $500)`,
-                );
               }
             }
           }
         }
 
-        // ==========================================
+        // ------------------------------------------
         // 2. SMART MONEY TOKEN (ETH & BASE)
-        // ==========================================
+        // ------------------------------------------
         else if (wallet.network === "ETHEREUM" || wallet.network === "BASE") {
           const tokenTx = await getEVMLatestTokenTx(
             wallet.address,
@@ -360,24 +395,25 @@ export async function GET(request: Request) {
               const amountToken = (tokenTx as any).amount || 0;
               const tokenAddress = (tokenTx as any).tokenAddress;
               const tokenSymbol = (tokenTx as any).tokenSymbol || "TOKEN";
+              const isBuy = tokenTx.description.includes("🟢");
 
               const marketInfo = await getTokenMarketInfo(tokenAddress);
               if (usdAmount === 0 && tokenAddress && marketInfo) {
                 usdAmount = amountToken * marketInfo.priceUsd;
               }
 
-              const isBuy = tokenTx.description.includes("🟢");
+              // PANGGIL AKUNTAN (pnl.ts) BUKAN NGITUNG MANUAL
+              if (tokenAddress && usdAmount > 0) {
+                await processWhaleTrade(
+                  wallet.id,
+                  tokenAddress,
+                  tokenSymbol,
+                  isBuy ? "BUY" : "SELL",
+                  amountToken,
+                  usdAmount,
+                );
+              }
 
-              await processAutoWinRate(
-                wallet.id,
-                isBuy,
-                amountToken,
-                usdAmount,
-                tokenAddress,
-                tokenSymbol,
-              );
-
-              // SATPAM $500: Cuma jalan kalau nominal >= threshold
               if (usdAmount > 0 && usdAmount >= threshold) {
                 await prisma.transaction.create({
                   data: {
@@ -386,39 +422,61 @@ export async function GET(request: Request) {
                     signature: tokenTx.signature,
                     type: "ERC20_TRANSFER",
                     amount: amountToken,
-                    tokenSymbol: tokenSymbol,
-                    tokenAddress: tokenAddress,
+                    tokenSymbol,
+                    tokenAddress,
                     usdValue: usdAmount,
                     explorerUrl: tokenTx.explorerUrl,
                   },
                 });
 
+                // TARIK WHALE RAPOR DARI DB
+                const whaleData = await prisma.wallet.findUnique({
+                  where: { id: wallet.id },
+                  select: { winRate: true, totalTrades: true },
+                });
+                const allPositions = await prisma.tokenPosition.findMany({
+                  where: { walletId: wallet.id },
+                  select: { realizedPnlUsd: true },
+                });
+                const totalRealizedPnl = allPositions.reduce(
+                  (sum, pos) => sum + Number(pos.realizedPnlUsd),
+                  0,
+                );
+
+                const winRateText =
+                  whaleData && whaleData.totalTrades > 0
+                    ? `${Number(whaleData.winRate).toFixed(1)}%`
+                    : "N/A (No Sells Yet)";
+                const pnlText =
+                  totalRealizedPnl >= 0
+                    ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
+                    : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
+                const whaleStatsBlock = `\n\n🏆 *WHALE RAPOR*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
+
+                const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
+
                 await sendTelegramAlert({
                   wallet,
                   targetChatId,
                   alphaChatId,
-                  label,
-                  winRate,
                   network: wallet.network,
                   usdAmount,
                   tokenAddress,
                   tokenSymbol,
-                  marketInfo,
-                  actionText: tokenTx.description,
+                  actionText,
                   explorerUrl: tokenTx.explorerUrl,
+                  whaleStatsBlock,
+                  metricsBlock: "",
+                  liquidityWarning: "",
                 });
-              } else if (usdAmount > 0) {
-                console.log(
-                  `[SKIP EVM] ${wallet.name} transaksi cuma $${usdAmount.toFixed(2)} (di bawah $500)`,
-                );
               }
             }
           }
         }
 
-        // ==========================================
-        // 3. WHALE ALERT SALDO UMUM (Penyebab Utama Spam!)
-        // ==========================================
+        // ------------------------------------------
+        // 3. WHALE ALERT SALDO UMUM (NATIVE)
+        // ------------------------------------------
         let currentBalance = 0;
         if (wallet.network === "SOLANA")
           currentBalance = await getSolanaBalance(wallet.address);
@@ -433,7 +491,6 @@ export async function GET(request: Request) {
         const oldBalance = Number(wallet.lastBalance || 0);
         const diff = currentBalance - oldBalance;
 
-        // 🔥 UPDATE S.KOM 2: Estimasi Harga Koin Utama untuk Filter $500
         let nativePriceEstimasi = 0;
         if (wallet.network === "SOLANA") nativePriceEstimasi = 145;
         else if (wallet.network === "ETHEREUM" || wallet.network === "BASE")
@@ -442,7 +499,6 @@ export async function GET(request: Request) {
 
         const diffUsdValue = Math.abs(diff) * nativePriceEstimasi;
 
-        // Cek kalau ada perubahan saldo (sekecil apapun) buat di-update di DB
         if (Math.abs(diff) > 0.00000001) {
           await prisma.wallet.update({
             where: { id: wallet.id },
@@ -467,7 +523,6 @@ export async function GET(request: Request) {
             },
           });
 
-          // 🔥 SATPAM $500 BERAKSI: Jangan kirim notif Telegram kalau perubahan saldonya < $500
           if (
             !isSwapOrTokenAlertSent &&
             targetChatId &&
@@ -481,12 +536,12 @@ export async function GET(request: Request) {
                   ? "◎"
                   : "Ξ";
             const message =
-              `${label} ALERT!\n🚨 *WHALE BALANCE UPDATE*\n\n` +
-              `👤 *Target:* ${wallet.name}\n` +
+              `🚨 *WHALE BALANCE UPDATE*\n\n` +
+              `👤 *Whale:* ${wallet.name}\n` +
               `🌐 *Network:* ${wallet.network}\n` +
-              `💼 *Saldo Lama:* ${sym} ${oldBalance.toFixed(8)}\n` +
-              `💰 *Saldo Baru:* ${sym} ${currentBalance.toFixed(8)}\n` +
-              `📊 *Perubahan:* ${sym} ${Math.abs(diff).toFixed(8)} (≈ $${diffUsdValue.toFixed(2)})\n` +
+              `💼 *Old Balance:* ${sym} ${oldBalance.toFixed(8)}\n` +
+              `💰 *New Balance:* ${sym} ${currentBalance.toFixed(8)}\n` +
+              `📊 *Change:* ${sym} ${Math.abs(diff).toFixed(8)} (≈ $${diffUsdValue.toFixed(2)})\n` +
               `📍 *Address:* \`${wallet.address}\``;
 
             await fetch(
@@ -500,10 +555,6 @@ export async function GET(request: Request) {
                   parse_mode: "Markdown",
                 }),
               },
-            );
-          } else if (diffUsdValue > 0) {
-            console.log(
-              `[SKIP NATIVE ALERT] ${wallet.name} bayar gas/transfer receh, pergerakan cuma $${diffUsdValue.toFixed(2)}.`,
             );
           }
         }
