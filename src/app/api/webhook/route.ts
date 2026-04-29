@@ -192,6 +192,16 @@ async function sendTelegramAlert({
             url: `https://t.me/bonkbot_bot?start=${tokenAddress}`,
           },
         ],
+        [
+          {
+            text: "🐦 Cek X",
+            url: `https://x.com/search?q=${tokenAddress}`,
+          },
+          {
+            text: "🫧 Bubblemaps",
+            url: `https://app.bubblemaps.io/sol/token/${tokenAddress}`,
+          },
+        ],
       ];
     } else {
       inline_keyboard = [
