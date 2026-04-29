@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import PnLChart from "@/components/PnLChart";
+import { auditHistoricalWinRate } from "@/lib/scanner"; // 🔥 TAMBAHAN S.KOM: Import Scanner
 
 import {
   Shield,
@@ -150,7 +151,7 @@ async function createWalletAction(formData: FormData) {
     }
 
     // 🔥 FIX SAAS MULTI-USER: Upsert pake 3 Kunci Gembok (Address + Network + UserID)
-    await prisma.wallet.upsert({
+    const savedWallet = await prisma.wallet.upsert({
       where: {
         address_network_userId: {
           address: normalized,
@@ -169,6 +170,14 @@ async function createWalletAction(formData: FormData) {
         userId,
       },
     });
+
+    // 🔥 JURUS S.KOM: Panggil scanner di background (TANPA await)
+    // Biar UI user nggak nungguin loading lama!
+    auditHistoricalWinRate(
+      savedWallet.id,
+      savedWallet.address,
+      savedWallet.network,
+    );
 
     if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
       try {

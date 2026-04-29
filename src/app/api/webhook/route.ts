@@ -128,7 +128,7 @@ async function processAutoWinRate(
 }
 
 // ==========================================
-// 🔥 FUNGSI BARU: KIRIM TELEGRAM (BIAR GAK BERULANG)
+// FUNGSI KIRIM TELEGRAM
 // ==========================================
 async function sendTelegramAlert({
   wallet,
@@ -146,34 +146,25 @@ async function sendTelegramAlert({
 }: any) {
   if (!process.env.TELEGRAM_BOT_TOKEN) return;
 
-  // Logika 1000 USD:
-  // >= $1000 -> Alpha (Grup)
-  // < $1000 -> Asisten (Japri)
   const isAlphaWorthy = usdAmount >= 1000;
   const notificationTargets: { id: string; customLabel: string }[] = [];
   const userAlphaChatId = wallet.alphaChannelId;
 
   if (isAlphaWorthy) {
     let sentToAlpha = false;
-
-    // PRIORITAS 1: Cek ID Grup Alpha spesifik punya User di Database
     if (userAlphaChatId && userAlphaChatId !== targetChatId) {
       notificationTargets.push({
         id: userAlphaChatId,
         customLabel: "👑 ALPHA PREDATOR",
       });
       sentToAlpha = true;
-    }
-    // PRIORITAS 2: Cek ID Grup Alpha Global (.env) -- HANYA jalan kalau Prioritas 1 kosong
-    else if (alphaChatId && alphaChatId !== targetChatId) {
+    } else if (alphaChatId && alphaChatId !== targetChatId) {
       notificationTargets.push({
         id: alphaChatId,
         customLabel: "👑 ALPHA PREDATOR",
       });
       sentToAlpha = true;
     }
-
-    // PRIORITAS 3: Fallback. Kalau nggak punya grup alpha sama sekali, tetep masukin ke japri dengan label Alpha
     if (!sentToAlpha && targetChatId) {
       notificationTargets.push({
         id: targetChatId,
@@ -181,13 +172,11 @@ async function sendTelegramAlert({
       });
     }
   } else {
-    // Sinyal di bawah $1000 murni masuk Asisten (Japri)
     if (targetChatId) {
       notificationTargets.push({ id: targetChatId, customLabel: label });
     }
   }
 
-  // Formatting Pesan
   const mktCapText =
     marketInfo && marketInfo.marketCap > 0
       ? `\n📊 *Market Cap:* ${formatCurrency(marketInfo.marketCap)}`
@@ -207,7 +196,6 @@ async function sendTelegramAlert({
       `📈 *Current Win Rate:* ${winRate.toFixed(1)}%\n` +
       `📍 *Address:* \`${wallet.address}\``;
 
-    // Keyboard Dinamis (Solana vs EVM)
     let inline_keyboard = [];
     if (network === "SOLANA") {
       inline_keyboard = [
@@ -220,7 +208,7 @@ async function sendTelegramAlert({
         ],
         [
           {
-            text: "⚡ Web3: Jupiter DEX",
+            text: "⚡ Web3: Jupiter",
             url: `https://jup.ag/swap/SOL-${tokenAddress}`,
           },
           {
@@ -228,37 +216,9 @@ async function sendTelegramAlert({
             url: `https://t.me/bonkbot_bot?start=${tokenAddress}`,
           },
         ],
-        [
-          {
-            text: "🐦 Cek X (Twitter)",
-            url: `https://x.com/search?q=%24${tokenSymbol}&src=typed_query`,
-          },
-          {
-            text: "🗺️ BubbleMaps",
-            url: `https://app.bubblemaps.io/sol/token/${tokenAddress}`,
-          },
-        ],
       ];
     } else {
-      inline_keyboard = [
-        [{ text: "🔍 Cek TX di Explorer", url: explorerUrl }],
-        [
-          {
-            text: "⚡ Web3: Uniswap",
-            url: `https://app.uniswap.org/swap?outputCurrency=${tokenAddress}&chain=${network === "BASE" ? "base" : "mainnet"}`,
-          },
-          {
-            text: "🤖 TG Bot: Maestro",
-            url: `https://t.me/maestro?start=${tokenAddress}`,
-          },
-        ],
-        [
-          {
-            text: "🐦 Cek X (Twitter)",
-            url: `https://x.com/search?q=%24${tokenSymbol}&src=typed_query`,
-          },
-        ],
-      ];
+      inline_keyboard = [[{ text: "🔍 Cek TX di Explorer", url: explorerUrl }]];
     }
 
     try {
@@ -290,7 +250,10 @@ export async function GET(request: Request) {
     for (const wallet of wallets) {
       try {
         const winRate = (wallet as any).winRate || 0;
-        const threshold = (wallet as any).minAlertUsd || 100;
+
+        // 🔥 UPDATE S.KOM 1: BATAS MINIMUM DINAIKAN JADI $500 SECARA DEFAULT
+        const threshold = (wallet as any).minAlertUsd || 500;
+
         const targetChatId = wallet.chatId;
 
         let label = "🐋 THE WHALE";
@@ -335,6 +298,7 @@ export async function GET(request: Request) {
                 tokenSymbol,
               );
 
+              // SATPAM $500: Cuma jalan kalau nominal >= threshold
               if (usdAmount > 0 && usdAmount >= threshold) {
                 await prisma.transaction.create({
                   data: {
@@ -368,6 +332,10 @@ export async function GET(request: Request) {
                   actionText,
                   explorerUrl: `https://solscan.io/tx/${swapData.signature}`,
                 });
+              } else if (usdAmount > 0) {
+                console.log(
+                  `[SKIP SWAP] ${wallet.name} transaksi cuma $${usdAmount.toFixed(2)} (di bawah $500)`,
+                );
               }
             }
           }
@@ -409,6 +377,7 @@ export async function GET(request: Request) {
                 tokenSymbol,
               );
 
+              // SATPAM $500: Cuma jalan kalau nominal >= threshold
               if (usdAmount > 0 && usdAmount >= threshold) {
                 await prisma.transaction.create({
                   data: {
@@ -438,13 +407,17 @@ export async function GET(request: Request) {
                   actionText: tokenTx.description,
                   explorerUrl: tokenTx.explorerUrl,
                 });
+              } else if (usdAmount > 0) {
+                console.log(
+                  `[SKIP EVM] ${wallet.name} transaksi cuma $${usdAmount.toFixed(2)} (di bawah $500)`,
+                );
               }
             }
           }
         }
 
         // ==========================================
-        // 3. WHALE ALERT SALDO UMUM (HISTORY & TELEGRAM)
+        // 3. WHALE ALERT SALDO UMUM (Penyebab Utama Spam!)
         // ==========================================
         let currentBalance = 0;
         if (wallet.network === "SOLANA")
@@ -460,6 +433,16 @@ export async function GET(request: Request) {
         const oldBalance = Number(wallet.lastBalance || 0);
         const diff = currentBalance - oldBalance;
 
+        // 🔥 UPDATE S.KOM 2: Estimasi Harga Koin Utama untuk Filter $500
+        let nativePriceEstimasi = 0;
+        if (wallet.network === "SOLANA") nativePriceEstimasi = 145;
+        else if (wallet.network === "ETHEREUM" || wallet.network === "BASE")
+          nativePriceEstimasi = 3000;
+        else if (wallet.network === "BITCOIN") nativePriceEstimasi = 60000;
+
+        const diffUsdValue = Math.abs(diff) * nativePriceEstimasi;
+
+        // Cek kalau ada perubahan saldo (sekecil apapun) buat di-update di DB
         if (Math.abs(diff) > 0.00000001) {
           await prisma.wallet.update({
             where: { id: wallet.id },
@@ -479,15 +462,17 @@ export async function GET(request: Request) {
                   : wallet.network === "SOLANA"
                     ? "SOL"
                     : "ETH",
-              usdValue: 0,
+              usdValue: diffUsdValue,
               explorerUrl: "#",
             },
           });
 
+          // 🔥 SATPAM $500 BERAKSI: Jangan kirim notif Telegram kalau perubahan saldonya < $500
           if (
             !isSwapOrTokenAlertSent &&
             targetChatId &&
-            process.env.TELEGRAM_BOT_TOKEN
+            process.env.TELEGRAM_BOT_TOKEN &&
+            diffUsdValue >= threshold
           ) {
             const sym =
               wallet.network === "BITCOIN"
@@ -501,7 +486,7 @@ export async function GET(request: Request) {
               `🌐 *Network:* ${wallet.network}\n` +
               `💼 *Saldo Lama:* ${sym} ${oldBalance.toFixed(8)}\n` +
               `💰 *Saldo Baru:* ${sym} ${currentBalance.toFixed(8)}\n` +
-              `📊 *Perubahan:* ${sym} ${Math.abs(diff).toFixed(8)}\n` +
+              `📊 *Perubahan:* ${sym} ${Math.abs(diff).toFixed(8)} (≈ $${diffUsdValue.toFixed(2)})\n` +
               `📍 *Address:* \`${wallet.address}\``;
 
             await fetch(
@@ -513,23 +498,12 @@ export async function GET(request: Request) {
                   chat_id: targetChatId,
                   text: message,
                   parse_mode: "Markdown",
-                  reply_markup: {
-                    inline_keyboard: [
-                      [
-                        {
-                          text: "🔍 Pelacak Aliran Dana / Explorer",
-                          url:
-                            wallet.network === "SOLANA"
-                              ? `https://solscan.io/account/${wallet.address}#transfers`
-                              : wallet.network === "BITCOIN"
-                                ? `https://www.blockchain.com/explorer/addresses/btc/${wallet.address}`
-                                : `https://etherscan.io/address/${wallet.address}`,
-                        },
-                      ],
-                    ],
-                  },
                 }),
               },
+            );
+          } else if (diffUsdValue > 0) {
+            console.log(
+              `[SKIP NATIVE ALERT] ${wallet.name} bayar gas/transfer receh, pergerakan cuma $${diffUsdValue.toFixed(2)}.`,
             );
           }
         }
@@ -540,11 +514,11 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Radar Predator Selesai Menyapu Semua Jaringan",
+      message: "Radar Selesai Menyapu",
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Gagal menyapu radar" },
+      { success: false, error: "Gagal menyapu" },
       { status: 500 },
     );
   }
