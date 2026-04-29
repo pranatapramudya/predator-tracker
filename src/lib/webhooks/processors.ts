@@ -383,11 +383,14 @@ async function saveTransactionAndNotify(params: {
         (volumeMcapRatio > 50 ? `(🔥 Panas)` : `(🧊 Normal)`);
     }
 
-    // --- LOGIKA FILTER ALPHA VS ASISTEN (PRIVASI 100%) ---
+    // --- LOGIKA FILTER ALPHA VS ASISTEN (PRIVASI 100% + DYOR) ---
     const isAlpha = params.usdValue >= 1000;
     const title = isAlpha
       ? "👑 *ALPHA PREDATOR ALERT!*"
       : "🚨 *WHALE ALERT* 🚨";
+
+    // Peringatan Hukum / DYOR
+    const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Data ini dihasilkan secara otomatis dari blockchain. Ini BUKAN saran finansial (NFA). Harap lakukan riset Anda sendiri (DYOR) sebelum mengambil keputusan trading!_`;
 
     const message =
       `${title}\n\n` +
@@ -396,7 +399,8 @@ async function saveTransactionAndNotify(params: {
       `📈 *Action:* ${actionLabel}\n` +
       `🪙 *Token:* ${params.symbol}\n` +
       `💰 *Value:* $${params.usdValue.toFixed(2)}${liquidityWarning}` +
-      metricsBlock;
+      metricsBlock +
+      dyorFooter;
 
     const inlineKeyboard = [];
     inlineKeyboard.push([
@@ -412,7 +416,7 @@ async function saveTransactionAndNotify(params: {
       ]);
     }
 
-    // PENENTU JALUR PENGIRIMAN: SELALU KE JAPRI USER
+    // PENENTU JALUR PENGIRIMAN: SELALU KE JAPRI USER (Atau fallback ke Grup VIP)
     const chatId = params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
 
     if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
