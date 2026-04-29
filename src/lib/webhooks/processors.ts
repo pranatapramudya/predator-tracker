@@ -363,7 +363,7 @@ async function saveTransactionAndNotify(params: {
     let tokenAgeHours = 0;
     let smartMoneyCount = 0;
     let insiderWarning = "";
-    let whaleStatsBlock = ""; // 🔥 WADAH BARU BUAT RAPOR PAUS
+    let whaleStatsBlock = "";
 
     if (params.candidate.tokenIdentifier) {
       try {
@@ -378,7 +378,6 @@ async function saveTransactionAndNotify(params: {
 
         if (!existingPosition && params.action === "BUY") isFirstTimeBuy = true;
 
-        // 1. Suruh Akuntan ngitung PnL dan Winrate (Ini lari ke file pnl.ts)
         await processWhaleTrade(
           params.wallet.id,
           params.candidate.tokenIdentifier,
@@ -388,7 +387,6 @@ async function saveTransactionAndNotify(params: {
           params.usdValue,
         );
 
-        // 2. 🔥 BUKA LACI DATABASE: Ambil data hasil hitungan Akuntan
         const whaleData = await prisma.wallet.findUnique({
           where: { id: params.wallet.id },
           select: { winRate: true, totalTrades: true },
@@ -399,13 +397,11 @@ async function saveTransactionAndNotify(params: {
           select: { realizedPnlUsd: true },
         });
 
-        // 3. Jumlahin seluruh cuan/rugi dari semua koin yang pernah dia mainin
         const totalRealizedPnl = allPositions.reduce(
           (sum, pos) => sum + Number(pos.realizedPnlUsd),
           0,
         );
 
-        // 4. Rakit Teks Rapor Paus
         const winRateText =
           whaleData && whaleData.totalTrades > 0
             ? `${Number(whaleData.winRate).toFixed(1)}%`
@@ -430,33 +426,46 @@ async function saveTransactionAndNotify(params: {
           });
           if (smartMoneyCount >= 2) multibaggerScore += 2;
 
-          const dexRes = await fetch(
-            `https://api.dexscreener.com/latest/dex/tokens/${params.candidate.tokenIdentifier}`,
-          );
-          const dexData = await dexRes.json();
+          // --- ISOLATED BLOCK 1: DEXSCREENER (PETUGAS SENSUS) ---
+          try {
+            const dexRes = await fetch(
+              `https://api.dexscreener.com/latest/dex/tokens/${params.candidate.tokenIdentifier}`,
+            );
+            const dexData = await dexRes.json();
 
-          if (dexData.pairs && dexData.pairs.length > 0) {
-            const pair = dexData.pairs[0];
-            liquidityUsd = pair.liquidity?.usd || 0;
-            const mcapUsd = pair.fdv || pair.marketCap || 0;
-            const volume24h = pair.volume?.h24 || 0;
+            if (dexData.pairs && dexData.pairs.length > 0) {
+              const pair = dexData.pairs[0];
+              liquidityUsd = pair.liquidity?.usd || 0;
+              const mcapUsd = pair.fdv || pair.marketCap || 0;
+              const volume24h = pair.volume?.h24 || 0;
 
-            if (pair.pairCreatedAt) {
-              tokenAgeHours =
-                (Date.now() - pair.pairCreatedAt) / (1000 * 60 * 60);
-              if (tokenAgeHours < 24) multibaggerScore += 1;
+              if (pair.pairCreatedAt) {
+                tokenAgeHours =
+                  (Date.now() - pair.pairCreatedAt) / (1000 * 60 * 60);
+                if (tokenAgeHours < 24) multibaggerScore += 1;
+              }
+              if (mcapUsd > 0) volumeMcapRatio = (volume24h / mcapUsd) * 100;
             }
-            if (mcapUsd > 0) volumeMcapRatio = (volume24h / mcapUsd) * 100;
+          } catch (dexError) {
+            console.error(
+              `[DexScreener] Gagal index (mungkin koin baru lahir):`,
+              dexError,
+            );
           }
 
-          if (params.wallet.network === Network.SOLANA) {
-            insiderWarning = await checkSolanaInsiderRisk(
-              params.candidate.tokenIdentifier,
-            );
+          // --- ISOLATED BLOCK 2: HELIUS RPC (DETEKTIF MAFIA) ---
+          try {
+            if (params.wallet.network === Network.SOLANA) {
+              insiderWarning = await checkSolanaInsiderRisk(
+                params.candidate.tokenIdentifier,
+              );
+            }
+          } catch (heliusError) {
+            console.error(`[Helius] Gagal periksa insider risk:`, heliusError);
           }
         }
       } catch (error) {
-        console.error(`[Predator System] Gagal proses Metrik:`, error);
+        console.error(`[Predator System] Gagal proses Metrik utama:`, error);
       }
     }
 
@@ -490,7 +499,6 @@ async function saveTransactionAndNotify(params: {
 
     const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Data ini dihasilkan secara otomatis dari blockchain. Ini BUKAN saran finansial (NFA). Harap lakukan riset Anda sendiri (DYOR) sebelum mengambil keputusan trading!_`;
 
-    // RAKIT FULL PESAN TELEGRAM
     const message =
       `${title}\n\n` +
       `👤 *Whale:* ${params.wallet.name ?? "Target"}\n` +
@@ -498,7 +506,7 @@ async function saveTransactionAndNotify(params: {
       `📈 *Action:* ${actionLabel}\n` +
       `🪙 *Token:* ${params.symbol}\n` +
       `💰 *Value:* $${params.usdValue.toFixed(2)}${liquidityWarning}` +
-      whaleStatsBlock + // <-- Posisi Rapot ditaruh persis di bawah Value transaksi
+      whaleStatsBlock +
       metricsBlock +
       dyorFooter;
 
