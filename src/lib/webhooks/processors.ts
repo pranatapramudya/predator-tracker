@@ -268,7 +268,6 @@ function isDuplicateError(error: unknown): boolean {
   );
 }
 
-// 🔥 FITUR BARU: Deteksi Raja Boneka (Wallet Clustering)
 async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
   try {
     const apiKey = process.env.HELIUS_API_KEY;
@@ -276,7 +275,6 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
 
     const rpcUrl = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
 
-    // 1. Tanya Pabrik: Berapa Total Supply?
     const supplyRes = await fetch(rpcUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -292,7 +290,6 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
 
     if (!totalSupply) return "";
 
-    // 2. Tanya Daftar 20 Dompet Terbesar
     const accountsRes = await fetch(rpcUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -308,7 +305,6 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
 
     if (!largestAccounts || !Array.isArray(largestAccounts)) return "";
 
-    // 3. Kalkulator: Totalin dompet urutan 2 sampai 11 (Abaikan Raydium LP di nomor 1)
     let insiderAmount = 0;
     const top10 = largestAccounts.slice(1, 11);
     for (const acc of top10) {
@@ -317,7 +313,6 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
 
     const insiderPercentage = (insiderAmount / totalSupply) * 100;
 
-    // 4. Vonis Bahaya
     if (insiderPercentage > 30) {
       return `\n☠️ *INSIDER RISK:* 🔴 SANGAT BAHAYA! (Top 10 pegang ${insiderPercentage.toFixed(1)}%)`;
     } else if (insiderPercentage > 15) {
@@ -367,7 +362,8 @@ async function saveTransactionAndNotify(params: {
     let volumeMcapRatio = 0;
     let tokenAgeHours = 0;
     let smartMoneyCount = 0;
-    let insiderWarning = ""; // Wadah buat hasil detektif
+    let insiderWarning = "";
+    let whaleStatsBlock = ""; // 🔥 WADAH BARU BUAT RAPOR PAUS
 
     if (params.candidate.tokenIdentifier) {
       try {
@@ -382,6 +378,7 @@ async function saveTransactionAndNotify(params: {
 
         if (!existingPosition && params.action === "BUY") isFirstTimeBuy = true;
 
+        // 1. Suruh Akuntan ngitung PnL dan Winrate (Ini lari ke file pnl.ts)
         await processWhaleTrade(
           params.wallet.id,
           params.candidate.tokenIdentifier,
@@ -390,6 +387,39 @@ async function saveTransactionAndNotify(params: {
           params.candidate.amount,
           params.usdValue,
         );
+
+        // 2. 🔥 BUKA LACI DATABASE: Ambil data hasil hitungan Akuntan
+        const whaleData = await prisma.wallet.findUnique({
+          where: { id: params.wallet.id },
+          select: { winRate: true, totalTrades: true },
+        });
+
+        const allPositions = await prisma.tokenPosition.findMany({
+          where: { walletId: params.wallet.id },
+          select: { realizedPnlUsd: true },
+        });
+
+        // 3. Jumlahin seluruh cuan/rugi dari semua koin yang pernah dia mainin
+        const totalRealizedPnl = allPositions.reduce(
+          (sum, pos) => sum + Number(pos.realizedPnlUsd),
+          0,
+        );
+
+        // 4. Rakit Teks Rapor Paus
+        const winRateText =
+          whaleData && whaleData.totalTrades > 0
+            ? `${Number(whaleData.winRate).toFixed(1)}%`
+            : "N/A (Belum Jual)";
+
+        const pnlText =
+          totalRealizedPnl >= 0
+            ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
+            : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
+
+        whaleStatsBlock =
+          `\n\n🏆 *WHALE RAPOR*` +
+          `\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)` +
+          `\n💰 *Total PnL:* ${pnlText}`;
 
         if (params.action === "BUY") {
           smartMoneyCount = await prisma.tokenPosition.count({
@@ -419,7 +449,6 @@ async function saveTransactionAndNotify(params: {
             if (mcapUsd > 0) volumeMcapRatio = (volume24h / mcapUsd) * 100;
           }
 
-          // 🔥 PANGGIL DETEKTIF KHUSUS JARINGAN SOLANA
           if (params.wallet.network === Network.SOLANA) {
             insiderWarning = await checkSolanaInsiderRisk(
               params.candidate.tokenIdentifier,
@@ -451,7 +480,7 @@ async function saveTransactionAndNotify(params: {
         `\n⏳ *Age:* ${tokenAgeHours > 0 ? tokenAgeHours.toFixed(1) + "h" : "N/A"}` +
         `\n📈 *Vol/MCap:* ${volumeMcapRatio > 0 ? volumeMcapRatio.toFixed(1) + "%" : "N/A"} ` +
         (volumeMcapRatio > 50 ? `(🔥 Panas)` : `(🧊 Normal)`) +
-        insiderWarning; // <-- Tembakan Detektif Dimasukkan ke Laporan
+        insiderWarning;
     }
 
     const isAlpha = params.usdValue >= 1000;
@@ -461,6 +490,7 @@ async function saveTransactionAndNotify(params: {
 
     const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Data ini dihasilkan secara otomatis dari blockchain. Ini BUKAN saran finansial (NFA). Harap lakukan riset Anda sendiri (DYOR) sebelum mengambil keputusan trading!_`;
 
+    // RAKIT FULL PESAN TELEGRAM
     const message =
       `${title}\n\n` +
       `👤 *Whale:* ${params.wallet.name ?? "Target"}\n` +
@@ -468,6 +498,7 @@ async function saveTransactionAndNotify(params: {
       `📈 *Action:* ${actionLabel}\n` +
       `🪙 *Token:* ${params.symbol}\n` +
       `💰 *Value:* $${params.usdValue.toFixed(2)}${liquidityWarning}` +
+      whaleStatsBlock + // <-- Posisi Rapot ditaruh persis di bawah Value transaksi
       metricsBlock +
       dyorFooter;
 
@@ -542,7 +573,6 @@ export async function processWebhookPayload(
     const usdValue = candidate.amount * asset.usdPrice;
     if (usdValue < MIN_ALERT_USD) continue;
 
-    // Looping eksekusi SELL ke semua kerabat yang nge-track
     for (const fromWallet of fromWallets) {
       await saveTransactionAndNotify({
         candidate,
@@ -553,7 +583,6 @@ export async function processWebhookPayload(
       });
     }
 
-    // Looping eksekusi BUY ke semua kerabat yang nge-track
     for (const toWallet of toWallets) {
       await saveTransactionAndNotify({
         candidate,
