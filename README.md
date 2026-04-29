@@ -41,6 +41,18 @@ Dashboard tidak hanya menampilkan angka, tapi visualisasi performa yang hidup.
 - **EVM:** Integrasi Uniswap & Maestro Sniper.
 - **Social Intel:** Tombol khusus untuk cek tren komunitas koin di X (Twitter) secara langsung.
 
+### 6. Detektif Anti-Mafia (Wallet Clustering & Rugpull Scanner) 🕵️‍♂️
+
+Sistem keamanan preventif untuk melindungi _user_ dari jebakan _developer_ nakal.
+
+- **Deteksi "Raja Boneka" (Solana Native):** Memeriksa persentase kepemilikan _Top 10 Holders_ secara _real-time_ via Helius RPC untuk mendeteksi _Insider Trading_ atau potensi _Dev Dump_.
+- **Cek Kunci Brankas (LP Check):** Peringatan otomatis di Telegram jika _Liquidity Pool_ koin incaran berada di zona bahaya (_High Risk_ < $10k).
+
+### 7. Live Whale Rapor (Real-Time PnL & Winrate) 🏆
+
+- **Integrasi Langsung ke Telegram:** Setiap _alert_ transaksi jual/beli akan langsung menampilkan akumulasi performa paus detik itu juga (_Winrate %_ dan _Total Realized PnL_).
+- **Penghilang FOMO Buta:** _User_ tahu pasti dan memiliki bukti data apakah paus yang mereka ikuti adalah pemenang sejati (_Smart Money_) atau sekadar penjudi yang membuang uang.
+
 ---
 
 ## 🏗️ Teknologi yang Digunakan
@@ -59,3 +71,5 @@ Dashboard tidak hanya menampilkan angka, tapi visualisasi performa yang hidup.
 - [x] Smart Heuristic V2 (Detect Unknown Token Transfers).
 - [x] PnL Chart & Dynamic Whale Reputation.
 - [x] Multi-Tenant Telegram Isolation (SaaS Ready).
+- [x] **Integrasi Detektif Anti-Mafia (Wallet Clustering Alert).**
+- [x] **Telegram Injection: Live Whale PnL & Winrate Report.**
