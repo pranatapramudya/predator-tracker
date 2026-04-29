@@ -6,60 +6,57 @@ Sebuah arsitektur SaaS premium untuk melacak pergerakan dompet kripto raksasa (W
 
 ## 🚀 Fitur Unggulan (Latest Update)
 
-### 1. Historical Audit & "Machine Time" Scanner 🕰️
+### 1. Hybrid Dual-Engine Architecture (Webhook & Sweeper) ⚙️
 
-Fitur intelijen yang memungkinkan sistem mengetahui kualitas paus **sebelum** mulai memantaunya.
+Sistem pelacakan tanpa titik buta (_blind spot_) dengan arsitektur dua mesin sinkron:
 
-- **Auto-Audit on Registration:** Begitu dompet ditambahkan, sistem otomatis melakukan _sweeping_ 50-100 transaksi terakhir via Helius/RPC.
-- **Instant Reputation:** Menghitung _Win Rate_ masa lalu secara instan sehingga tidak ada lagi dompet "Zonk" di radar.
-- **Background Async Processing:** Proses audit berjalan di _background layer_ untuk memastikan pengalaman UI tetap cepat tanpa _loading_ lama.
+- **Webhook Engine (POST):** Menangkap transaksi _real-time_ dengan kecepatan milidetik menggunakan infrastruktur Helius dan Alchemy.
+- **Sweeper Engine (GET):** Radar patroli aktif yang berjalan via _Cron Job_ untuk menyapu transaksi yang terlewat dan melacak pergerakan saldo utama (Native Balance).
 
-### 2. "Satpam $500" - Enterprise Noise Reduction 🛡️
+### 2. Universal Native Balance Tracker 🏦
+
+Tidak hanya melacak _swap_ token micin, radar ini mengawasi pergerakan saldo absolut paus.
+
+- Melacak injeksi atau penarikan dana besar dalam bentuk murni **SOL, ETH, dan BTC**.
+- Menghitung kalkulasi perubahan nilai (USD) secara instan dan mengirim peringatan `🚨 WHALE BALANCE UPDATE` jika melewati batas toleransi (_threshold_).
+
+### 3. Detektif Anti-Mafia & "Ruang Isolasi" (Rugpull Scanner) 🕵️‍♂️
+
+Sistem keamanan preventif yang kebal terhadap _error_ koin baru:
+
+- **Deteksi "Raja Boneka" (Solana Native):** Memeriksa persentase kepemilikan _Top 10 Holders_ secara _real-time_ via Helius RPC. Memberikan peringatan dari 🟢 _Safe_ hingga 🔴 _EXTREME DANGER!_.
+- **Isolated Error Handling:** Jika DexScreener gagal mengindeks koin yang baru lahir sedetik lalu, sistem _Insider Risk_ tetap berjalan berkat arsitektur _Try-Catch_ terisolasi.
+
+### 4. Atomic PnL Engine & Live Whale Rapor 🏆
+
+Dashboard dan Notifikasi tidak hanya menampilkan angka mentah, tapi performa akurat.
+
+- **Prisma Interactive Transaction:** Kalkulasi _Average Buy Price_, _Realized PnL_, dan _Winrate_ diproses secara _Atomic_. Mencegah _Race Condition_ saat paus melakukan banyak transaksi bersamaan.
+- **Live Telegram Report:** Setiap _alert_ otomatis menampilkan akumulasi performa paus detik itu juga. Penghilang FOMO Buta agar _user_ tahu paus mana yang benar-benar _Smart Money_.
+
+### 5. "Satpam $500" - Enterprise Noise Reduction 🛡️
 
 Filter cerdas untuk menjaga ketenangan pikiran dan kualitas sinyal Alpha.
 
-- **Threshold-Based Alerts:** Telegram hanya akan berbunyi jika nilai transaksi berada di atas **$500** (default) atau sesuai pengaturan user.
-- **Anti-Spam Logic:** Mengabaikan transaksi debu, _airdrop_ sampah, atau sekadar pembayaran _gas fee_ yang biasanya mengganggu bot pelacak biasa.
-- **Native & Token Filter:** Berlaku untuk pergerakan saldo koin utama (SOL/ETH/BTC) maupun koin micin di ekosistem DEX.
+- **Threshold-Based Alerts:** Telegram hanya berbunyi jika nilai transaksi di atas batas USD yang ditentukan user. Mengabaikan transaksi debu atau _airdrop_ sampah.
 
-### 3. Smart Heuristic PnL Engine V2 📊
-
-Dashboard tidak hanya menampilkan angka, tapi visualisasi performa yang hidup.
-
-- **Token Movement Tracking:** Mendeteksi setiap mutasi koin micin (In/Out) menggunakan logika _Smart Heuristic_.
-- **Visual PnL Chart:** Mengonversi data mentah transaksi menjadi grafik performa yang intuitif.
-- **Dynamic Labeling:** Gelar paus (Oracle, Grinder, Exit Liquidity) otomatis diperbarui berdasarkan performa _real-time_.
-
-### 4. Multi-Tenant Data Isolation (SaaS Ready) 🔐
-
-- **Isolated Mapping:** Notifikasi dikirimkan tepat sasaran ke `chatId` masing-masing pemilik radar.
-- **Database Unique Constraint:** Keamanan data tingkat tinggi pada kombinasi `[address, network, userId]`.
-
-### 5. 1-Click Execution Terminal ⚡
+### 6. 1-Click Execution Terminal ⚡
 
 - **Solana:** Integrasi Jupiter DEX & BonkBot.
-- **EVM:** Integrasi Uniswap & Maestro Sniper.
-- **Social Intel:** Tombol khusus untuk cek tren komunitas koin di X (Twitter) secara langsung.
+- **EVM:** Integrasi Explorer & DexScreener Chart.
 
-### 6. Detektif Anti-Mafia (Wallet Clustering & Rugpull Scanner) 🕵️‍♂️
+### 7. Multi-Tenant Data Isolation (SaaS Ready) 🔐
 
-Sistem keamanan preventif untuk melindungi _user_ dari jebakan _developer_ nakal.
-
-- **Deteksi "Raja Boneka" (Solana Native):** Memeriksa persentase kepemilikan _Top 10 Holders_ secara _real-time_ via Helius RPC untuk mendeteksi _Insider Trading_ atau potensi _Dev Dump_.
-- **Cek Kunci Brankas (LP Check):** Peringatan otomatis di Telegram jika _Liquidity Pool_ koin incaran berada di zona bahaya (_High Risk_ < $10k).
-
-### 7. Live Whale Rapor (Real-Time PnL & Winrate) 🏆
-
-- **Integrasi Langsung ke Telegram:** Setiap _alert_ transaksi jual/beli akan langsung menampilkan akumulasi performa paus detik itu juga (_Winrate %_ dan _Total Realized PnL_).
-- **Penghilang FOMO Buta:** _User_ tahu pasti dan memiliki bukti data apakah paus yang mereka ikuti adalah pemenang sejati (_Smart Money_) atau sekadar penjudi yang membuang uang.
+- **Isolated Mapping:** Notifikasi dikirimkan tepat sasaran ke `chatId` masing-masing pemilik radar. Berapapun usernya, data paus mereka dijamin tidak bocor ke tetangga.
 
 ---
 
 ## 🏗️ Teknologi yang Digunakan
 
-- **Framework:** Next.js 14 (App Router)
+- **Framework:** Next.js 14 (App Router / Serverless)
 - **Database:** Prisma ORM & PostgreSQL (Neon DB)
-- **Scanner Engine:** Helius Enriched API, DexScreener API (Pricing)
+- **Scanner Engine:** Helius RPC, Alchemy, DexScreener API
+- **State Management:** Prisma `$transaction` (Atomic DB Locks)
 - **Bot Infrastructure:** Telegram Bot API (Inline Keyboards & Markdown)
 
 ---
@@ -67,9 +64,9 @@ Sistem keamanan preventif untuk melindungi _user_ dari jebakan _developer_ nakal
 ## 🗺️ Roadmap (Completed)
 
 - [x] Historical Scanner (Audit Masa Lalu Otomatis).
-- [x] Satpam Filter $500 (Noise Reduction).
-- [x] Smart Heuristic V2 (Detect Unknown Token Transfers).
-- [x] PnL Chart & Dynamic Whale Reputation.
+- [x] Satpam Filter $100-$500 (Noise Reduction).
 - [x] Multi-Tenant Telegram Isolation (SaaS Ready).
-- [x] **Integrasi Detektif Anti-Mafia (Wallet Clustering Alert).**
-- [x] **Telegram Injection: Live Whale PnL & Winrate Report.**
+- [x] Integrasi Detektif Anti-Mafia (Wallet Clustering Alert).
+- [x] Telegram Injection: Live Whale PnL & Winrate Report.
+- [x] **Hybrid Architecture: Active Sweeper (GET) & Passive Webhook (POST).**
+- [x] **Universal Native Balance (BTC/ETH/SOL) Tracker.**
