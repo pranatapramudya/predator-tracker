@@ -219,7 +219,6 @@ function extractCandidates(
   return parseAlchemyTransfers(payload as AlchemyAddressActivityPayload);
 }
 
-// 🔥 FIX: MULTI-USER TARGETING
 async function loadTrackedWallets(candidates: TransferCandidate[]) {
   const addressesByNetwork = new Map<Network, Set<string>>();
 
@@ -269,6 +268,69 @@ function isDuplicateError(error: unknown): boolean {
   );
 }
 
+// 🔥 FITUR BARU: Deteksi Raja Boneka (Wallet Clustering)
+async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
+  try {
+    const apiKey = process.env.HELIUS_API_KEY;
+    if (!apiKey) return "";
+
+    const rpcUrl = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
+
+    // 1. Tanya Pabrik: Berapa Total Supply?
+    const supplyRes = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenSupply",
+        params: [tokenAddress],
+      }),
+    });
+    const supplyData = await supplyRes.json();
+    const totalSupply = supplyData?.result?.value?.uiAmount;
+
+    if (!totalSupply) return "";
+
+    // 2. Tanya Daftar 20 Dompet Terbesar
+    const accountsRes = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenLargestAccounts",
+        params: [tokenAddress],
+      }),
+    });
+    const accountsData = await accountsRes.json();
+    const largestAccounts = accountsData?.result?.value;
+
+    if (!largestAccounts || !Array.isArray(largestAccounts)) return "";
+
+    // 3. Kalkulator: Totalin dompet urutan 2 sampai 11 (Abaikan Raydium LP di nomor 1)
+    let insiderAmount = 0;
+    const top10 = largestAccounts.slice(1, 11);
+    for (const acc of top10) {
+      insiderAmount += acc.uiAmount || 0;
+    }
+
+    const insiderPercentage = (insiderAmount / totalSupply) * 100;
+
+    // 4. Vonis Bahaya
+    if (insiderPercentage > 30) {
+      return `\n☠️ *INSIDER RISK:* 🔴 SANGAT BAHAYA! (Top 10 pegang ${insiderPercentage.toFixed(1)}%)`;
+    } else if (insiderPercentage > 15) {
+      return `\n⚠️ *INSIDER RISK:* 🟡 Hati-hati (Top 10 pegang ${insiderPercentage.toFixed(1)}%)`;
+    } else {
+      return `\n🛡️ *INSIDER RISK:* 🟢 Aman (Distribusi Sehat)`;
+    }
+  } catch (error) {
+    console.error(`[Predator System] Gagal cek insider risk:`, error);
+    return "";
+  }
+}
+
 async function saveTransactionAndNotify(params: {
   candidate: TransferCandidate;
   wallet: {
@@ -305,6 +367,7 @@ async function saveTransactionAndNotify(params: {
     let volumeMcapRatio = 0;
     let tokenAgeHours = 0;
     let smartMoneyCount = 0;
+    let insiderWarning = ""; // Wadah buat hasil detektif
 
     if (params.candidate.tokenIdentifier) {
       try {
@@ -355,6 +418,13 @@ async function saveTransactionAndNotify(params: {
             }
             if (mcapUsd > 0) volumeMcapRatio = (volume24h / mcapUsd) * 100;
           }
+
+          // 🔥 PANGGIL DETEKTIF KHUSUS JARINGAN SOLANA
+          if (params.wallet.network === Network.SOLANA) {
+            insiderWarning = await checkSolanaInsiderRisk(
+              params.candidate.tokenIdentifier,
+            );
+          }
         }
       } catch (error) {
         console.error(`[Predator System] Gagal proses Metrik:`, error);
@@ -380,16 +450,15 @@ async function saveTransactionAndNotify(params: {
         `\n🐳 *Smart Money:* ${smartMoneyCount} Wallets` +
         `\n⏳ *Age:* ${tokenAgeHours > 0 ? tokenAgeHours.toFixed(1) + "h" : "N/A"}` +
         `\n📈 *Vol/MCap:* ${volumeMcapRatio > 0 ? volumeMcapRatio.toFixed(1) + "%" : "N/A"} ` +
-        (volumeMcapRatio > 50 ? `(🔥 Panas)` : `(🧊 Normal)`);
+        (volumeMcapRatio > 50 ? `(🔥 Panas)` : `(🧊 Normal)`) +
+        insiderWarning; // <-- Tembakan Detektif Dimasukkan ke Laporan
     }
 
-    // --- LOGIKA FILTER ALPHA VS ASISTEN (PRIVASI 100% + DYOR) ---
     const isAlpha = params.usdValue >= 1000;
     const title = isAlpha
       ? "👑 *ALPHA PREDATOR ALERT!*"
       : "🚨 *WHALE ALERT* 🚨";
 
-    // Peringatan Hukum / DYOR
     const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Data ini dihasilkan secara otomatis dari blockchain. Ini BUKAN saran finansial (NFA). Harap lakukan riset Anda sendiri (DYOR) sebelum mengambil keputusan trading!_`;
 
     const message =
@@ -416,7 +485,6 @@ async function saveTransactionAndNotify(params: {
       ]);
     }
 
-    // PENENTU JALUR PENGIRIMAN: SELALU KE JAPRI USER (Atau fallback ke Grup VIP)
     const chatId = params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
 
     if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
