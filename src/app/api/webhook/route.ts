@@ -576,9 +576,9 @@ export async function GET(request: Request) {
         console.error(`Gagal ngecek wallet ${wallet.name}:`, innerError);
       }
 
-      // 🛑 NAPAS BUATAN S.KOM (JEDA 2 DETIK) 🛑
-      console.log(`[RADAR] Istirahat 2 detik sebelum paus berikutnya...`);
-      await delay(2000);
+      // 🛑 NAPAS BUATAN S.KOM (DIPANGKAS BIAR GAK TIMEOUT) 🛑
+      console.log(`[RADAR] Jeda 0.5 detik...`);
+      await delay(500);
     } // Ini tutup dari 'for (const wallet of wallets)'
 
     return NextResponse.json({
