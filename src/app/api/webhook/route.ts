@@ -1,4 +1,8 @@
 // src/app/api/webhook/route.ts
+
+// Fungsi buat ngasih napas (delay) dalam milidetik
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -561,7 +565,11 @@ export async function GET(request: Request) {
       } catch (innerError) {
         console.error(`Gagal ngecek wallet ${wallet.name}:`, innerError);
       }
-    }
+
+      // 🛑 NAPAS BUATAN S.KOM (JEDA 2 DETIK) 🛑
+      console.log(`[RADAR] Istirahat 2 detik sebelum paus berikutnya...`);
+      await delay(2000);
+    } // Ini tutup dari 'for (const wallet of wallets)'
 
     return NextResponse.json({
       success: true,
