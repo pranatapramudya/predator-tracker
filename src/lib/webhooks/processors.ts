@@ -383,7 +383,7 @@ async function saveTransactionAndNotify(params: {
         (volumeMcapRatio > 50 ? `(🔥 Panas)` : `(🧊 Normal)`);
     }
 
-    // --- LOGIKA FILTER ALPHA VS ASISTEN ---
+    // --- LOGIKA FILTER ALPHA VS ASISTEN (PRIVASI 100%) ---
     const isAlpha = params.usdValue >= 1000;
     const title = isAlpha
       ? "👑 *ALPHA PREDATOR ALERT!*"
@@ -412,10 +412,8 @@ async function saveTransactionAndNotify(params: {
       ]);
     }
 
-    // PENENTU JALUR PENGIRIMAN
-    const chatId = isAlpha
-      ? "-1003737826938"
-      : params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
+    // PENENTU JALUR PENGIRIMAN: SELALU KE JAPRI USER
+    const chatId = params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
 
     if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
       await fetch(
