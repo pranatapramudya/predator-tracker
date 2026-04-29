@@ -282,7 +282,6 @@ async function saveTransactionAndNotify(params: {
   symbol: string;
   usdValue: number;
 }): Promise<void> {
-  // 🔥 FIX: Dedupe pake wallet.id biar ga crash kalo 2 orang track paus yg sama
   const dedupeKey = `${params.candidate.dedupeBase}:${params.wallet.id}:${params.action}`;
 
   try {
@@ -384,8 +383,14 @@ async function saveTransactionAndNotify(params: {
         (volumeMcapRatio > 50 ? `(🔥 Panas)` : `(🧊 Normal)`);
     }
 
+    // --- LOGIKA FILTER ALPHA VS ASISTEN ---
+    const isAlpha = params.usdValue >= 1000;
+    const title = isAlpha
+      ? "👑 *ALPHA PREDATOR ALERT!*"
+      : "🚨 *WHALE ALERT* 🚨";
+
     const message =
-      `🚨 *WHALE ALERT* 🚨\n\n` +
+      `${title}\n\n` +
       `👤 *Whale:* ${params.wallet.name ?? "Target"}\n` +
       `📍 *Address:* \`${params.wallet.address}\`\n` +
       `📈 *Action:* ${actionLabel}\n` +
@@ -407,8 +412,11 @@ async function saveTransactionAndNotify(params: {
       ]);
     }
 
-    // OTOMATIS TARGETING: ngirim japri ke orang yang daftarin dompetnya
-    const chatId = params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
+    // PENENTU JALUR PENGIRIMAN
+    const chatId = isAlpha
+      ? "-1003737826938"
+      : params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
+
     if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
       await fetch(
         `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
