@@ -353,7 +353,7 @@ export async function GET(request: Request) {
                   totalRealizedPnl >= 0
                     ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
                     : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
-                const whaleStatsBlock = `\n\n🏆 *WHALE RAPOR*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
+                const whaleStatsBlock = `\n\n🏆 *WHALE STATS*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
 
                 const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
 
