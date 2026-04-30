@@ -1,5 +1,5 @@
 // src/app/page.tsx
-import UpgradeModal from "@/components/UpgradeModal"; // Pastiin path-nya bener
+import UpgradeModal from "@/components/UpgradeModal";
 import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import PnLChart from "@/components/PnLChart";
-import { auditHistoricalWinRate } from "@/lib/scanner"; // 🔥 TAMBAHAN S.KOM: Import Scanner
+import { auditHistoricalWinRate } from "@/lib/scanner";
 
 import {
   Shield,
@@ -67,10 +67,17 @@ const FEEDBACK_COPY: Record<
     icon: AlertCircle,
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
-  // 🔥 TAMBAHIN INI BRE 🔥
   limit_reached: {
     title: "LIMIT TERCAPAI",
     description: "Radar penuh! Upgrade tier lu buat nambah target paus.",
+    icon: AlertCircle,
+    color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+  },
+  // 🔥 FIX 1: TAMBAHAN KAMUS FEEDBACK BUAT AKUN GRATISAN 🔥
+  locked: {
+    title: "TARGET LOCKED",
+    description:
+      "Akun FREE hanya bisa mengunci 1 target permanen. Upgrade tier untuk mengganti/menambah paus.",
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
@@ -147,7 +154,6 @@ async function createWalletAction(formData: FormData) {
         ? address
         : address.toLowerCase();
 
-    // 🔥=== GEMBOK SATPAM (LIMIT TIER) START ===🔥
     const userStatus = await prisma.user.findUnique({
       where: { id: userId },
       include: { _count: { select: { wallets: true } } },
@@ -163,15 +169,13 @@ async function createWalletAction(formData: FormData) {
       },
     });
 
-    // Tambahin pengecekan role OWNER buat bypass gembok! 👑
     if (
       !isWalletExist &&
-      userStatus.role !== "OWNER" && // <-- INI JALUR VIP BUAT LU BRE
+      userStatus.role !== "OWNER" &&
       userStatus._count.wallets >= userStatus.maxWallets
     ) {
       redirect("/?feedback=limit_reached");
     }
-    // 🔥=== GEMBOK SATPAM (LIMIT TIER) END ===🔥
 
     let balance = 0;
 
@@ -184,7 +188,6 @@ async function createWalletAction(formData: FormData) {
       balance = 0;
     }
 
-    // 🔥 FIX SAAS MULTI-USER: Upsert pake 3 Kunci Gembok (Address + Network + UserID)
     const savedWallet = await prisma.wallet.upsert({
       where: {
         address_network_userId: {
@@ -205,8 +208,6 @@ async function createWalletAction(formData: FormData) {
       },
     });
 
-    // 🔥 JURUS S.KOM: Panggil scanner di background (TANPA await)
-    // Biar UI user nggak nungguin loading lama!
     auditHistoricalWinRate(
       savedWallet.id,
       savedWallet.address,
@@ -250,10 +251,26 @@ async function deleteWalletAction(formData: FormData) {
   let feedback = "failed";
   try {
     const id = String(formData.get("id"));
+
+    // 🔥 FIX 2: SATPAM VENDOR LOCK-IN DI BACKEND 🔥
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { tier: true, role: true },
+    });
+
+    // Kalau dia tier FREE (dan bukan OWNER), dilarang hapus target!
+    if (user?.tier === "FREE" && user?.role !== "OWNER") {
+      redirect("/?feedback=locked");
+    }
+
     await prisma.wallet.deleteMany({ where: { id, userId } });
     revalidatePath("/");
     feedback = "deleted";
   } catch (e) {
+    // Tangkap error redirect Next.js biar gak crash servernya
+    if (e instanceof Error && e.message === "NEXT_REDIRECT") {
+      throw e;
+    }
     console.error(e);
   }
   redirect(`/?feedback=${feedback}`);
@@ -300,7 +317,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     : null;
 
   const page = parseInt(params?.page as string) || 1;
-  const limit = 4; // MAKS 4 BIAR ENTENG
+  const limit = 4;
   const skip = (page - 1) * limit;
 
   const [wallets, totalWallets, existingChatIdRecord] = await Promise.all([
@@ -326,7 +343,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   ]);
 
   const totalPages = Math.ceil(totalWallets / limit);
-  const savedChatId = existingChatIdRecord?.chatId || ""; // Auto-fill jika sudah ada di DB
+  const savedChatId = existingChatIdRecord?.chatId || "";
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#080808] text-white overflow-x-hidden transition-colors duration-300">
@@ -548,15 +565,33 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                             >
                               {w.network}
                             </span>
-                            <form action={deleteWalletAction}>
-                              <input type="hidden" name="id" value={w.id} />
+
+                            {/* 🔥 FIX 3: LOGIC UI TOMBOL DELETE 🔥 */}
+                            {dbUser.tier === "FREE" &&
+                            dbUser.role !== "OWNER" ? (
                               <button
-                                type="submit"
-                                className="p-2 text-white/20 hover:text-rose-500 cursor-pointer transition-colors"
+                                type="button"
+                                onClick={() =>
+                                  alert(
+                                    "Slot terkunci! Upgrade radar lu ke SCOUT/PREDATOR buat ganti target.",
+                                  )
+                                }
+                                className="p-2 text-white/20 hover:text-amber-500 cursor-not-allowed transition-colors"
+                                title="Upgrade to unlock"
                               >
-                                <Trash2 className="w-5 h-5" />
+                                🔒
                               </button>
-                            </form>
+                            ) : (
+                              <form action={deleteWalletAction}>
+                                <input type="hidden" name="id" value={w.id} />
+                                <button
+                                  type="submit"
+                                  className="p-2 text-white/20 hover:text-rose-500 cursor-pointer transition-colors"
+                                >
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
+                              </form>
+                            )}
                           </div>
                         </div>
 
