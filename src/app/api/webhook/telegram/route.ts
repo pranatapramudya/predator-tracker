@@ -35,11 +35,11 @@ export async function POST(req: Request) {
       let responseText = "";
 
       if (walletExists) {
-        // ✅ JALUR USER RESMI
-        responseText = `⚡ *RADAR ACTIVE, PREDATOR!*\n\nRadar lu udah jalan. Setiap ada paus yang gerak, gue bakal langsung kasih tau di sini.\n\nMonitor dashboard lu di: https://predator-tracker.vercel.app`;
+        // ✅ JALUR USER RESMI (English Version)
+        responseText = `⚡ *RADAR ACTIVE, PREDATOR!*\n\nYour radar is now online. I'll notify you right here whenever a tracked whale makes a move.\n\nMonitor your dashboard at: https://predator-tracker.vercel.app`;
       } else {
-        // 🚫 JALUR ORANG RANDOM
-        responseText = `🚫 *ACCESS DENIED!*\n\nSori Bre, radar ini privat. Lu harus daftar dulu di web biar ID Telegram lu terverifikasi dan bisa dapet sinyal Alpha.\n\n🔗 *Daftar Sekarang:* https://predator-tracker.vercel.app`;
+        // 🚫 JALUR ORANG RANDOM (English Version)
+        responseText = `🚫 *ACCESS DENIED!*\n\nSorry mate, this radar is private. You need to register on the website first to verify your Telegram ID and receive Alpha signals.\n\n🔗 *Register Now:* https://predator-tracker.vercel.app`;
       }
 
       // Kirim balik pesan balasan via Telegram Bot API
