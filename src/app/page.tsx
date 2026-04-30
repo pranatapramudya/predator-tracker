@@ -1,5 +1,5 @@
 // src/app/page.tsx
-
+import UpgradeModal from "@/components/UpgradeModal"; // Pastiin path-nya bener
 import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -66,6 +66,13 @@ const FEEDBACK_COPY: Record<
     description: "Gagal tersambung database/API.",
     icon: AlertCircle,
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
+  },
+  // 🔥 TAMBAHIN INI BRE 🔥
+  limit_reached: {
+    title: "LIMIT TERCAPAI",
+    description: "Radar penuh! Upgrade tier lu buat nambah target paus.",
+    icon: AlertCircle,
+    color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
 };
 
@@ -139,6 +146,28 @@ async function createWalletAction(formData: FormData) {
       network === "SOLANA" || network === "BITCOIN"
         ? address
         : address.toLowerCase();
+
+    // 🔥=== GEMBOK SATPAM (LIMIT TIER) START ===🔥
+    const userStatus = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { _count: { select: { wallets: true } } },
+    });
+
+    if (!userStatus) {
+      redirect("/?feedback=failed");
+    }
+
+    const isWalletExist = await prisma.wallet.findUnique({
+      where: {
+        address_network_userId: { address: normalized, network, userId },
+      },
+    });
+
+    if (!isWalletExist && userStatus._count.wallets >= userStatus.maxWallets) {
+      redirect("/?feedback=limit_reached");
+    }
+    // 🔥=== GEMBOK SATPAM (LIMIT TIER) END ===🔥
+
     let balance = 0;
 
     try {
@@ -319,6 +348,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               </span>
             </p>
           </div>
+
+          <UpgradeModal />
 
           <div className="border border-white/20 rounded-full p-1 hover:border-emerald-500/50 transition-colors bg-white/5">
             <UserButton

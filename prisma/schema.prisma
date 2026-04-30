@@ -15,6 +15,9 @@ model User {
   email         String   @unique
   name          String?
   role          Role     @default(MEMBER)
+
+  tier          SubscriptionTier @default(FREE)
+  maxWallets    Int              @default(1) // Akun gratis cuma bisa add 1 wallet
   
   wallets       Wallet[] // Relasi: 1 User bisa punya banyak Wallet
   
@@ -26,6 +29,14 @@ enum Role {
   OWNER
   MEMBER
 }
+
+// 👇 1. TAMBAHIN ENUM INI 👇
+enum SubscriptionTier {
+  FREE
+  SCOUT
+  PREDATOR
+  APEX
+  }
 
 // ==========================================
 // MODUL UTAMA: Wallet & Radar
