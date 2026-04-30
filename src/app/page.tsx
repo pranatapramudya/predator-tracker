@@ -8,6 +8,8 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import PnLChart from "@/components/PnLChart";
 import { auditHistoricalWinRate } from "@/lib/scanner";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 import {
   Shield,
@@ -38,6 +40,19 @@ const NETWORK_LOGOS: Record<WalletNetwork, string> = {
   ETHEREUM: "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=035",
   BASE: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png",
 };
+
+// 🔥 SUNTIKAN S.KOM: Inisialisasi Database Redis & Aturan Limit
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || "",
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
+});
+
+// Aturan: Maksimal 5x klik "START RADAR" dalam 1 menit
+const ratelimit = new Ratelimit({
+  redis: redis,
+  limiter: Ratelimit.slidingWindow(5, "1 m"),
+  analytics: true,
+});
 
 const FEEDBACK_COPY: Record<
   string,
@@ -73,13 +88,20 @@ const FEEDBACK_COPY: Record<
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
-  // 🔥 FIX 1: TAMBAHAN KAMUS FEEDBACK BUAT AKUN GRATISAN 🔥
   locked: {
     title: "TARGET LOCKED",
     description:
       "Akun FREE hanya bisa mengunci 1 target permanen. Upgrade tier untuk mengganti/menambah paus.",
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+  },
+  // 🔥 TAMBAHAN UI ERROR BUAT SPAMMER 🔥
+  too_fast: {
+    title: "WOY SANTAI!",
+    description:
+      "Lu nge-spam form terlalu cepet. Sistem anti-DDoS aktif. Tunggu semenit lagi.",
+    icon: AlertCircle,
+    color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
 };
 
@@ -125,6 +147,23 @@ async function createWalletAction(formData: FormData) {
   "use server";
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
+
+  // 🔥 SUNTIKAN ANTI DDOS / SPAM BOT 🔥
+  try {
+    // Kalau belum punya Redis URL di .env (misal pas dev lokal), bypass aja.
+    if (process.env.UPSTASH_REDIS_REST_URL) {
+      const { success } = await ratelimit.limit(userId);
+      if (!success) {
+        console.warn(`[SECURITY] User ${userId} nyepam form Add Wallet!`);
+        redirect("/?feedback=too_fast");
+      }
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT")
+      throw error;
+    console.error("Redis Error:", error);
+    // Kalau Redis error, biarin aja lolos sementara biar app ga mati
+  }
 
   let feedback = "failed";
   const address = String(formData.get("address") ?? "").trim();
@@ -252,13 +291,11 @@ async function deleteWalletAction(formData: FormData) {
   try {
     const id = String(formData.get("id"));
 
-    // 🔥 FIX 2: SATPAM VENDOR LOCK-IN DI BACKEND 🔥
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { tier: true, role: true },
     });
 
-    // Kalau dia tier FREE (dan bukan OWNER), dilarang hapus target!
     if (user?.tier === "FREE" && user?.role !== "OWNER") {
       redirect("/?feedback=locked");
     }
@@ -267,7 +304,6 @@ async function deleteWalletAction(formData: FormData) {
     revalidatePath("/");
     feedback = "deleted";
   } catch (e) {
-    // Tangkap error redirect Next.js biar gak crash servernya
     if (e instanceof Error && e.message === "NEXT_REDIRECT") {
       throw e;
     }
@@ -566,7 +602,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               {w.network}
                             </span>
 
-                            {/* 🔥 FIX 3: LOGIC UI TOMBOL DELETE 🔥 */}
                             {dbUser.tier === "FREE" &&
                             dbUser.role !== "OWNER" ? (
                               <button
