@@ -413,7 +413,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       rel="noreferrer"
                       className="text-[9px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors uppercase tracking-widest bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/20 flex items-center gap-1"
                     >
-                      🔍 Cari ID Otomatis
+                      🔍 Search ID Otomatis
                     </a>
                   )}
                 </div>
@@ -431,7 +431,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 />
                 {savedChatId && (
                   <p className="text-[8px] text-emerald-400/80 uppercase tracking-widest mt-2 ml-1 italic font-bold">
-                    🔒 ID Terkunci (Auto-Sync)
+                    🔒 ID Locked (Auto-Sync)
                   </p>
                 )}
               </div>
