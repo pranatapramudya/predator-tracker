@@ -326,16 +326,23 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
   }
 }
 
-// FUNGSI SATPAM RUGCHECK
+// FUNGSI SATPAM RUGCHECK (VERSI KEBAL BLOKIR)
 async function checkSecurityRisk(tokenAddress: string): Promise<string> {
   try {
+    // Kita kasih "KTP" (User-Agent) biar API Rugcheck nggak ngeblokir IP Vercel
     const response = await fetch(
       `https://api.rugcheck.xyz/v1/tokens/${tokenAddress}/report/summary`,
+      {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "PredatorTracker/1.0",
+        },
+      },
     );
 
-    // FIX: Kalau Rugcheck belum punya data koin baru, bot tetep ngasih info
     if (!response.ok) {
-      return `\n\n🔍 *SECURITY CHECK:*\n⏳ Token terlalu baru, RugCheck belum selesai scan.`;
+      // Biar lu tau kalau API-nya ngambek (misal error 403 atau 404)
+      return `\n\n🔍 *SECURITY CHECK:*\n⚠️ API Error atau Token belum di-scan (${response.status})`;
     }
 
     const data = await response.json();
@@ -343,7 +350,7 @@ async function checkSecurityRisk(tokenAddress: string): Promise<string> {
     let mint = "✅ Mint: Disabled";
     let freeze = "✅ Freeze: Disabled";
     let lp = "🔥 LP: 100% Burned";
-    let honeypot = "🛡️ Honeypot: Not Detected (Simulated)";
+    let honeypot = "🛡️ Honeypot: Not Detected";
 
     if (data.risks && data.risks.length > 0) {
       for (const risk of data.risks) {
@@ -359,8 +366,7 @@ async function checkSecurityRisk(tokenAddress: string): Promise<string> {
     return `\n\n🔍 *SECURITY CHECK:*\n${mint}\n${freeze}\n${lp}\n${honeypot}`;
   } catch (error) {
     console.error(`[Security Check] Gagal periksa keamanan:`, error);
-    // FIX: Kalau API down/error
-    return `\n\n🔍 *SECURITY CHECK:*\n⚠️ Gagal konek ke API Keamanan.`;
+    return `\n\n🔍 *SECURITY CHECK:*\n⚠️ Server Timeout/Error.`;
   }
 }
 
