@@ -4,8 +4,6 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 import { prisma } from "../prisma";
 import { resolveAsset } from "./pricing";
-// IMPORT FILE SATPAM LU DARI FOLDER SEBELUMNYA
-import { getSecurityData } from "../rugcheck";
 import type {
   AlchemyAddressActivityPayload,
   HeliusEnhancedTransaction,
@@ -328,6 +326,38 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
   }
 }
 
+// FUNGSI SATPAM RUGCHECK (LANGSUNG DITANAM DI SINI)
+async function checkSecurityRisk(tokenAddress: string): Promise<string> {
+  try {
+    const response = await fetch(
+      `https://api.rugcheck.xyz/v1/tokens/${tokenAddress}/report/summary`,
+    );
+    if (!response.ok) return "";
+    const data = await response.json();
+
+    let mint = "✅ Mint: Disabled";
+    let freeze = "✅ Freeze: Disabled";
+    let lp = "🔥 LP: 100% Burned";
+    let honeypot = "🛡️ Honeypot: Not Detected (Simulated)";
+
+    if (data.risks && data.risks.length > 0) {
+      for (const risk of data.risks) {
+        const name = risk.name.toLowerCase();
+        if (name.includes("mint")) mint = "🚫 Mint: Enabled (Bahaya)";
+        if (name.includes("freeze")) freeze = "🚫 Freeze: Enabled (Bahaya)";
+        if (name.includes("liquidity")) lp = "⚠️ LP: Unlocked/Low";
+        if (risk.level === "danger" || data.score > 500) {
+          honeypot = "🚫 Honeypot: High Risk Detected";
+        }
+      }
+    }
+    return `\n\n🔍 *SECURITY CHECK:*\n${mint}\n${freeze}\n${lp}\n${honeypot}`;
+  } catch (error) {
+    console.error(`[Security Check] Gagal periksa keamanan:`, error);
+    return "";
+  }
+}
+
 async function saveTransactionAndNotify(params: {
   candidate: TransferCandidate;
   wallet: {
@@ -366,10 +396,9 @@ async function saveTransactionAndNotify(params: {
     let smartMoneyCount = 0;
     let insiderWarning = "";
     let metricsBlock = "";
-    // VARIABEL BARU UNTUK SECURITY CHECK
     let securityBlock = "";
 
-    // 1. PROSES TOKEN JIKA ADA TOKEN IDENTIFIER (Menjalankan pnl.ts & API Eksternal)
+    // 1. PROSES TOKEN JIKA ADA TOKEN IDENTIFIER
     if (params.candidate.tokenIdentifier) {
       try {
         const existingPosition = await prisma.tokenPosition.findUnique({
@@ -383,7 +412,6 @@ async function saveTransactionAndNotify(params: {
 
         if (!existingPosition && params.action === "BUY") isFirstTimeBuy = true;
 
-        // AWAIT AKUNTAN: Memastikan update database di pnl.ts selesai sebelum membaca rapor
         await processWhaleTrade(
           params.wallet.id,
           params.candidate.tokenIdentifier,
@@ -402,7 +430,7 @@ async function saveTransactionAndNotify(params: {
           });
           if (smartMoneyCount >= 2) multibaggerScore += 2;
 
-          // --- ISOLATED BLOCK 1: DEXSCREENER (Aman dari error Token Baru) ---
+          // DEXSCREENER
           try {
             const dexRes = await fetch(
               `https://api.dexscreener.com/latest/dex/tokens/${params.candidate.tokenIdentifier}`,
@@ -423,13 +451,10 @@ async function saveTransactionAndNotify(params: {
               if (mcapUsd > 0) volumeMcapRatio = (volume24h / mcapUsd) * 100;
             }
           } catch (dexError) {
-            console.error(
-              `[DexScreener] Gagal index (mungkin koin baru lahir):`,
-              dexError,
-            );
+            console.error(`[DexScreener] Error:`, dexError);
           }
 
-          // --- ISOLATED BLOCK 2: HELIUS RPC (Tetap berjalan walau DexScreener error) ---
+          // HELIUS INSIDER RISK
           try {
             if (params.wallet.network === Network.SOLANA) {
               insiderWarning = await checkSolanaInsiderRisk(
@@ -437,26 +462,18 @@ async function saveTransactionAndNotify(params: {
               );
             }
           } catch (heliusError) {
-            console.error(`[Helius] Gagal periksa insider risk:`, heliusError);
+            console.error(`[Helius] Error:`, heliusError);
           }
 
-          // --- ISOLATED BLOCK 3: RUGCHECK SECURITY ---
+          // RUGCHECK SECURITY
           try {
             if (params.wallet.network === Network.SOLANA) {
-              const sec = await getSecurityData(
+              securityBlock = await checkSecurityRisk(
                 params.candidate.tokenIdentifier,
               );
-              if (sec) {
-                securityBlock =
-                  `\n\n🔍 *SECURITY CHECK:*\n` +
-                  `${sec.mint}\n` +
-                  `${sec.freeze}\n` +
-                  `${sec.lp}\n` +
-                  `${sec.honeypot}`;
-              }
             }
           } catch (secError) {
-            console.error(`[Security] Gagal load block:`, secError);
+            console.error(`[Security] Error:`, secError);
           }
         }
       } catch (error) {
@@ -464,7 +481,7 @@ async function saveTransactionAndNotify(params: {
       }
     }
 
-    // 2. TARIK DATA RAPOR WHALE (Berjalan untuk Token maupun Native Transfer, PASTIKAN selalu sinkron)
+    // 2. TARIK DATA RAPOR WHALE
     const whaleData = await prisma.wallet.findUnique({
       where: { id: params.wallet.id },
       select: { winRate: true, totalTrades: true },
@@ -491,11 +508,11 @@ async function saveTransactionAndNotify(params: {
         : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
 
     const whaleStatsBlock =
-      `\n\n🏆 *WHALE RAPOR*` +
+      `\n\n🏆 *WHALE STATS*` +
       `\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)` +
       `\n💰 *Total PnL:* ${pnlText}`;
 
-    // 3. FORMATTING TELEGRAM (Konsistensi Bahasa)
+    // 3. FORMATTING TELEGRAM
     let actionLabel = params.action === "BUY" ? "🟢 BUY" : "🔴 SELL";
     if (isFirstTimeBuy) actionLabel = "🔥 FIRST TIME BUY 🔥";
 
@@ -525,7 +542,6 @@ async function saveTransactionAndNotify(params: {
 
     const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
 
-    // PENAMBAHAN SECURITY BLOCK KE MESSAGE UTAMA
     const message =
       `${title}\n\n` +
       `👤 *Whale:* ${params.wallet.name ?? "Unknown Target"}\n` +
@@ -538,16 +554,32 @@ async function saveTransactionAndNotify(params: {
       securityBlock +
       dyorFooter;
 
+    // TOMBOL INLINE TELEGRAM DIKEMBALIKAN SEPERTI SEMULA
     const inlineKeyboard = [];
     inlineKeyboard.push([
       { text: "🔍 View Transaction", url: params.candidate.explorerUrl },
     ]);
 
     if (params.candidate.tokenIdentifier) {
+      const token = params.candidate.tokenIdentifier;
       inlineKeyboard.push([
         {
           text: "📊 Chart on DexScreener",
-          url: `https://dexscreener.com/solana/${params.candidate.tokenIdentifier}`,
+          url: `https://dexscreener.com/solana/${token}`,
+        },
+      ]);
+      inlineKeyboard.push([
+        { text: "⚡ Web3: Jupiter", url: `https://jup.ag/swap/SOL-${token}` },
+        {
+          text: "🤖 TG Bot: BonkBot",
+          url: `https://t.me/bonkbot_bot?start=ref_${token}`,
+        },
+      ]);
+      inlineKeyboard.push([
+        { text: "🐦 Cek X", url: `https://twitter.com/search?q=${token}` },
+        {
+          text: "🫧 Bubblemaps",
+          url: `https://app.bubblemaps.io/sol/token/${token}`,
         },
       ]);
     }

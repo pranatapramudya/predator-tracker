@@ -32,8 +32,8 @@ export default function SignInPage() {
             Predator <span className="text-emerald-400">Tracker</span>
           </h1>
           <p className="text-white/60 text-base lg:text-lg mb-8 leading-relaxed">
-            Sistem intelijen on-chain premium. Lacak pergerakan smart money dan
-            whale secara real-time lintas jaringan Solana dan EVM.
+            Premium on-chain intelligence system. Track smart money and whale
+            movements in real-time across Solana and EVM networks.
           </p>
           <div className="flex items-center gap-6 text-xs font-bold text-white/40 uppercase tracking-widest">
             <div className="flex items-center gap-2">
@@ -112,13 +112,13 @@ export default function SignInPage() {
           <div className="mt-4 bg-[#0d0d0d] border border-white/20 rounded-3xl p-5 text-center shadow-xl relative overflow-hidden group">
             <div className="absolute inset-0 bg-emerald-500/0 group-hover:bg-emerald-500/5 transition-colors" />
             <p className="text-xs text-white/70 font-bold mb-3 relative z-10">
-              Belum punya akses ke sistem?
+              Need access to the intelligence system?
             </p>
             <a
               href="/sign-up"
               className="relative z-10 inline-block w-full py-3.5 bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/50 text-emerald-400 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all"
             >
-              Daftar Sekarang
+              Get Started
             </a>
           </div>
         </div>

@@ -15,8 +15,8 @@ export default function SignUpPage() {
             Predator <span className="text-emerald-400">Tracker</span>
           </h1>
           <p className="text-white/60 text-base lg:text-lg mb-8 leading-relaxed">
-            Sistem intelijen on-chain premium. Lacak pergerakan smart money dan
-            whale secara real-time lintas jaringan Solana dan EVM.
+            Premium on-chain intelligence system. Track smart money and whale
+            movements in real-time across Solana and EVM networks.
           </p>
           <div className="flex items-center gap-6 text-xs font-bold text-white/40 uppercase tracking-widest">
             <div className="flex items-center gap-2">
