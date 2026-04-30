@@ -1,22 +1,19 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma"; // Pastiin path-nya bener
 
-// Fungsi POST untuk nerima data dari MoonPay
 export async function POST(req: Request) {
   try {
-    // 1. Ambil data mentah (body) yang dikirim MoonPay
     const body = await req.json();
 
-    // 2. Kita cuma peduli sama event "transaction_created" atau "transaction_updated" yang statusnya "completed"
+    // ====================================================================
+    // 1. LOGIKA UPGRADE (Pas Bayar / Perpanjang Bulanan Sukses)
+    // ====================================================================
     if (
       body.type === "transaction_updated" &&
       body.data.status === "completed"
     ) {
-      // 3. Ambil User ID (Clerk ID) yang tadi kita titipin di URL
       const userId =
         body.data.externalCustomerId || body.data.clientReferenceId;
-
-      // Ambil BaseCurrencyAmount (Harga yang dibayar) untuk nentuin Tier
       const amountPaid = body.data.baseCurrencyAmount;
 
       if (!userId) {
@@ -26,11 +23,9 @@ export async function POST(req: Request) {
         );
       }
 
-      // 4. Logika Penentuan Tier Berdasarkan Harga
       let newTier: "FREE" | "SCOUT" | "PREDATOR" | "APEX" = "FREE";
       let newMaxWallets = 1;
 
-      // Harga di-hardcode sesuai setup MoonPay lu
       if (amountPaid === 29) {
         newTier = "SCOUT";
         newMaxWallets = 3;
@@ -42,14 +37,10 @@ export async function POST(req: Request) {
         newMaxWallets = 100;
       }
 
-      // 5. UPDATE DATABASE PRISMA! 🔥
       if (newTier !== "FREE") {
         await prisma.user.update({
           where: { id: userId },
-          data: {
-            tier: newTier,
-            maxWallets: newMaxWallets,
-          },
+          data: { tier: newTier, maxWallets: newMaxWallets },
         });
         console.log(
           `[MOONPAY WEBHOOK] Sukses upgrade user ${userId} ke tier ${newTier}`,
@@ -57,7 +48,30 @@ export async function POST(req: Request) {
       }
     }
 
-    // Wajib kasih respon 200 OK biar MoonPay tau sinyalnya udah kita terima
+    // ====================================================================
+    // 🔥 2. LOGIKA DOWNGRADE (Pas Batal Langganan / Kartu Kredit Gagal) 🔥
+    // ====================================================================
+    if (
+      body.type === "subscription_canceled" ||
+      body.type === "subscription_deleted"
+    ) {
+      const userId =
+        body.data.externalCustomerId || body.data.clientReferenceId;
+
+      if (userId) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            tier: "FREE",
+            maxWallets: 1, // Balikin ke limit gembel
+          },
+        });
+        console.log(
+          `[MOONPAY WEBHOOK] Sadge, user ${userId} batal langganan. Turun kasta ke FREE.`,
+        );
+      }
+    }
+
     return NextResponse.json({ status: "success" }, { status: 200 });
   } catch (error) {
     console.error("[MOONPAY WEBHOOK ERROR]", error);
