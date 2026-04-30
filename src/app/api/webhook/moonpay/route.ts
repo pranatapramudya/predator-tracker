@@ -1,9 +1,55 @@
+// app/api/webhook/moonpay/route.ts
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // Pastiin path-nya bener
+import { prisma } from "@/lib/prisma";
+import { createHmac } from "crypto";
+
+// 🛡️ FUNGSI SATPAM MOONPAY (ANTI FAKE PAYMENT)
+function verifyMoonPaySignature(headers: Headers, rawBody: string): boolean {
+  const signatureHeader = headers.get("moonpay-signature-v2");
+  const secretKey = process.env.MOONPAY_WEBHOOK_SECRET;
+
+  if (!signatureHeader || !secretKey) return false;
+
+  try {
+    const parts = signatureHeader.split(",");
+    const timestamp = parts.find((p) => p.startsWith("t="))?.split("=")[1];
+    const receivedSignature = parts
+      .find((p) => p.startsWith("s="))
+      ?.split("=")[1];
+
+    if (!timestamp || !receivedSignature) return false;
+
+    // MoonPay minta payload gabungan timestamp + raw string body
+    const payload = `${timestamp}.${rawBody}`;
+
+    const expectedSignature = createHmac("sha256", secretKey)
+      .update(payload)
+      .digest("hex");
+
+    return receivedSignature === expectedSignature;
+  } catch (error) {
+    return false;
+  }
+}
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    // WAJIB: Ambil body dalam bentuk string mentah (text) buat cek signature
+    const rawBody = await req.text();
+
+    // ⛔ BENTENG KEAMANAN: Tolak kalau signature nggak cocok
+    if (!verifyMoonPaySignature(req.headers, rawBody)) {
+      console.warn(
+        "[MOONPAY WEBHOOK] Unauthorized! Ada yang nyoba nembus server payment.",
+      );
+      return NextResponse.json(
+        { error: "Unauthorized Signature" },
+        { status: 401 },
+      );
+    }
+
+    // Kalau lolos satpam, baru kita ubah jadi JSON
+    const body = JSON.parse(rawBody);
 
     // ====================================================================
     // 1. LOGIKA UPGRADE (Pas Bayar / Perpanjang Bulanan Sukses)
@@ -61,10 +107,7 @@ export async function POST(req: Request) {
       if (userId) {
         await prisma.user.update({
           where: { id: userId },
-          data: {
-            tier: "FREE",
-            maxWallets: 1, // Balikin ke limit gembel
-          },
+          data: { tier: "FREE", maxWallets: 1 }, // Balikin ke limit gembel
         });
         console.log(
           `[MOONPAY WEBHOOK] Sadge, user ${userId} batal langganan. Turun kasta ke FREE.`,
