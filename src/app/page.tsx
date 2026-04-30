@@ -255,7 +255,7 @@ async function createWalletAction(formData: FormData) {
 
     if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
       try {
-        const welcomeMsg = `🎯 *TARGET BERHASIL DITAMBAHKAN!*\n\nBro, lu sukses masukin target paus baru ke Predator Radar:\n\n👤 *Alias:* ${name}\n🌐 *Network:* ${network}\n📍 *Address:* \`${normalized}\`\n\nSistem sekarang mantau dompet ini 24/7. Siap-siap dapet sinyal! 🚀🐋`;
+        const welcomeMsg = `🎯 *NEW TARGET LOCKED!*\n\nYou've successfully added a new whale to the Predator Radar:\n\n👤 *Alias:* ${name}\n🌐 *Network:* ${network}\n📍 *Address:* \`${normalized}\`\n\nThe system is now monitoring this wallet 24/7. Standby for alpha signals! 🚀🐋`;
 
         await fetch(
           `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
