@@ -37,16 +37,16 @@ export async function POST(req: Request) {
     // WAJIB: Ambil body dalam bentuk string mentah (text) buat cek signature
     const rawBody = await req.text();
 
-    // // ⛔ BENTENG KEAMANAN: Tolak kalau signature nggak cocok
-    // if (!verifyMoonPaySignature(req.headers, rawBody)) {
-    //   console.warn(
-    //     "[MOONPAY WEBHOOK] Unauthorized! Ada yang nyoba nembus server payment.",
-    //   );
-    //   return NextResponse.json(
-    //     { error: "Unauthorized Signature" },
-    //     { status: 401 },
-    //   );
-    // }
+    // ⛔ BENTENG KEAMANAN: Tolak kalau signature nggak cocok
+    if (!verifyMoonPaySignature(req.headers, rawBody)) {
+      console.warn(
+        "[MOONPAY WEBHOOK] Unauthorized! Ada yang nyoba nembus server payment.",
+      );
+      return NextResponse.json(
+        { error: "Unauthorized Signature" },
+        { status: 401 },
+      );
+    }
 
     // Kalau lolos satpam, baru kita ubah jadi JSON
     const body = JSON.parse(rawBody);
