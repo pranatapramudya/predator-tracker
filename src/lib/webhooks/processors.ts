@@ -12,7 +12,7 @@ import type {
   WhaleAction,
 } from "./types";
 
-const MIN_ALERT_USD = 100;
+const MIN_ALERT_USD = 0.1;
 
 type AlchemyActivity = NonNullable<
   NonNullable<AlchemyAddressActivityPayload["event"]>["activity"]
@@ -547,6 +547,7 @@ async function saveTransactionAndNotify(params: {
         insiderWarning;
     }
 
+    // 1. Siapin dulu semua blok teksnya (Biar gak kena error unreachable)
     const isAlpha = params.usdValue >= 1000;
     const title = isAlpha
       ? "👑 *ALPHA PREDATOR ALERT!*"
@@ -554,6 +555,15 @@ async function saveTransactionAndNotify(params: {
 
     const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
 
+    // 2. BARU PASANG SATPAMNYA DI SINI 🛡️
+    if (params.usdValue < 50) {
+      console.log(
+        `[Silent Mode] ${params.wallet.name} ${params.action} receh $${params.usdValue.toFixed(2)}. Skip notif.`,
+      );
+      return; // Data DB aman di atas, tapi stop buat chat Tele
+    }
+
+    // 3. RAKIT PESAN (Cuma jalan kalau nilai >= $50)
     const message =
       `${title}\n\n` +
       `👤 *Whale:* ${params.wallet.name ?? "Unknown Target"}\n` +
