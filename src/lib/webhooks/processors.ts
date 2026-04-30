@@ -4,6 +4,8 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 import { prisma } from "../prisma";
 import { resolveAsset } from "./pricing";
+// IMPORT FILE SATPAM LU DARI FOLDER SEBELUMNYA
+import { getSecurityData } from "../rugcheck";
 import type {
   AlchemyAddressActivityPayload,
   HeliusEnhancedTransaction,
@@ -364,6 +366,8 @@ async function saveTransactionAndNotify(params: {
     let smartMoneyCount = 0;
     let insiderWarning = "";
     let metricsBlock = "";
+    // VARIABEL BARU UNTUK SECURITY CHECK
+    let securityBlock = "";
 
     // 1. PROSES TOKEN JIKA ADA TOKEN IDENTIFIER (Menjalankan pnl.ts & API Eksternal)
     if (params.candidate.tokenIdentifier) {
@@ -435,6 +439,25 @@ async function saveTransactionAndNotify(params: {
           } catch (heliusError) {
             console.error(`[Helius] Gagal periksa insider risk:`, heliusError);
           }
+
+          // --- ISOLATED BLOCK 3: RUGCHECK SECURITY ---
+          try {
+            if (params.wallet.network === Network.SOLANA) {
+              const sec = await getSecurityData(
+                params.candidate.tokenIdentifier,
+              );
+              if (sec) {
+                securityBlock =
+                  `\n\n🔍 *SECURITY CHECK:*\n` +
+                  `${sec.mint}\n` +
+                  `${sec.freeze}\n` +
+                  `${sec.lp}\n` +
+                  `${sec.honeypot}`;
+              }
+            }
+          } catch (secError) {
+            console.error(`[Security] Gagal load block:`, secError);
+          }
         }
       } catch (error) {
         console.error(`[Predator System] Gagal proses Metrik utama:`, error);
@@ -502,6 +525,7 @@ async function saveTransactionAndNotify(params: {
 
     const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
 
+    // PENAMBAHAN SECURITY BLOCK KE MESSAGE UTAMA
     const message =
       `${title}\n\n` +
       `👤 *Whale:* ${params.wallet.name ?? "Unknown Target"}\n` +
@@ -511,6 +535,7 @@ async function saveTransactionAndNotify(params: {
       `💰 *Value:* $${params.usdValue.toFixed(2)}${liquidityWarning}` +
       whaleStatsBlock +
       metricsBlock +
+      securityBlock +
       dyorFooter;
 
     const inlineKeyboard = [];
