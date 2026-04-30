@@ -326,13 +326,18 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
   }
 }
 
-// FUNGSI SATPAM RUGCHECK (LANGSUNG DITANAM DI SINI)
+// FUNGSI SATPAM RUGCHECK
 async function checkSecurityRisk(tokenAddress: string): Promise<string> {
   try {
     const response = await fetch(
       `https://api.rugcheck.xyz/v1/tokens/${tokenAddress}/report/summary`,
     );
-    if (!response.ok) return "";
+
+    // FIX: Kalau Rugcheck belum punya data koin baru, bot tetep ngasih info
+    if (!response.ok) {
+      return `\n\n🔍 *SECURITY CHECK:*\n⏳ Token terlalu baru, RugCheck belum selesai scan.`;
+    }
+
     const data = await response.json();
 
     let mint = "✅ Mint: Disabled";
@@ -354,7 +359,8 @@ async function checkSecurityRisk(tokenAddress: string): Promise<string> {
     return `\n\n🔍 *SECURITY CHECK:*\n${mint}\n${freeze}\n${lp}\n${honeypot}`;
   } catch (error) {
     console.error(`[Security Check] Gagal periksa keamanan:`, error);
-    return "";
+    // FIX: Kalau API down/error
+    return `\n\n🔍 *SECURITY CHECK:*\n⚠️ Gagal konek ke API Keamanan.`;
   }
 }
 
