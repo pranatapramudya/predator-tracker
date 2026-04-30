@@ -163,7 +163,12 @@ async function createWalletAction(formData: FormData) {
       },
     });
 
-    if (!isWalletExist && userStatus._count.wallets >= userStatus.maxWallets) {
+    // Tambahin pengecekan role OWNER buat bypass gembok! 👑
+    if (
+      !isWalletExist &&
+      userStatus.role !== "OWNER" && // <-- INI JALUR VIP BUAT LU BRE
+      userStatus._count.wallets >= userStatus.maxWallets
+    ) {
       redirect("/?feedback=limit_reached");
     }
     // 🔥=== GEMBOK SATPAM (LIMIT TIER) END ===🔥
@@ -262,7 +267,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const clerkUser = await currentUser();
   const userEmail = clerkUser?.emailAddresses[0]?.emailAddress || "no-email";
 
-  const isAdmin = userEmail === "prapranata20@gmail.com";
+  const isAdmin = userEmail === "pranajaya52@gmail.com";
 
   const ghostUser = await prisma.user.findUnique({
     where: { email: userEmail },
