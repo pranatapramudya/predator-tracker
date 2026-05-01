@@ -555,12 +555,12 @@ async function saveTransactionAndNotify(params: {
 
     const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
 
-    // 2. BARU PASANG SATPAMNYA DI SINI 🛡️
-    if (params.usdValue < 50) {
+    // 2. FILTER NOMINAL MINIMAL $100 UNTUK BUY & SELL 🛡️
+    if (params.usdValue < 100) {
       console.log(
         `[Silent Mode] ${params.wallet.name} ${params.action} receh $${params.usdValue.toFixed(2)}. Skip notif.`,
       );
-      return; // Data DB aman di atas, tapi stop buat chat Tele
+      return; // Data tetep masuk DB, tapi ga nyepam ke Telegram
     }
 
     // 3. RAKIT PESAN (Cuma jalan kalau nilai >= $50)
@@ -606,16 +606,23 @@ async function saveTransactionAndNotify(params: {
       ]);
     }
 
-    const chatId = params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
+    // 4. ROUTING LOGIC: PISAHKAN KOLAM ALPHA DAN REGULER
+    let targetChatId = params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
 
-    if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
+    // Kalau nilainya >= $1000, belokin ke grup Alpha Predator
+    if (params.usdValue >= 1000) {
+      targetChatId = process.env.TELEGRAM_ALPHA_CHAT_ID;
+    }
+
+    // Kirim pesan pake targetChatId yang udah di-filter di atas
+    if (targetChatId && process.env.TELEGRAM_BOT_TOKEN) {
       await fetch(
         `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            chat_id: chatId,
+            chat_id: targetChatId,
             text: message,
             parse_mode: "Markdown",
             disable_web_page_preview: true,
