@@ -1,3 +1,4 @@
+// src/app/api/webhook/processors.ts
 import { processWhaleTrade } from "@/app/api/webhook/pnl";
 import { Network, Prisma } from "@prisma/client";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
@@ -13,6 +14,15 @@ import type {
 } from "./types";
 
 const MIN_ALERT_USD = 0.1;
+
+// 🧠 BUKU CATATAN CACHE (BIAR SUPER KILAT!)
+const insiderRiskCache = new Map<string, { data: string; timestamp: number }>();
+const securityRiskCache = new Map<
+  string,
+  { data: string; timestamp: number }
+>();
+const dexscreenerCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache bertahan 5 menit
 
 type AlchemyActivity = NonNullable<
   NonNullable<AlchemyAddressActivityPayload["event"]>["activity"]
@@ -270,6 +280,13 @@ function isDuplicateError(error: unknown): boolean {
 
 async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
   try {
+    const now = Date.now();
+    const cached = insiderRiskCache.get(tokenAddress);
+    if (cached && now - cached.timestamp < CACHE_DURATION_MS) {
+      console.log(`[CACHE HIT] Helius Insider Risk: ${tokenAddress}`);
+      return cached.data;
+    }
+
     const apiKey = process.env.HELIUS_API_KEY;
     if (!apiKey) return "";
 
@@ -312,24 +329,34 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
     }
 
     const insiderPercentage = (insiderAmount / totalSupply) * 100;
+    let result = "";
 
     if (insiderPercentage > 30) {
-      return `\n☠️ *INSIDER RISK:* 🔴 EXTREME DANGER! (Top 10 holds ${insiderPercentage.toFixed(1)}%)`;
+      result = `\n☠️ *INSIDER RISK:* 🔴 EXTREME DANGER! (Top 10 holds ${insiderPercentage.toFixed(1)}%)`;
     } else if (insiderPercentage > 15) {
-      return `\n⚠️ *INSIDER RISK:* 🟡 Caution (Top 10 holds ${insiderPercentage.toFixed(1)}%)`;
+      result = `\n⚠️ *INSIDER RISK:* 🟡 Caution (Top 10 holds ${insiderPercentage.toFixed(1)}%)`;
     } else {
-      return `\n🛡️ *INSIDER RISK:* 🟢 Safe (Healthy Distribution)`;
+      result = `\n🛡️ *INSIDER RISK:* 🟢 Safe (Healthy Distribution)`;
     }
+
+    insiderRiskCache.set(tokenAddress, { data: result, timestamp: now });
+    return result;
   } catch (error) {
     console.error(`[Predator System] Gagal cek insider risk:`, error);
     return "";
   }
 }
 
-// FUNGSI SATPAM RUGCHECK (VERSI KEBAL BLOKIR)
+// FUNGSI SATPAM RUGCHECK (VERSI KEBAL BLOKIR & CACHE CEPAT)
 async function checkSecurityRisk(tokenAddress: string): Promise<string> {
   try {
-    // Kita kasih "KTP" (User-Agent) biar API Rugcheck nggak ngeblokir IP Vercel
+    const now = Date.now();
+    const cached = securityRiskCache.get(tokenAddress);
+    if (cached && now - cached.timestamp < CACHE_DURATION_MS) {
+      console.log(`[CACHE HIT] Rugcheck Security: ${tokenAddress}`);
+      return cached.data;
+    }
+
     const response = await fetch(
       `https://api.rugcheck.xyz/v1/tokens/${tokenAddress}/report/summary`,
       {
@@ -341,7 +368,6 @@ async function checkSecurityRisk(tokenAddress: string): Promise<string> {
     );
 
     if (!response.ok) {
-      // Biar lu tau kalau API-nya ngambek (misal error 403 atau 404)
       return `\n\n🔍 *SECURITY CHECK:*\n⚠️ API Error atau Token belum di-scan (${response.status})`;
     }
 
@@ -363,7 +389,10 @@ async function checkSecurityRisk(tokenAddress: string): Promise<string> {
         }
       }
     }
-    return `\n\n🔍 *SECURITY CHECK:*\n${mint}\n${freeze}\n${lp}\n${honeypot}`;
+    const finalResult = `\n\n🔍 *SECURITY CHECK:*\n${mint}\n${freeze}\n${lp}\n${honeypot}`;
+
+    securityRiskCache.set(tokenAddress, { data: finalResult, timestamp: now });
+    return finalResult;
   } catch (error) {
     console.error(`[Security Check] Gagal periksa keamanan:`, error);
     return `\n\n🔍 *SECURITY CHECK:*\n⚠️ Server Timeout/Error.`;
@@ -442,12 +471,29 @@ async function saveTransactionAndNotify(params: {
           });
           if (smartMoneyCount >= 2) multibaggerScore += 2;
 
-          // DEXSCREENER
+          // DEXSCREENER DENGAN CACHE
           try {
-            const dexRes = await fetch(
-              `https://api.dexscreener.com/latest/dex/tokens/${params.candidate.tokenIdentifier}`,
+            const now = Date.now();
+            const cachedDex = dexscreenerCache.get(
+              params.candidate.tokenIdentifier,
             );
-            const dexData = await dexRes.json();
+            let dexData;
+
+            if (cachedDex && now - cachedDex.timestamp < CACHE_DURATION_MS) {
+              console.log(
+                `[CACHE HIT] DexScreener: ${params.candidate.tokenIdentifier}`,
+              );
+              dexData = cachedDex.data;
+            } else {
+              const dexRes = await fetch(
+                `https://api.dexscreener.com/latest/dex/tokens/${params.candidate.tokenIdentifier}`,
+              );
+              dexData = await dexRes.json();
+              dexscreenerCache.set(params.candidate.tokenIdentifier, {
+                data: dexData,
+                timestamp: now,
+              });
+            }
 
             if (dexData.pairs && dexData.pairs.length > 0) {
               const pair = dexData.pairs[0];
@@ -547,7 +593,6 @@ async function saveTransactionAndNotify(params: {
         insiderWarning;
     }
 
-    // 1. Siapin dulu semua blok teksnya (Biar gak kena error unreachable)
     const isAlpha = params.usdValue >= 1000;
     const title = isAlpha
       ? "👑 *ALPHA PREDATOR ALERT!*"
@@ -555,15 +600,22 @@ async function saveTransactionAndNotify(params: {
 
     const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
 
-    // 2. FILTER NOMINAL MINIMAL $100 UNTUK BUY & SELL 🛡️
-    if (params.usdValue < 100) {
+    // 2. FILTER NOMINAL: BUY min $50, SELL min $100 🛡️
+    if (params.action === "SELL" && params.usdValue < 100) {
       console.log(
-        `[Silent Mode] ${params.wallet.name} ${params.action} receh $${params.usdValue.toFixed(2)}. Skip notif.`,
+        `[Silent Mode] ${params.wallet.name} SELL receh $${params.usdValue.toFixed(2)}. Skip notif.`,
       );
-      return; // Data tetep masuk DB, tapi ga nyepam ke Telegram
+      return;
     }
 
-    // 3. RAKIT PESAN (Cuma jalan kalau nilai >= $50)
+    if (params.action === "BUY" && params.usdValue < 50) {
+      console.log(
+        `[Silent Mode] ${params.wallet.name} BUY receh $${params.usdValue.toFixed(2)}. Skip notif.`,
+      );
+      return;
+    }
+
+    // 3. RAKIT PESAN
     const message =
       `${title}\n\n` +
       `👤 *Whale:* ${params.wallet.name ?? "Unknown Target"}\n` +
@@ -576,7 +628,6 @@ async function saveTransactionAndNotify(params: {
       securityBlock +
       dyorFooter;
 
-    // TOMBOL INLINE TELEGRAM DIKEMBALIKAN SEPERTI SEMULA
     const inlineKeyboard = [];
     inlineKeyboard.push([
       { text: "🔍 View Transaction", url: params.candidate.explorerUrl },
@@ -609,12 +660,10 @@ async function saveTransactionAndNotify(params: {
     // 4. ROUTING LOGIC: PISAHKAN KOLAM ALPHA DAN REGULER
     let targetChatId = params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
 
-    // Kalau nilainya >= $1000, belokin ke grup Alpha Predator
     if (params.usdValue >= 1000) {
       targetChatId = process.env.TELEGRAM_ALPHA_CHAT_ID;
     }
 
-    // Kirim pesan pake targetChatId yang udah di-filter di atas
     if (targetChatId && process.env.TELEGRAM_BOT_TOKEN) {
       await fetch(
         `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
