@@ -22,6 +22,7 @@ const securityRiskCache = new Map<
   { data: string; timestamp: number }
 >();
 const dexscreenerCache = new Map<string, { data: any; timestamp: number }>();
+const coinglassCache = new Map<string, { data: string; timestamp: number }>(); // 🔥 CACHE COINGLASS
 const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache bertahan 5 menit
 
 type AlchemyActivity = NonNullable<
@@ -347,7 +348,6 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
   }
 }
 
-// FUNGSI SATPAM RUGCHECK (VERSI KEBAL BLOKIR & CACHE CEPAT)
 async function checkSecurityRisk(tokenAddress: string): Promise<string> {
   try {
     const now = Date.now();
@@ -399,6 +399,57 @@ async function checkSecurityRisk(tokenAddress: string): Promise<string> {
   }
 }
 
+// 🔥 FUNGSI BARU: CEK COINGLASS UNTUK FUTURES SENTIMENT
+async function checkCoinglass(symbol: string): Promise<string> {
+  try {
+    const targetSymbol = symbol.toUpperCase();
+
+    // Filter cepat: Kalau nama koinnya kepanjangan (biasanya koin micin baru CA), skip aja
+    if (targetSymbol.length > 10) return "";
+
+    const now = Date.now();
+    const cached = coinglassCache.get(targetSymbol);
+    if (cached && now - cached.timestamp < CACHE_DURATION_MS) {
+      console.log(`[CACHE HIT] Coinglass Market Data: ${targetSymbol}`);
+      return cached.data;
+    }
+
+    const apiKey = process.env.COINGLASS_API_KEY;
+    if (!apiKey) return "";
+
+    const response = await fetch(
+      `https://open-api.coinglass.com/public/v2/open_interest?symbol=${targetSymbol}`,
+      {
+        headers: {
+          accept: "application/json",
+          coinglassSecret: apiKey,
+        },
+      },
+    );
+
+    if (!response.ok) return "";
+
+    const responseData = await response.json();
+    if (!responseData.data || responseData.data.length === 0) return "";
+
+    // Ambil agregat data dari semua exchange
+    const oiData =
+      responseData.data.find((d: any) => d.exchangeName === "All") ||
+      responseData.data[0];
+    if (!oiData) return "";
+
+    const oiUsd = oiData.openInterest;
+
+    const result = `\n\n📈 *FUTURES SENTIMENT (Coinglass)*\n🧲 *Open Interest:* $${(oiUsd / 1000000).toFixed(2)}M`;
+
+    coinglassCache.set(targetSymbol, { data: result, timestamp: now });
+    return result;
+  } catch (error) {
+    console.error(`[Coinglass API] Gagal fetch data:`, error);
+    return "";
+  }
+}
+
 async function saveTransactionAndNotify(params: {
   candidate: TransferCandidate;
   wallet: {
@@ -438,6 +489,7 @@ async function saveTransactionAndNotify(params: {
     let insiderWarning = "";
     let metricsBlock = "";
     let securityBlock = "";
+    let coinglassBlock = ""; // 🔥 VARIABLE BARU
 
     // 1. PROSES TOKEN JIKA ADA TOKEN IDENTIFIER
     if (params.candidate.tokenIdentifier) {
@@ -539,6 +591,15 @@ async function saveTransactionAndNotify(params: {
       }
     }
 
+    // 🔥 TARIK DATA COINGLASS (JALAN UNTUK SEMUA TRANSAKSI ASAL ADA SYMBOL)
+    try {
+      if (params.symbol) {
+        coinglassBlock = await checkCoinglass(params.symbol);
+      }
+    } catch (cgError) {
+      console.error(`[Coinglass] Error:`, cgError);
+    }
+
     // 2. TARIK DATA RAPOR WHALE
     const whaleData = await prisma.wallet.findUnique({
       where: { id: params.wallet.id },
@@ -615,7 +676,7 @@ async function saveTransactionAndNotify(params: {
       return;
     }
 
-    // 3. RAKIT PESAN
+    // 3. RAKIT PESAN (SEKARANG DITAMBAHIN COINGLASS BLOCK)
     const message =
       `${title}\n\n` +
       `👤 *Whale:* ${params.wallet.name ?? "Unknown Target"}\n` +
@@ -626,6 +687,7 @@ async function saveTransactionAndNotify(params: {
       whaleStatsBlock +
       metricsBlock +
       securityBlock +
+      coinglassBlock + // 🔥 DATA FUTURES DARI COINGLASS
       dyorFooter;
 
     const inlineKeyboard = [];
