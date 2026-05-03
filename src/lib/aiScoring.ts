@@ -12,13 +12,13 @@ export interface TokenPayload {
 
 export async function getAIScore(payload: TokenPayload) {
   try {
-    // Pastikan lu udah masukin API Key di file .env
-    const apiKey = process.env.DEEPSEEK_API_KEY;
+    // 🔥 UBAH NAMA VARIABEL JADI GEMINI
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("Kunci API DeepSeek belum dipasang!");
+      throw new Error("Kunci API Gemini belum dipasang!");
     }
 
-    // Ngerakit Prompt yang udah lu buat tadi
+    // Ngerakit Prompt
     const prompt = `Kamu adalah sistem analis on-chain ahli. Analisis data token berikut:
 - Likuiditas: ${payload.liquidity}
 - Umur Koin: ${payload.age}
@@ -27,49 +27,52 @@ export async function getAIScore(payload: TokenPayload) {
 - Status LP: ${payload.lpStatus}
 - Deteksi Honeypot: ${payload.honeypotStatus}
 
-Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 6 kata. Kembalikan HANYA dalam format JSON seperti ini: {"score": 85, "reason": "Aman dari rugpull, liquiditas memadai"}`;
+Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 6 kata. Kembalikan HANYA dalam format JSON dengan key "score" (number) dan "reason" (string).`;
 
-    // Nembak API DeepSeek
-    const response = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+    // Nembak API Gemini 1.5 Flash
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.2, // Biar tetep logis dan dingin
+            responseMimeType: "application/json", // 🔥 Fitur sakti Gemini biar outputnya murni JSON tanpa Markdown
+          },
+        }),
       },
-      body: JSON.stringify({
-        model: "deepseek-chat", // Pake model chat bawaan mereka
-        messages: [
-          {
-            role: "system",
-            content:
-              "Kamu adalah asisten AI yang hanya menjawab dengan format JSON murni tanpa markdown tambahan.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.2, // Suhu rendah biar jawabannya logis & konsisten, nggak halu
-      }),
-    });
+    );
 
-    if (!response.ok) throw new Error("Gagal nembak API DeepSeek");
+    // Error handling kalau Gemini nolak
+    if (!response.ok) {
+      const errorDetail = await response.text();
+      console.error(
+        `[GEMINI ERROR API] Status: ${response.status}, Detail:`,
+        errorDetail,
+      );
+      throw new Error("Gagal nembak API Gemini");
+    }
 
     const data = await response.json();
 
-    // Parsing hasil jawaban AI dari string ke Object JSON
-    const aiResult = JSON.parse(data.choices[0].message.content);
+    // Parsing hasil jawaban Gemini ke Object JSON
+    const aiText = data.candidates[0].content.parts[0].text;
+    const aiResult = JSON.parse(aiText);
 
     return {
-      score: aiResult.score,
-      reason: aiResult.reason,
+      score: aiResult.score || 0,
+      reason: aiResult.reason || "Alasan tidak terdeteksi",
     };
   } catch (error) {
     console.error("🤖 Error AI Scoring:", error);
     // FALLBACK: Kalau API down/error, jangan kasih nilai palsu
     return {
       score: 0,
-      reason: "Sistem AI sedang offline",
+      reason: "System AI offline",
     };
   }
 }
