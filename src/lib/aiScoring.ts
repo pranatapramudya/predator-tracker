@@ -16,15 +16,18 @@ export async function getAIScore(payload: TokenPayload) {
       throw new Error("Kunci API Gemini belum dipasang!");
     }
 
-    const prompt = `Kamu adalah sistem analis on-chain ahli. Analisis data token berikut:
-- Likuiditas: ${payload.liquidity}
-- Umur Koin: ${payload.age}
-- Keamanan Mint: ${payload.mintStatus}
-- Keamanan Freeze: ${payload.freezeStatus}
-- Status LP: ${payload.lpStatus}
-- Deteksi Honeypot: ${payload.honeypotStatus}
+    // Ngerakit Prompt Full English biar outputnya konsisten
+    const prompt = `You are an expert on-chain crypto analyst. Analyze the following token data:
+- Liquidity: ${payload.liquidity}
+- Token Age: ${payload.age}
+- Mint Security: ${payload.mintStatus}
+- Freeze Security: ${payload.freezeStatus}
+- LP Status: ${payload.lpStatus}
+- Honeypot Status: ${payload.honeypotStatus}
 
-Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 6 kata. Kembalikan HANYA format JSON murni tanpa markdown, tanpa penjelasan tambahan. Contoh: {"score": 85, "reason": "Aman dari rugpull, liquiditas memadai"}`;
+Provide a profit probability score from 0 to 100. Also provide a very short reason (maximum 6 words). 
+The reason MUST BE STRICTLY IN ENGLISH. 
+Return ONLY in valid JSON format with keys "score" (number) and "reason" (string).`;
 
     // 🔥 Pindah ke model Gemini 2.5 Flash (Sesuai List API Lu)
     const response = await fetch(
