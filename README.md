@@ -68,11 +68,19 @@ Sistem monetisasi mandiri dengan arsitektur _Tiering_ dinamis (Scout, Predator, 
 
 ### 9. Futures Sentiment & Market Direction (Coinglass) 📈
 
-Validasi aksi Spot paus dengan data pasar derivatif secara _real-time_ untuk mengukur kekuatan momentum.
+Validasi aksi Spot paus dengan data pasar derivatif secara _real-time_ untuk mengukur kekuatan momentum[cite: 2].
 
-- **Open Interest (OI) Tracker:** Mengambil agregat dana yang berputar di pasar Futures untuk koin spesifik di seluruh _Centralized Exchange_ global.
-- **Ultra-Fast In-Memory Cache:** Request API dilindungi oleh struktur data `Map` selama 5 menit untuk mencegah _rate-limit_ API habis dan menjaga kecepatan respon _webhook_ tetap di bawah 1 detik.
-- **Graceful Degradation:** Jika paus membeli koin _micin_ baru yang belum terdaftar di pasar Futures, sistem akan mengabaikan _error_ secara senyap dan tetap memproses notifikasi keamanan _on-chain_ tanpa kendala.
+- **Open Interest (OI) Tracker:** Mengambil agregat dana yang berputar di pasar Futures untuk koin spesifik di seluruh _Centralized Exchange_ global[cite: 2].
+- **Ultra-Fast In-Memory Cache:** Request API dilindungi oleh struktur data `Map` selama 5 menit untuk mencegah _rate-limit_ API habis dan menjaga kecepatan respon _webhook_ tetap di bawah 1 detik[cite: 2].
+- **Graceful Degradation:** Jika paus membeli koin _micin_ baru yang belum terdaftar di pasar Futures, sistem akan mengabaikan _error_ secara senyap dan tetap memproses notifikasi keamanan _on-chain_ tanpa kendala[cite: 2].
+
+### 10. AI-Powered Predictive Scoring (DeepSeek Integration) 🤖
+
+Mengubah Tracker menjadi _Predictive Tool_ menggunakan analisis data on-chain berbasis kecerdasan buatan.
+
+- **Real-Time AI Analyst:** Mengirimkan parameter kritis token (Likuiditas, Umur, dan Metrik Keamanan) ke model AI DeepSeek untuk mendapatkan _Confidence Score_ (0-100) dan wawasan (insight) instan.
+- **Strict Format Prompting:** Algoritma sistem menggunakan _temperature_ rendah untuk memaksa output AI berformat JSON murni, mencegah halusinasi, dan memastikan konsistensi logika analisis.
+- **Fail-Safe Mechanism:** Memiliki _fallback logic_ terisolasi yang memastikan notifikasi Telegram tetap berhasil terkirim tanpa mengganggu _runtime_ meskipun API penyedia AI sedang mengalami gangguan atau limitasi.
 
 ---
 
@@ -82,7 +90,7 @@ Validasi aksi Spot paus dengan data pasar derivatif secara _real-time_ untuk men
 - **Authentication:** Clerk[cite: 2]
 - **Database:** Prisma ORM & PostgreSQL (Neon DB)[cite: 2]
 - **Rate Limiting/Cache:** Upstash Redis & In-Memory Map[cite: 2]
-- **Scanner Engine:** Helius RPC, Alchemy, DexScreener API, RugCheck API, Coinglass API[cite: 2]
+- **Scanner Engine:** Helius RPC, Alchemy, DexScreener API, RugCheck API, Coinglass API, **DeepSeek AI API**[cite: 2]
 - **Payment Gateway:** MoonPay (Pay Links & Webhooks)[cite: 2]
 - **State Management:** Prisma `$transaction` (Atomic DB Locks)[cite: 2]
 - **Bot Infrastructure:** Telegram Bot API (Inline Keyboards & Markdown)[cite: 2]
@@ -107,4 +115,5 @@ Validasi aksi Spot paus dengan data pasar derivatif secara _real-time_ untuk men
 - [x] MoonPay Webhook Security (HMAC-SHA256 Anti-Fake Payment)[cite: 2].
 - [x] Upstash Redis Rate Limiting (Anti-DDoS & Spam Protection)[cite: 2].
 - [x] Telegram Gatekeeper & Webhook Secret Token (Anti-Fake Request)[cite: 2].
-- [x] **Coinglass Futures Sentiment (Open Interest) & Ultra-Fast In-Memory Caching.**
+- [x] Coinglass Futures Sentiment (Open Interest) & Ultra-Fast In-Memory Caching[cite: 2].
+- [x] **AI-Powered Predictive Scoring & Real-time Insight (DeepSeek API).**
