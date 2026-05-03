@@ -116,4 +116,4 @@ Mengubah Tracker menjadi _Predictive Tool_ menggunakan analisis data on-chain be
 - [x] Upstash Redis Rate Limiting (Anti-DDoS & Spam Protection)[cite: 2].
 - [x] Telegram Gatekeeper & Webhook Secret Token (Anti-Fake Request)[cite: 2].
 - [x] Coinglass Futures Sentiment (Open Interest) & Ultra-Fast In-Memory Caching[cite: 2].
-- [x] **AI-Powered Predictive Scoring & Real-time Insight (DeepSeek API).**
+- [x] **AI-Powered Predictive Scoring & Real-time Insight (Gemini API).**

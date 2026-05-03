@@ -12,7 +12,7 @@ export interface TokenPayload {
 
 export async function getAIScore(payload: TokenPayload) {
   try {
-    // 🔥 UBAH NAMA VARIABEL JADI GEMINI
+    // Pastikan API Key Gemini udah terpasang di Vercel
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error("Kunci API Gemini belum dipasang!");
@@ -29,9 +29,9 @@ export async function getAIScore(payload: TokenPayload) {
 
 Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 6 kata. Kembalikan HANYA dalam format JSON dengan key "score" (number) dan "reason" (string).`;
 
-    // Nembak API Gemini 1.5 Flash
+    // Nembak API Gemini 1.5 Flash (Pake suffix -latest biar aman dari 404)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -72,7 +72,7 @@ Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 
     // FALLBACK: Kalau API down/error, jangan kasih nilai palsu
     return {
       score: 0,
-      reason: "System AI offline",
+      reason: "Sistem AI sedang offline",
     };
   }
 }
