@@ -357,7 +357,7 @@ async function checkSecurityRisk(tokenAddress: string): Promise<string> {
       return cached.data;
     }
 
-    const response = await fetch(
+    let response = await fetch(
       `https://api.rugcheck.xyz/v1/tokens/${tokenAddress}/report/summary`,
       {
         headers: {
@@ -367,8 +367,41 @@ async function checkSecurityRisk(tokenAddress: string): Promise<string> {
       },
     );
 
+    // 🔥 HOTFIX: Jika token belum di-scan (400 atau 404), PAKSA GENERATE!
+    if (response.status === 400 || response.status === 404) {
+      console.log(
+        `[Security Check] Token baru terdeteksi! Memaksa Rugcheck generate report untuk: ${tokenAddress}`,
+      );
+
+      // Tembak endpoint generate
+      await fetch(
+        `https://api.rugcheck.xyz/v1/tokens/${tokenAddress}/report/generate`,
+        {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "PredatorTracker/1.0",
+          },
+        },
+      );
+
+      // Kasih napas 2.5 detik biar server Rugcheck selesai mikir
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+
+      // Fetch ulang summary-nya setelah digenerate
+      response = await fetch(
+        `https://api.rugcheck.xyz/v1/tokens/${tokenAddress}/report/summary`,
+        {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "PredatorTracker/1.0",
+          },
+        },
+      );
+    }
+
     if (!response.ok) {
-      return `\n\n🔍 *SECURITY CHECK:*\n⚠️ API Error atau Token belum di-scan (${response.status})`;
+      // Kalo masih gagal (mungkin server Rugcheck lg down), balikin error yang rapi
+      return `\n\n🔍 *SECURITY CHECK:*\n⚠️ Token terlalu baru / API Scanning (${response.status})`;
     }
 
     const data = await response.json();
