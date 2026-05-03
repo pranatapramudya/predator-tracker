@@ -16,7 +16,6 @@ export async function getAIScore(payload: TokenPayload) {
       throw new Error("Kunci API Gemini belum dipasang!");
     }
 
-    // Ngerakit Prompt Full English biar outputnya konsisten
     const prompt = `You are an expert on-chain crypto analyst. Analyze the following token data:
 - Liquidity: ${payload.liquidity}
 - Token Age: ${payload.age}
