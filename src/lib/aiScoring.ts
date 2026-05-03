@@ -26,9 +26,9 @@ export async function getAIScore(payload: TokenPayload) {
 
 Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 6 kata. Kembalikan HANYA format JSON murni tanpa markdown, tanpa penjelasan tambahan. Contoh: {"score": 85, "reason": "Aman dari rugpull, liquiditas memadai"}`;
 
-    // 🔥 Pindah ke jalur 'gemini-pro' yang paling stabil dan anti-404
+    // 🔥 Pindah ke model Gemini 2.5 Flash (Sesuai List API Lu)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -37,7 +37,8 @@ Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.2, // Tetap dingin dan logis
+            temperature: 0.2,
+            responseMimeType: "application/json", // Aktifin lagi fitur sakti JSON murni
           },
         }),
       },
