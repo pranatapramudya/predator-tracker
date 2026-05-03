@@ -12,7 +12,10 @@ import {
   getSolanaLatestSwap,
   getEVMLatestTokenTx,
 } from "@/lib/crypto";
-import { processWhaleTrade } from "./pnl"; // Sinkronisasi dengan Akuntan PnL
+import { processWhaleTrade } from "./pnl";
+
+// 🔥 IMPORT BARU: Ambil otak Orchestrator lu dari scanner
+import { analyzeWhaleAction } from "@/lib/scanner";
 
 export const dynamic = "force-dynamic";
 
@@ -104,7 +107,7 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
 }
 
 // ==========================================
-// 🔥 MODUL: RUGCHECK SECURITY CHECK
+// 🔥 MODUL: RUGCHECK SECURITY CHECK (Legacy)
 // ==========================================
 async function checkSecurityRisk(tokenAddress: string): Promise<string> {
   try {
@@ -147,7 +150,7 @@ async function checkSecurityRisk(tokenAddress: string): Promise<string> {
 }
 
 // ==========================================
-// 🔥 MODUL: TELEGRAM SENDER (ENGLISH FORMAT & DOUBLE ALPHA FIX)
+// 🔥 MODUL: TELEGRAM SENDER
 // ==========================================
 async function sendTelegramAlert({
   wallet,
@@ -162,7 +165,7 @@ async function sendTelegramAlert({
   whaleStatsBlock,
   metricsBlock,
   liquidityWarning,
-  securityBlock, // Ditambahin di sini
+  securityBlock,
 }: any) {
   if (!process.env.TELEGRAM_BOT_TOKEN) return;
 
@@ -212,7 +215,7 @@ async function sendTelegramAlert({
       `💰 *Value:* $${usdAmount.toFixed(2)}${liquidityWarning}` +
       whaleStatsBlock +
       metricsBlock +
-      (securityBlock ? securityBlock : "") + // Dimasukin ke pesan
+      (securityBlock ? securityBlock : "") +
       dyorFooter;
 
     let inline_keyboard = [];
@@ -321,7 +324,7 @@ export async function GET(request: Request) {
 
               let liquidityWarning = "";
               let metricsBlock = "";
-              let securityBlock = ""; // Deklarasi variabel
+              let securityBlock = "";
               const marketInfo = await getTokenMarketInfo(tokenAddress);
 
               if (usdAmount === 0 && tokenAddress !== "solana" && marketInfo) {
@@ -332,8 +335,10 @@ export async function GET(request: Request) {
                 let multibaggerScore = 0;
                 let volumeMcapRatio = 0;
                 let tokenAgeHours = 0;
+                let liquidityStringForAI = "Unknown";
 
                 if (marketInfo) {
+                  liquidityStringForAI = `$${(marketInfo.liquidityUsd / 1000).toFixed(1)}k`;
                   if (
                     marketInfo.liquidityUsd < 10000 &&
                     marketInfo.liquidityUsd > 0
@@ -355,7 +360,15 @@ export async function GET(request: Request) {
 
                 const insiderWarning =
                   await checkSolanaInsiderRisk(tokenAddress);
-                securityBlock = await checkSecurityRisk(tokenAddress); // Manggil Rugcheck
+
+                // 🔥 Panggil AI DeepSeek lewat fungsi analyzeWhaleAction
+                const analysis = await analyzeWhaleAction(
+                  tokenAddress,
+                  liquidityStringForAI,
+                  tokenAgeHours > 0
+                    ? `${tokenAgeHours.toFixed(1)}h`
+                    : "Unknown",
+                );
 
                 const smartMoneyCount = await prisma.tokenPosition.count({
                   where: { tokenAddress, tokenAmount: { gt: 0 } },
@@ -366,6 +379,9 @@ export async function GET(request: Request) {
                   `\n\n📊 *ON-CHAIN METRICS*\n💎 *Score:* ${multibaggerScore}/3 Points\n🐳 *Smart Money:* ${smartMoneyCount} Wallets\n⏳ *Age:* ${tokenAgeHours > 0 ? tokenAgeHours.toFixed(1) + "h" : "N/A"}\n📈 *Vol/MCap:* ${volumeMcapRatio > 0 ? volumeMcapRatio.toFixed(1) + "%" : "N/A"} ` +
                   (volumeMcapRatio > 50 ? `(🔥 Hot)` : `(🧊 Normal)`) +
                   insiderWarning;
+
+                // 🔥 Template Security & AI
+                securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
               }
 
               if (tokenAddress !== "solana" && usdAmount > 0) {
@@ -432,12 +448,12 @@ export async function GET(request: Request) {
                   whaleStatsBlock,
                   metricsBlock,
                   liquidityWarning,
-                  securityBlock, // Lempar ke Telegram
+                  securityBlock,
                 });
               }
             }
           }
-        }
+        } // <=== INI DIA SI KURUNG KURAWAL YANG TADI HILANG!
 
         // ------------------------------------------
         // 2. SMART MONEY TOKEN (ETH & BASE)
@@ -616,6 +632,7 @@ export async function GET(request: Request) {
       console.log(`[RADAR] Jeda 0.5 detik...`);
       await delay(500);
     } // Tutup For
+
     return NextResponse.json({
       success: true,
       message: "Radar sweep completed",
