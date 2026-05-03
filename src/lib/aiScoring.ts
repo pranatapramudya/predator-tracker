@@ -1,6 +1,5 @@
 // src/lib/aiScoring.ts
 
-// Definisikan struktur data yang bakal dikirim ke AI
 export interface TokenPayload {
   liquidity: string;
   age: string;
@@ -12,13 +11,11 @@ export interface TokenPayload {
 
 export async function getAIScore(payload: TokenPayload) {
   try {
-    // Pastikan API Key Gemini udah terpasang di Vercel
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error("Kunci API Gemini belum dipasang!");
     }
 
-    // Ngerakit Prompt
     const prompt = `Kamu adalah sistem analis on-chain ahli. Analisis data token berikut:
 - Likuiditas: ${payload.liquidity}
 - Umur Koin: ${payload.age}
@@ -27,11 +24,11 @@ export async function getAIScore(payload: TokenPayload) {
 - Status LP: ${payload.lpStatus}
 - Deteksi Honeypot: ${payload.honeypotStatus}
 
-Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 6 kata. Kembalikan HANYA dalam format JSON dengan key "score" (number) dan "reason" (string).`;
+Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 6 kata. Kembalikan HANYA format JSON murni tanpa markdown, tanpa penjelasan tambahan. Contoh: {"score": 85, "reason": "Aman dari rugpull, liquiditas memadai"}`;
 
-    // Nembak API Gemini 1.5 Flash (Pake suffix -latest biar aman dari 404)
+    // 🔥 Pindah ke jalur 'gemini-pro' yang paling stabil dan anti-404
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -40,14 +37,12 @@ Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.2, // Biar tetep logis dan dingin
-            responseMimeType: "application/json", // 🔥 Fitur sakti Gemini biar outputnya murni JSON tanpa Markdown
+            temperature: 0.2, // Tetap dingin dan logis
           },
         }),
       },
     );
 
-    // Error handling kalau Gemini nolak
     if (!response.ok) {
       const errorDetail = await response.text();
       console.error(
@@ -59,8 +54,14 @@ Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 
 
     const data = await response.json();
 
-    // Parsing hasil jawaban Gemini ke Object JSON
-    const aiText = data.candidates[0].content.parts[0].text;
+    let aiText = data.candidates[0].content.parts[0].text;
+
+    // 🧹 PEMBERSIH JSON: Jaga-jaga kalau Gemini ngebandel nambahin ```json ... ```
+    aiText = aiText
+      .replace(/```json/gi, "")
+      .replace(/```/gi, "")
+      .trim();
+
     const aiResult = JSON.parse(aiText);
 
     return {
@@ -69,7 +70,6 @@ Berikan skor probabilitas potensi profit dari 0-100 dan berikan alasan maksimal 
     };
   } catch (error) {
     console.error("🤖 Error AI Scoring:", error);
-    // FALLBACK: Kalau API down/error, jangan kasih nilai palsu
     return {
       score: 0,
       reason: "Sistem AI sedang offline",
