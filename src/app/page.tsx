@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Trash2,
   Send,
+  ExternalLink, // 🔥 TAMBAHAN ICON BUAT SIDEBAR
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -150,7 +151,6 @@ async function createWalletAction(formData: FormData) {
 
   // 🔥 SUNTIKAN ANTI DDOS / SPAM BOT 🔥
   try {
-    // Kalau belum punya Redis URL di .env (misal pas dev lokal), bypass aja.
     if (process.env.UPSTASH_REDIS_REST_URL) {
       const { success } = await ratelimit.limit(userId);
       if (!success) {
@@ -162,7 +162,6 @@ async function createWalletAction(formData: FormData) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT")
       throw error;
     console.error("Redis Error:", error);
-    // Kalau Redis error, biarin aja lolos sementara biar app ga mati
   }
 
   let feedback = "failed";
@@ -356,33 +355,47 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const limit = 4;
   const skip = (page - 1) * limit;
 
-  const [wallets, totalWallets, existingChatIdRecord] = await Promise.all([
-    prisma.wallet
-      .findMany({
-        where: { userId: userId },
-        skip,
-        take: limit,
-        orderBy: { createdAt: "desc" },
-        include: {
-          transactions: { orderBy: { createdAt: "desc" }, take: 10 },
-          positions: true,
-        },
-      })
-      .catch(() => []),
-    prisma.wallet.count({ where: { userId: userId } }).catch(() => 0),
-    prisma.wallet
-      .findFirst({
-        where: { userId: userId, chatId: { not: "" } },
-        select: { chatId: true },
-      })
-      .catch(() => null),
-  ]);
+  // 🔥 TARIK DATA PRIVATE ALPHA SEKALIAN DI SINI 🔥
+  const [wallets, totalWallets, existingChatIdRecord, privateAlphaLogs] =
+    await Promise.all([
+      prisma.wallet
+        .findMany({
+          where: { userId: userId },
+          skip,
+          take: limit,
+          orderBy: { createdAt: "desc" },
+          include: {
+            transactions: { orderBy: { createdAt: "desc" }, take: 10 },
+            positions: true,
+          },
+        })
+        .catch(() => []),
+      prisma.wallet.count({ where: { userId: userId } }).catch(() => 0),
+      prisma.wallet
+        .findFirst({
+          where: { userId: userId, chatId: { not: "" } },
+          select: { chatId: true },
+        })
+        .catch(() => null),
+      // Query ini otomatis nge-filter transaksi Paus yang cuma dipantau sama user yang lagi login
+      prisma.transaction
+        .findMany({
+          where: {
+            usdValue: { gte: 1000 },
+            wallet: { userId: userId }, // Kunci privasi 100% aman
+          },
+          include: { wallet: true },
+          orderBy: { createdAt: "desc" },
+          take: 15,
+        })
+        .catch(() => []),
+    ]);
 
   const totalPages = Math.ceil(totalWallets / limit);
   const savedChatId = existingChatIdRecord?.chatId || "";
 
   return (
-    <main className="min-h-screen p-4 md:p-10 max-w-7xl mx-auto space-y-10 bg-[#080808] text-white overflow-x-hidden transition-colors duration-300">
+    <main className="min-h-screen p-4 md:p-10 max-w-[1600px] mx-auto space-y-10 bg-[#080808] text-white overflow-x-hidden transition-colors duration-300">
       <header className="flex flex-row items-center justify-between gap-4 pb-8 border-b border-white/10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] uppercase mb-4">
@@ -433,15 +446,19 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
-        <section className="lg:col-span-4 h-fit lg:sticky lg:top-10">
-          <div className="bg-[#121212] border border-white/10 rounded-[32px] p-6 md:p-8 shadow-2xl transition-colors">
-            <h2 className="text-xl font-black uppercase mb-8 flex items-center gap-4">
-              <Shield className="text-emerald-400" /> Acquisition
+      {/* 🔥 GRID DIBAGI 3 SEKARANG (FORM, WATCHLIST, SIDEBAR ALPHA) 🔥 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 xl:grid-cols-12 gap-6 relative">
+        {/* =======================
+            KOLOM 1: ACQUISITION FORM 
+            ======================= */}
+        <section className="lg:col-span-4 xl:col-span-3 h-fit lg:sticky lg:top-10">
+          <div className="bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl transition-colors">
+            <h2 className="text-lg font-black uppercase mb-6 flex items-center gap-3">
+              <Shield className="text-emerald-400 w-5 h-5" /> Acquisition
             </h2>
             <form
               action={createWalletAction}
-              className="space-y-6"
+              className="space-y-5"
               autoComplete="off"
             >
               <div className="space-y-2">
@@ -456,41 +473,39 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none font-mono text-sm focus:border-emerald-500/50 transition-all text-white"
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
-                    Network
-                  </label>
-                  <select
-                    name="network"
-                    className="w-full bg-black/60 border border-white/10 rounded-2xl px-4 py-4 font-bold outline-none cursor-pointer text-sm text-white"
-                  >
-                    {NETWORK_OPTIONS.map((n) => (
-                      <option
-                        key={n.value}
-                        value={n.value}
-                        className="bg-zinc-900"
-                      >
-                        {n.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
-                    Alias Name
-                  </label>
-                  <input
-                    name="name"
-                    required
-                    autoComplete="off"
-                    placeholder="Whale #1"
-                    className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-emerald-500/50 transition-all text-white"
-                  />
-                </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
+                  Network
+                </label>
+                <select
+                  name="network"
+                  className="w-full bg-black/60 border border-white/10 rounded-2xl px-4 py-4 font-bold outline-none cursor-pointer text-sm text-white"
+                >
+                  {NETWORK_OPTIONS.map((n) => (
+                    <option
+                      key={n.value}
+                      value={n.value}
+                      className="bg-zinc-900"
+                    >
+                      {n.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
+                  Alias Name
+                </label>
+                <input
+                  name="name"
+                  required
+                  autoComplete="off"
+                  placeholder="Whale #1"
+                  className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-emerald-500/50 transition-all text-white"
+                />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between ml-1">
                   <label className="text-[10px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
                     <Send className="w-3 h-3 text-cyan-400" /> Telegram ID
@@ -502,7 +517,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       rel="noreferrer"
                       className="text-[9px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors uppercase tracking-widest bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/20 flex items-center gap-1"
                     >
-                      🔍 Search ID Otomatis
+                      🔍 Auto Find
                     </a>
                   )}
                 </div>
@@ -527,17 +542,20 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
               <button
                 type="submit"
-                className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 uppercase tracking-tighter"
+                className="w-full py-4 mt-2 bg-white text-black font-black rounded-2xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 uppercase tracking-tighter"
               >
-                START RADAR <ChevronRight />
+                START RADAR <ChevronRight className="w-4 h-4" />
               </button>
             </form>
           </div>
         </section>
 
-        <section className="lg:col-span-8 space-y-6">
+        {/* =======================
+            KOLOM 2: WATCHLIST PAUS 
+            ======================= */}
+        <section className="lg:col-span-8 xl:col-span-6 space-y-6">
           <h3 className="flex items-center gap-2 text-sm font-black text-white/60 uppercase tracking-[0.2em] px-2">
-            <Activity className="text-cyan-400" /> Your Watchlist
+            <Activity className="text-cyan-400 w-4 h-4" /> Your Watchlist
           </h3>
           {wallets.length === 0 ? (
             <div className="border-2 border-dashed border-white/5 rounded-[32px] p-20 text-center text-white/40 italic uppercase tracking-widest text-xs">
@@ -557,10 +575,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   return (
                     <div
                       key={w.id}
-                      className="group bg-[#121212] border border-white/5 p-6 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between transform-gpu will-change-transform contain-content"
+                      className="group bg-[#121212] border border-white/5 p-5 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between transform-gpu will-change-transform contain-content"
                     >
                       <div>
-                        <div className="flex justify-between items-start mb-4 relative z-10 gap-3">
+                        <div className="flex justify-between items-start mb-4 relative z-10 gap-2">
                           <div className="flex-1 min-w-0 pr-2">
                             <div className="flex items-center gap-2 mb-2">
                               <p className="text-[9px] font-black text-white/40 uppercase tracking-widest whitespace-nowrap">
@@ -573,19 +591,19 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               </span>
                             </div>
                             <h4
-                              className="text-xl font-black group-hover:text-emerald-400 transition-colors uppercase truncate block"
+                              className="text-lg font-black group-hover:text-emerald-400 transition-colors uppercase truncate block"
                               title={safeName}
                             >
                               {safeName}
                             </h4>
-                            <div className="flex items-center gap-3 mt-3">
+                            <div className="flex items-center gap-2 mt-2">
                               <img
                                 src={NETWORK_LOGOS[w.network as WalletNetwork]}
                                 alt=""
-                                className="w-6 h-6 rounded-full bg-white p-0.5 shrink-0 shadow-sm"
+                                className="w-5 h-5 rounded-full bg-white p-0.5 shrink-0 shadow-sm"
                               />
                               <span
-                                className={`text-lg font-black tracking-tight truncate ${config?.color}`}
+                                className={`text-base font-black tracking-tight truncate ${config?.color}`}
                               >
                                 {w.network === "BITCOIN"
                                   ? `₿ ${Number(w.lastBalance).toFixed(8)}`
@@ -597,7 +615,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           </div>
                           <div className="flex flex-col items-end gap-2 shrink-0">
                             <span
-                              className={`text-[9px] font-black px-3 py-1 rounded-full border border-white/10 bg-black/60 tracking-tighter uppercase ${config?.color}`}
+                              className={`text-[8px] font-black px-2 py-1 rounded-full border border-white/10 bg-black/60 tracking-tighter uppercase ${config?.color}`}
                             >
                               {w.network}
                             </span>
@@ -611,7 +629,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                                     "Slot terkunci! Upgrade radar lu ke SCOUT/PREDATOR buat ganti target.",
                                   )
                                 }
-                                className="p-2 text-white/20 hover:text-amber-500 cursor-not-allowed transition-colors"
+                                className="p-1.5 text-white/20 hover:text-amber-500 cursor-not-allowed transition-colors"
                                 title="Upgrade to unlock"
                               >
                                 🔒
@@ -621,31 +639,31 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                                 <input type="hidden" name="id" value={w.id} />
                                 <button
                                   type="submit"
-                                  className="p-2 text-white/20 hover:text-rose-500 cursor-pointer transition-colors"
+                                  className="p-1.5 text-white/20 hover:text-rose-500 cursor-pointer transition-colors"
                                 >
-                                  <Trash2 className="w-5 h-5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </form>
                             )}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 mt-5 relative z-10">
-                          <div className="flex-1 bg-black/40 border border-white/5 rounded-xl p-3 text-center">
-                            <p className="text-[9px] font-black text-white/70 uppercase tracking-widest mb-1">
+                        <div className="flex items-center gap-2 mt-4 relative z-10">
+                          <div className="flex-1 bg-black/40 border border-white/5 rounded-xl p-2.5 text-center">
+                            <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mb-1">
                               Win Rate
                             </p>
                             <p
-                              className={`text-base font-black tracking-tight ${w.winRate >= 70 ? "text-amber-400" : w.winRate >= 40 ? "text-cyan-400" : w.winRate > 0 ? "text-rose-400" : "text-white"}`}
+                              className={`text-sm font-black tracking-tight ${w.winRate >= 70 ? "text-amber-400" : w.winRate >= 40 ? "text-cyan-400" : w.winRate > 0 ? "text-rose-400" : "text-white"}`}
                             >
                               {Number(w.winRate).toFixed(1)}%
                             </p>
                           </div>
-                          <div className="flex-1 bg-black/40 border border-white/5 rounded-xl p-3 text-center">
-                            <p className="text-[9px] font-black text-white/70 uppercase tracking-widest mb-1">
+                          <div className="flex-1 bg-black/40 border border-white/5 rounded-xl p-2.5 text-center">
+                            <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mb-1">
                               Trades
                             </p>
-                            <p className="text-base font-black tracking-tight text-white">
+                            <p className="text-sm font-black tracking-tight text-white">
                               <span
                                 className={
                                   w.successTrades > 0
@@ -655,7 +673,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               >
                                 {w.successTrades}
                               </span>
-                              <span className="text-white/40 mx-1.5">/</span>
+                              <span className="text-white/40 mx-1">/</span>
                               <span>{w.totalTrades}</span>
                             </p>
                           </div>
@@ -673,9 +691,9 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           />
                         </div>
 
-                        <div className="mt-4 pt-4 border-t border-white/5">
-                          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-2 flex justify-between">
-                            <span>Recent Activity</span>
+                        <div className="mt-4 pt-3 border-t border-white/5">
+                          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-2">
+                            Recent Activity
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {w.transactions.length > 0 ? (
@@ -696,21 +714,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                                     {tx.type === "BUY" ? "🟢" : "🔴"}{" "}
                                     {tx.tokenSymbol.slice(0, 5)}
                                   </a>
-
-                                  {tx.type === "BUY" && (
-                                    <a
-                                      href={`https://x.com/search?q=%24${tx.tokenSymbol}&src=typed_query`}
-                                      target="_blank"
-                                      title="Cek Komunitas di X"
-                                      className="text-[10px] hover:scale-125 transition-transform origin-center"
-                                    >
-                                      🐦
-                                    </a>
-                                  )}
                                 </div>
                               ))
                             ) : (
-                              <span className="text-[10px] text-white/20 italic">
+                              <span className="text-[9px] text-white/20 italic">
                                 No recent trades
                               </span>
                             )}
@@ -718,13 +725,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between mt-5 pt-5 border-t border-white/5 relative z-10">
-                        <code className="text-[10px] text-white/60 font-mono tracking-tighter truncate max-w-[150px]">
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5 relative z-10">
+                        <code className="text-[9px] text-white/60 font-mono tracking-tighter truncate max-w-[120px]">
                           {formatAddress(w.address)}
                         </code>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse will-change-opacity transform-gpu" />
-                          <span className="text-[9px] font-bold text-white/60 uppercase tracking-widest">
+                          <span className="text-[8px] font-bold text-white/60 uppercase tracking-widest">
                             Live
                           </span>
                         </div>
@@ -768,6 +775,81 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               )}
             </>
           )}
+        </section>
+
+        {/* =======================
+            KOLOM 3: PRIVATE ALPHA FEED 
+            ======================= */}
+        <section className="hidden xl:block xl:col-span-3 h-fit sticky top-10">
+          <aside className="w-full bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl backdrop-blur-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-sm font-black text-emerald-400 tracking-widest flex items-center gap-2 uppercase">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                Alpha Feed
+              </h2>
+              <span className="text-[9px] text-white/40 uppercase tracking-widest font-bold">
+                Live Sync
+              </span>
+            </div>
+
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+              {privateAlphaLogs.map((log) => (
+                <div
+                  key={log.id}
+                  className="group p-4 bg-black/40 border border-white/5 rounded-2xl hover:border-emerald-500/30 transition-all"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-xs font-bold text-white/80 group-hover:text-emerald-400 transition-colors uppercase truncate pr-2">
+                      {log.wallet.name}
+                    </p>
+                    <span className="text-[9px] text-white/40 font-mono">
+                      {new Date(log.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {/* 🔥 UPDATE UI DINAMIS BUY/SELL 🔥 */}
+                    <div
+                      className={`px-2 py-1 border rounded-md text-[9px] font-black tracking-widest ${log.type === "BUY" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-rose-500/10 border-rose-500/20 text-rose-500"}`}
+                    >
+                      {log.type === "BUY" ? "BUY" : "SELL"}
+                    </div>
+
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black text-white leading-none mb-1">
+                        {log.tokenSymbol}
+                      </span>
+                      <span className="text-[10px] font-bold text-white/50 font-mono">
+                        ${Number(log.usdValue).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <a
+                      href={log.explorerUrl}
+                      target="_blank"
+                      className="ml-auto p-2 bg-white/5 rounded-xl opacity-50 hover:opacity-100 transition-opacity hover:bg-emerald-500/20 text-emerald-400"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
+                </div>
+              ))}
+
+              {privateAlphaLogs.length === 0 && (
+                <div className="text-center py-10">
+                  <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold">
+                    No private signals yet...
+                  </p>
+                </div>
+              )}
+            </div>
+          </aside>
         </section>
       </div>
     </main>
