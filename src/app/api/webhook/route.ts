@@ -13,8 +13,6 @@ import {
   getEVMLatestTokenTx,
 } from "@/lib/crypto";
 import { processWhaleTrade } from "./pnl";
-
-// 🔥 IMPORT BARU: Ambil otak Orchestrator lu dari scanner
 import { analyzeWhaleAction } from "@/lib/scanner";
 
 export const dynamic = "force-dynamic";
@@ -107,184 +105,90 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
 }
 
 // ==========================================
-// 🔥 MODUL: RUGCHECK SECURITY CHECK (Legacy)
+// 🔥 HELPER: BUILD KEYBOARD & SEND TELEGRAM
 // ==========================================
-async function checkSecurityRisk(tokenAddress: string): Promise<string> {
-  try {
-    const response = await fetch(
-      `https://api.rugcheck.xyz/v1/tokens/${tokenAddress}/report/summary`,
-      {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "PredatorTracker/1.0",
+function buildKeyboard(
+  network: string,
+  tokenAddress: string,
+  explorerUrl: string,
+) {
+  let inline_keyboard = [];
+  if (network === "SOLANA" && tokenAddress !== "solana") {
+    inline_keyboard = [
+      [
+        { text: "🔍 View Transaction", url: explorerUrl },
+        {
+          text: "📊 Chart on DexScreener",
+          url: `https://dexscreener.com/solana/${tokenAddress}`,
         },
-      },
-    );
-
-    if (!response.ok) {
-      return `\n\n🔍 *SECURITY CHECK:*\n⚠️ API Error atau Token belum di-scan (${response.status})`;
+      ],
+      [
+        {
+          text: "⚡ Web3: Jupiter",
+          url: `https://jup.ag/swap/SOL-${tokenAddress}`,
+        },
+        {
+          text: "🤖 TG Bot: BonkBot",
+          url: `https://t.me/bonkbot_bot?start=ref_${tokenAddress}`,
+        },
+      ],
+      [
+        {
+          text: "🐦 Cek X",
+          url: `https://twitter.com/search?q=${tokenAddress}`,
+        },
+        {
+          text: "🫧 Bubblemaps",
+          url: `https://app.bubblemaps.io/sol/token/${tokenAddress}`,
+        },
+      ],
+    ];
+  } else {
+    inline_keyboard = [
+      [{ text: "🔍 View Transaction on Explorer", url: explorerUrl }],
+    ];
+    if (
+      tokenAddress &&
+      tokenAddress !== "solana" &&
+      tokenAddress !== "eth" &&
+      tokenAddress !== "btc"
+    ) {
+      inline_keyboard.push([
+        {
+          text: "📊 Chart on DexScreener",
+          url: `https://dexscreener.com/${network.toLowerCase()}/${tokenAddress}`,
+        },
+      ]);
     }
-
-    const data = await response.json();
-
-    let mint = "✅ Mint: Disabled";
-    let freeze = "✅ Freeze: Disabled";
-    let lp = "🔥 LP: 100% Burned";
-    let honeypot = "🛡️ Honeypot: Not Detected";
-
-    if (data.risks && data.risks.length > 0) {
-      for (const risk of data.risks) {
-        const name = risk.name.toLowerCase();
-        if (name.includes("mint")) mint = "🚫 Mint: Enabled (Bahaya)";
-        if (name.includes("freeze")) freeze = "🚫 Freeze: Enabled (Bahaya)";
-        if (name.includes("liquidity")) lp = "⚠️ LP: Unlocked/Low";
-        if (risk.level === "danger" || data.score > 500) {
-          honeypot = "🚫 Honeypot: High Risk Detected";
-        }
-      }
-    }
-    return `\n\n🔍 *SECURITY CHECK:*\n${mint}\n${freeze}\n${lp}\n${honeypot}`;
-  } catch (error) {
-    return `\n\n🔍 *SECURITY CHECK:*\n⚠️ Server Timeout/Error.`;
   }
+  return inline_keyboard;
 }
 
-// ==========================================
-// 🔥 MODUL: TELEGRAM SENDER
-// ==========================================
-async function sendTelegramAlert({
-  wallet,
-  targetChatId,
-  alphaChatId,
-  network,
-  usdAmount,
-  tokenAddress,
-  tokenSymbol,
-  actionText,
-  explorerUrl,
-  whaleStatsBlock,
-  metricsBlock,
-  liquidityWarning,
-  securityBlock,
-}: any) {
-  if (!process.env.TELEGRAM_BOT_TOKEN) return;
-
-  const isAlphaWorthy = usdAmount >= 1000;
-  const notificationTargets: { id: string; customLabel: string }[] = [];
-  const userAlphaChatId = wallet.alphaChannelId;
-
-  if (isAlphaWorthy) {
-    let sentToAlpha = false;
-    if (userAlphaChatId && userAlphaChatId !== targetChatId) {
-      notificationTargets.push({
-        id: userAlphaChatId,
-        customLabel: "👑 ALPHA PREDATOR",
-      });
-      sentToAlpha = true;
-    } else if (alphaChatId && alphaChatId !== targetChatId) {
-      notificationTargets.push({
-        id: alphaChatId,
-        customLabel: "👑 ALPHA PREDATOR",
-      });
-      sentToAlpha = true;
-    }
-    if (!sentToAlpha && targetChatId) {
-      notificationTargets.push({
-        id: targetChatId,
-        customLabel: "👑 ALPHA PREDATOR",
-      });
-    }
-  } else {
-    if (targetChatId) {
-      notificationTargets.push({ id: targetChatId, customLabel: "🚨 WHALE" });
-    }
-  }
-
-  const titleText = isAlphaWorthy
-    ? "👑 *ALPHA PREDATOR ALERT!*"
-    : "🚨 *WHALE ALERT* 🚨";
-  const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
-
-  for (const target of notificationTargets) {
-    const message =
-      `${titleText}\n\n` +
-      `👤 *Whale:* ${wallet.name ?? "Unknown Target"}\n` +
-      `📍 *Address:* \`${wallet.address}\`\n` +
-      `📈 *Action:* ${actionText}\n` +
-      `🪙 *Token:* ${tokenSymbol}\n` +
-      `💰 *Value:* $${usdAmount.toFixed(2)}${liquidityWarning}` +
-      whaleStatsBlock +
-      metricsBlock +
-      (securityBlock ? securityBlock : "") +
-      dyorFooter;
-
-    let inline_keyboard = [];
-    if (network === "SOLANA" && tokenAddress !== "solana") {
-      inline_keyboard = [
-        [
-          { text: "🔍 View Transaction", url: explorerUrl },
-          {
-            text: "📊 Chart on DexScreener",
-            url: `https://dexscreener.com/solana/${tokenAddress}`,
-          },
-        ],
-        [
-          {
-            text: "⚡ Web3: Jupiter",
-            url: `https://jup.ag/swap/SOL-${tokenAddress}`,
-          },
-          {
-            text: "🤖 TG Bot: BonkBot",
-            url: `https://t.me/bonkbot_bot?start=ref_${tokenAddress}`,
-          },
-        ],
-        [
-          {
-            text: "🐦 Cek X",
-            url: `https://twitter.com/search?q=${tokenAddress}`,
-          },
-          {
-            text: "🫧 Bubblemaps",
-            url: `https://app.bubblemaps.io/sol/token/${tokenAddress}`,
-          },
-        ],
-      ];
-    } else {
-      inline_keyboard = [
-        [{ text: "🔍 View Transaction on Explorer", url: explorerUrl }],
-      ];
-      if (
-        tokenAddress &&
-        tokenAddress !== "solana" &&
-        tokenAddress !== "eth" &&
-        tokenAddress !== "btc"
-      ) {
-        inline_keyboard.push([
-          {
-            text: "📊 Chart on DexScreener",
-            url: `https://dexscreener.com/${network.toLowerCase()}/${tokenAddress}`,
-          },
-        ]);
-      }
-    }
-
-    try {
-      await fetch(
-        `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: target.id,
-            text: message,
-            parse_mode: "Markdown",
-            disable_web_page_preview: true,
-            reply_markup: { inline_keyboard },
-          }),
-        },
-      );
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    } catch (err) {}
+async function sendTelegramMessage(
+  chatId: string,
+  message: string,
+  inline_keyboard: any[] = [],
+) {
+  if (!process.env.TELEGRAM_BOT_TOKEN || !chatId) return;
+  try {
+    await fetch(
+      `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: "Markdown",
+          disable_web_page_preview: true,
+          reply_markup:
+            inline_keyboard.length > 0 ? { inline_keyboard } : undefined,
+        }),
+      },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  } catch (err) {
+    console.error("Gagal kirim Telegram:", err);
   }
 }
 
@@ -294,7 +198,9 @@ async function sendTelegramAlert({
 export async function GET(request: Request) {
   try {
     const wallets = await prisma.wallet.findMany({ where: { isActive: true } });
-    const alphaChatId = process.env.TELEGRAM_CHAT_ID;
+
+    // Ambil Chat ID Alpha dari env (Pastikan udah diset di Vercel!)
+    const globalAlphaChatId = process.env.TELEGRAM_ALPHA_CHAT_ID;
 
     for (const wallet of wallets) {
       try {
@@ -321,12 +227,14 @@ export async function GET(request: Request) {
               const isBuy =
                 !swapData.description.toUpperCase().includes("FOR SOL") &&
                 !swapData.description.toUpperCase().includes("FOR USDC");
+              const explorerUrl = `https://solscan.io/tx/${swapData.signature}`;
 
               let liquidityWarning = "";
               let metricsBlock = "";
-              let securityBlock = "";
-              const marketInfo = await getTokenMarketInfo(tokenAddress);
+              let liquidityStringForAI = "Unknown";
+              let tokenAgeHours = 0;
 
+              const marketInfo = await getTokenMarketInfo(tokenAddress);
               if (usdAmount === 0 && tokenAddress !== "solana" && marketInfo) {
                 usdAmount = amountToken * marketInfo.priceUsd;
               }
@@ -334,8 +242,6 @@ export async function GET(request: Request) {
               if (isBuy && tokenAddress !== "solana") {
                 let multibaggerScore = 0;
                 let volumeMcapRatio = 0;
-                let tokenAgeHours = 0;
-                let liquidityStringForAI = "Unknown";
 
                 if (marketInfo) {
                   liquidityStringForAI = `$${(marketInfo.liquidityUsd / 1000).toFixed(1)}k`;
@@ -360,16 +266,6 @@ export async function GET(request: Request) {
 
                 const insiderWarning =
                   await checkSolanaInsiderRisk(tokenAddress);
-
-                // 🔥 Panggil AI DeepSeek lewat fungsi analyzeWhaleAction
-                const analysis = await analyzeWhaleAction(
-                  tokenAddress,
-                  liquidityStringForAI,
-                  tokenAgeHours > 0
-                    ? `${tokenAgeHours.toFixed(1)}h`
-                    : "Unknown",
-                );
-
                 const smartMoneyCount = await prisma.tokenPosition.count({
                   where: { tokenAddress, tokenAmount: { gt: 0 } },
                 });
@@ -379,9 +275,6 @@ export async function GET(request: Request) {
                   `\n\n📊 *ON-CHAIN METRICS*\n💎 *Score:* ${multibaggerScore}/3 Points\n🐳 *Smart Money:* ${smartMoneyCount} Wallets\n⏳ *Age:* ${tokenAgeHours > 0 ? tokenAgeHours.toFixed(1) + "h" : "N/A"}\n📈 *Vol/MCap:* ${volumeMcapRatio > 0 ? volumeMcapRatio.toFixed(1) + "%" : "N/A"} ` +
                   (volumeMcapRatio > 50 ? `(🔥 Hot)` : `(🧊 Normal)`) +
                   insiderWarning;
-
-                // 🔥 Template Security & AI
-                securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
               }
 
               if (tokenAddress !== "solana" && usdAmount > 0) {
@@ -406,7 +299,7 @@ export async function GET(request: Request) {
                     tokenSymbol,
                     tokenAddress,
                     usdValue: usdAmount,
-                    explorerUrl: `https://solscan.io/tx/${swapData.signature}`,
+                    explorerUrl,
                   },
                 });
 
@@ -422,7 +315,6 @@ export async function GET(request: Request) {
                   (sum, pos) => sum + Number(pos.realizedPnlUsd),
                   0,
                 );
-
                 const winRateText =
                   whaleData && whaleData.totalTrades > 0
                     ? `${Number(whaleData.winRate).toFixed(1)}%`
@@ -431,29 +323,69 @@ export async function GET(request: Request) {
                   totalRealizedPnl >= 0
                     ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
                     : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
+
                 const whaleStatsBlock = `\n\n🏆 *WHALE STATS*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
-
                 const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
-
-                await sendTelegramAlert({
-                  wallet,
-                  targetChatId,
-                  alphaChatId,
-                  network: "SOLANA",
-                  usdAmount,
+                const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
+                const keyboard = buildKeyboard(
+                  "SOLANA",
                   tokenAddress,
-                  tokenSymbol,
-                  actionText,
-                  explorerUrl: `https://solscan.io/tx/${swapData.signature}`,
-                  whaleStatsBlock,
-                  metricsBlock,
-                  liquidityWarning,
-                  securityBlock,
-                });
+                  explorerUrl,
+                );
+
+                // Merakit template pesan dasar
+                const baseMessage =
+                  `👤 *Whale:* ${wallet.name ?? "Unknown Target"}\n` +
+                  `📍 *Address:* \`${wallet.address}\`\n` +
+                  `📈 *Action:* ${actionText}\n` +
+                  `🪙 *Token:* ${tokenSymbol}\n` +
+                  `💰 *Value:* $${usdAmount.toFixed(2)}${liquidityWarning}` +
+                  whaleStatsBlock +
+                  metricsBlock;
+
+                // 🔥 JALUR 1: KIRIM KE CHAT UMUM (TANPA AI)
+                if (targetChatId) {
+                  const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
+                  await sendTelegramMessage(targetChatId, generalMsg, keyboard);
+                }
+
+                // 🔥 JALUR 2: KIRIM KE ALPHA PREDATOR (DENGAN AI)
+                // Cuma trigger AI kalau paus lagi nge-BUY dan bukan coin SOL
+                const targetAlpha =
+                  globalAlphaChatId || (wallet as any).alphaChannelId;
+                if (targetAlpha && isBuy && tokenAddress !== "solana") {
+                  try {
+                    // Panggil AI (Aman karena cuma dengerin instruksi BUY)
+                    const analysis = await analyzeWhaleAction(
+                      tokenAddress,
+                      liquidityStringForAI,
+                      tokenAgeHours > 0
+                        ? `${tokenAgeHours.toFixed(1)}h`
+                        : "Unknown",
+                    );
+
+                    const securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
+
+                    const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
+
+                    // Hindari ngirim dobel kalau ID Chat Umum = ID Chat Alpha
+                    if (targetAlpha !== targetChatId) {
+                      await sendTelegramMessage(
+                        targetAlpha,
+                        alphaMsg,
+                        keyboard,
+                      );
+                    }
+                  } catch (aiError) {
+                    console.error(
+                      "AI Limit, skip Alpha Message for this transaction.",
+                    );
+                  }
+                }
               }
             }
           }
-        } // <=== INI DIA SI KURUNG KURAWAL YANG TADI HILANG!
+        }
 
         // ------------------------------------------
         // 2. SMART MONEY TOKEN (ETH & BASE)
@@ -531,22 +463,42 @@ export async function GET(request: Request) {
                 const whaleStatsBlock = `\n\n🏆 *WHALE STATS*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
 
                 const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
-
-                await sendTelegramAlert({
-                  wallet,
-                  targetChatId,
-                  alphaChatId,
-                  network: wallet.network,
-                  usdAmount,
+                const keyboard = buildKeyboard(
+                  wallet.network,
                   tokenAddress,
-                  tokenSymbol,
-                  actionText,
-                  explorerUrl: tokenTx.explorerUrl,
-                  whaleStatsBlock,
-                  metricsBlock: "",
-                  liquidityWarning: "",
-                  securityBlock: "",
-                });
+                  tokenTx.explorerUrl,
+                );
+                const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
+
+                const baseMessage =
+                  `👤 *Whale:* ${wallet.name ?? "Unknown Target"}\n` +
+                  `📍 *Address:* \`${wallet.address}\`\n` +
+                  `📈 *Action:* ${actionText}\n` +
+                  `🪙 *Token:* ${tokenSymbol}\n` +
+                  `💰 *Value:* $${usdAmount.toFixed(2)}` +
+                  whaleStatsBlock;
+
+                if (targetChatId) {
+                  await sendTelegramMessage(
+                    targetChatId,
+                    `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`,
+                    keyboard,
+                  );
+                }
+
+                const targetAlpha =
+                  globalAlphaChatId || (wallet as any).alphaChannelId;
+                if (
+                  targetAlpha &&
+                  usdAmount >= 1000 &&
+                  targetAlpha !== targetChatId
+                ) {
+                  await sendTelegramMessage(
+                    targetAlpha,
+                    `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${dyorFooter}`,
+                    keyboard,
+                  );
+                }
               }
             }
           }
@@ -612,18 +564,7 @@ export async function GET(request: Request) {
                   ? "◎"
                   : "Ξ";
             const message = `🚨 *WHALE BALANCE UPDATE*\n\n👤 *Whale:* ${wallet.name}\n🌐 *Network:* ${wallet.network}\n💼 *Old Balance:* ${sym} ${oldBalance.toFixed(8)}\n💰 *New Balance:* ${sym} ${currentBalance.toFixed(8)}\n📊 *Change:* ${sym} ${Math.abs(diff).toFixed(8)} (≈ $${diffUsdValue.toFixed(2)})\n📍 *Address:* \`${wallet.address}\``;
-            await fetch(
-              `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  chat_id: targetChatId,
-                  text: message,
-                  parse_mode: "Markdown",
-                }),
-              },
-            );
+            await sendTelegramMessage(targetChatId, message);
           }
         }
       } catch (innerError) {}
@@ -631,7 +572,7 @@ export async function GET(request: Request) {
       // 🛑 NAPAS BUATAN S.KOM 🛑
       console.log(`[RADAR] Jeda 0.5 detik...`);
       await delay(500);
-    } // Tutup For
+    }
 
     return NextResponse.json({
       success: true,
