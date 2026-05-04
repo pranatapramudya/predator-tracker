@@ -343,19 +343,20 @@ export async function GET(request: Request) {
                   whaleStatsBlock +
                   metricsBlock;
 
-                // 🔥 JALUR 1: KIRIM KE CHAT UMUM (TANPA AI)
-                if (targetChatId) {
-                  const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
-                  await sendTelegramMessage(targetChatId, generalMsg, keyboard);
-                }
-
-                // 🔥 JALUR 2: KIRIM KE ALPHA PREDATOR (DENGAN AI)
-                // Cuma trigger AI kalau paus lagi nge-BUY dan bukan coin SOL
                 const targetAlpha =
                   globalAlphaChatId || (wallet as any).alphaChannelId;
-                if (targetAlpha && isBuy && tokenAddress !== "solana") {
+
+                // 🔥 FILTER DEWA SOLANA: Harus BUY, > $1000, bukan SOL, BUKAN STABLECOIN
+                const isAlphaWorthy =
+                  isBuy &&
+                  usdAmount >= 1000 &&
+                  tokenAddress !== "solana" &&
+                  tokenSymbol !== "USDC" &&
+                  tokenSymbol !== "USDT";
+
+                if (isAlphaWorthy && targetAlpha) {
+                  // === JALUR 1: MASUK ALPHA PREDATOR (Eksklusif) ===
                   try {
-                    // Panggil AI (Aman karena cuma dengerin instruksi BUY)
                     const analysis = await analyzeWhaleAction(
                       tokenAddress,
                       liquidityStringForAI,
@@ -367,20 +368,20 @@ export async function GET(request: Request) {
                     const securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
 
                     const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
-
-                    // Hindari ngirim dobel kalau ID Chat Umum = ID Chat Alpha
-                    if (targetAlpha !== targetChatId) {
-                      await sendTelegramMessage(
-                        targetAlpha,
-                        alphaMsg,
-                        keyboard,
-                      );
-                    }
+                    await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
                   } catch (aiError) {
-                    console.error(
-                      "AI Limit, skip Alpha Message for this transaction.",
+                    console.error("AI Limit, ngirim Alpha tanpa AI.");
+                    const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight: Sistem AI sedang offline (Kena Limit)${dyorFooter}`;
+                    await sendTelegramMessage(
+                      targetAlpha,
+                      fallbackMsg,
+                      keyboard,
                     );
                   }
+                } else if (targetChatId) {
+                  // === JALUR 2: MASUK CHAT UMUM (Kalau gagal masuk kriteria Alpha) ===
+                  const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
+                  await sendTelegramMessage(targetChatId, generalMsg, keyboard);
                 }
               }
             }
@@ -408,9 +409,50 @@ export async function GET(request: Request) {
               const tokenSymbol = (tokenTx as any).tokenSymbol || "TOKEN";
               const isBuy = tokenTx.description.includes("🟢");
 
+              let liquidityWarning = "";
+              let metricsBlock = "";
+              let liquidityStringForAI = "Unknown";
+              let tokenAgeHours = 0;
+
               const marketInfo = await getTokenMarketInfo(tokenAddress);
               if (usdAmount === 0 && tokenAddress && marketInfo) {
                 usdAmount = amountToken * marketInfo.priceUsd;
+              }
+
+              // Hitung metrik On-Chain buat EVM persis kayak Solana
+              if (isBuy && tokenAddress) {
+                let multibaggerScore = 0;
+                let volumeMcapRatio = 0;
+
+                if (marketInfo) {
+                  liquidityStringForAI = `$${(marketInfo.liquidityUsd / 1000).toFixed(1)}k`;
+                  if (
+                    marketInfo.liquidityUsd < 10000 &&
+                    marketInfo.liquidityUsd > 0
+                  )
+                    liquidityWarning = `\n⚠️ *LIQUIDITY:* [HIGH RISK] < $10k`;
+                  else if (marketInfo.liquidityUsd >= 10000)
+                    liquidityWarning = `\n💧 *Liquidity:* $${(marketInfo.liquidityUsd / 1000).toFixed(1)}k`;
+
+                  if (marketInfo.pairCreatedAt) {
+                    tokenAgeHours =
+                      (Date.now() - marketInfo.pairCreatedAt) /
+                      (1000 * 60 * 60);
+                    if (tokenAgeHours < 24) multibaggerScore += 1;
+                  }
+                  if (marketInfo.marketCap > 0)
+                    volumeMcapRatio =
+                      (marketInfo.volume24h / marketInfo.marketCap) * 100;
+                }
+
+                const smartMoneyCount = await prisma.tokenPosition.count({
+                  where: { tokenAddress, tokenAmount: { gt: 0 } },
+                });
+                if (smartMoneyCount >= 2) multibaggerScore += 2;
+
+                metricsBlock =
+                  `\n\n📊 *ON-CHAIN METRICS*\n💎 *Score:* ${multibaggerScore}/3 Points\n🐳 *Smart Money:* ${smartMoneyCount} Wallets\n⏳ *Age:* ${tokenAgeHours > 0 ? tokenAgeHours.toFixed(1) + "h" : "N/A"}\n📈 *Vol/MCap:* ${volumeMcapRatio > 0 ? volumeMcapRatio.toFixed(1) + "%" : "N/A"} ` +
+                  (volumeMcapRatio > 50 ? `(🔥 Hot)` : `(🧊 Normal)`);
               }
 
               if (tokenAddress && usdAmount > 0) {
@@ -470,34 +512,56 @@ export async function GET(request: Request) {
                 );
                 const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
 
+                // Merakit template pesan dasar
                 const baseMessage =
                   `👤 *Whale:* ${wallet.name ?? "Unknown Target"}\n` +
                   `📍 *Address:* \`${wallet.address}\`\n` +
                   `📈 *Action:* ${actionText}\n` +
                   `🪙 *Token:* ${tokenSymbol}\n` +
-                  `💰 *Value:* $${usdAmount.toFixed(2)}` +
-                  whaleStatsBlock;
-
-                if (targetChatId) {
-                  await sendTelegramMessage(
-                    targetChatId,
-                    `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`,
-                    keyboard,
-                  );
-                }
+                  `💰 *Value:* $${usdAmount.toFixed(2)}${liquidityWarning}` +
+                  whaleStatsBlock +
+                  metricsBlock;
 
                 const targetAlpha =
                   globalAlphaChatId || (wallet as any).alphaChannelId;
-                if (
-                  targetAlpha &&
+
+                // 🔥 FILTER DEWA EVM: Harus BUY, > $1000, dan BUKAN STABLECOIN
+                const isAlphaWorthy =
+                  isBuy &&
                   usdAmount >= 1000 &&
-                  targetAlpha !== targetChatId
-                ) {
-                  await sendTelegramMessage(
-                    targetAlpha,
-                    `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${dyorFooter}`,
-                    keyboard,
-                  );
+                  tokenSymbol !== "USDC" &&
+                  tokenSymbol !== "USDT" &&
+                  tokenSymbol !== "DAI" &&
+                  tokenSymbol !== "WETH";
+
+                if (isAlphaWorthy && targetAlpha) {
+                  // === JALUR 1: MASUK ALPHA PREDATOR (Eksklusif EVM) ===
+                  try {
+                    const analysis = await analyzeWhaleAction(
+                      tokenAddress,
+                      liquidityStringForAI,
+                      tokenAgeHours > 0
+                        ? `${tokenAgeHours.toFixed(1)}h`
+                        : "Unknown",
+                    );
+
+                    const securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
+
+                    const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
+                    await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
+                  } catch (aiError) {
+                    console.error("AI Limit, ngirim Alpha tanpa AI.");
+                    const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight: Sistem AI sedang offline (Kena Limit)${dyorFooter}`;
+                    await sendTelegramMessage(
+                      targetAlpha,
+                      fallbackMsg,
+                      keyboard,
+                    );
+                  }
+                } else if (targetChatId) {
+                  // === JALUR 2: MASUK CHAT UMUM (Kalau gagal masuk kriteria Alpha) ===
+                  const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
+                  await sendTelegramMessage(targetChatId, generalMsg, keyboard);
                 }
               }
             }
