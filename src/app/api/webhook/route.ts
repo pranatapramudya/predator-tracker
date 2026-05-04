@@ -199,6 +199,9 @@ export async function GET(request: Request) {
   try {
     const wallets = await prisma.wallet.findMany({ where: { isActive: true } });
 
+    // 🔥 TARIK ID GRUP ALPHA DARI VERCEL ENVIRONMENT 🔥
+    const globalAlphaChatId = process.env.TELEGRAM_ALPHA_CHAT_ID;
+
     for (const wallet of wallets) {
       try {
         const threshold = (wallet as any).minAlertUsd || 100;
@@ -330,7 +333,6 @@ export async function GET(request: Request) {
                   explorerUrl,
                 );
 
-                // Merakit template pesan dasar
                 const baseMessage =
                   `👤 *Whale:* ${wallet.name ?? "Unknown Target"}\n` +
                   `📍 *Address:* \`${wallet.address}\`\n` +
@@ -340,11 +342,11 @@ export async function GET(request: Request) {
                   whaleStatsBlock +
                   metricsBlock;
 
-                // 🔥 UPDATE: Target khusus buat channel Alpha milik user
+                // 🔥 UPDATE: Kembalikan targetAlpha ke Environment Vercel
                 const targetAlpha =
                   (wallet as any).alphaChannelId || targetChatId;
 
-                // 🔥 UPDATE FILTER DEWA SOLANA: BUY / SELL > $1000 masuk Predator Alpha Feed!
+                // 🔥 UPDATE: Buy dan Sell > $1000 bakal masuk ke Grup VIP (Asumsi bukan token native/stablecoin)
                 const isAlphaWorthy =
                   usdAmount >= 1000 &&
                   tokenAddress !== "solana" &&
@@ -352,7 +354,6 @@ export async function GET(request: Request) {
                   tokenSymbol !== "USDT";
 
                 if (isAlphaWorthy && targetAlpha) {
-                  // === JALUR 1: MASUK ALPHA PREDATOR (Private Channel) ===
                   try {
                     const analysis = await analyzeWhaleAction(
                       tokenAddress,
@@ -376,7 +377,6 @@ export async function GET(request: Request) {
                     );
                   }
                 } else if (targetChatId) {
-                  // === JALUR 2: MASUK CHAT UMUM ASISTEN CRYPTO (Di Bawah $1000) ===
                   const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
                   await sendTelegramMessage(targetChatId, generalMsg, keyboard);
                 }
@@ -416,7 +416,6 @@ export async function GET(request: Request) {
                 usdAmount = amountToken * marketInfo.priceUsd;
               }
 
-              // Hitung metrik On-Chain buat EVM persis kayak Solana
               if (isBuy && tokenAddress) {
                 let multibaggerScore = 0;
                 let volumeMcapRatio = 0;
@@ -509,7 +508,6 @@ export async function GET(request: Request) {
                 );
                 const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
 
-                // Merakit template pesan dasar
                 const baseMessage =
                   `👤 *Whale:* ${wallet.name ?? "Unknown Target"}\n` +
                   `📍 *Address:* \`${wallet.address}\`\n` +
@@ -519,11 +517,11 @@ export async function GET(request: Request) {
                   whaleStatsBlock +
                   metricsBlock;
 
-                // 🔥 UPDATE: Target khusus buat channel Alpha milik user
+                // 🔥 UPDATE: Kembalikan targetAlpha ke Environment Vercel
                 const targetAlpha =
                   (wallet as any).alphaChannelId || targetChatId;
 
-                // 🔥 UPDATE FILTER DEWA EVM: BUY / SELL > $1000 masuk Predator Alpha Feed!
+                // 🔥 UPDATE: Buy dan Sell > $1000 masuk Predator Feed (Non Stablecoin)
                 const isAlphaWorthy =
                   usdAmount >= 1000 &&
                   tokenSymbol !== "USDC" &&
@@ -532,7 +530,6 @@ export async function GET(request: Request) {
                   tokenSymbol !== "WETH";
 
                 if (isAlphaWorthy && targetAlpha) {
-                  // === JALUR 1: MASUK ALPHA PREDATOR (Private Channel) ===
                   try {
                     const analysis = await analyzeWhaleAction(
                       tokenAddress,
@@ -556,7 +553,6 @@ export async function GET(request: Request) {
                     );
                   }
                 } else if (targetChatId) {
-                  // === JALUR 2: MASUK CHAT UMUM ASISTEN CRYPTO (Di Bawah $1000) ===
                   const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
                   await sendTelegramMessage(targetChatId, generalMsg, keyboard);
                 }
