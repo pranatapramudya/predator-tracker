@@ -21,7 +21,7 @@ import {
   AlertCircle,
   Trash2,
   Send,
-  ExternalLink, // 🔥 TAMBAHAN ICON BUAT SIDEBAR
+  ExternalLink,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -42,13 +42,11 @@ const NETWORK_LOGOS: Record<WalletNetwork, string> = {
   BASE: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png",
 };
 
-// 🔥 SUNTIKAN S.KOM: Inisialisasi Database Redis & Aturan Limit
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL || "",
   token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
 });
 
-// Aturan: Maksimal 5x klik "START RADAR" dalam 1 menit
 const ratelimit = new Ratelimit({
   redis: redis,
   limiter: Ratelimit.slidingWindow(5, "1 m"),
@@ -96,7 +94,6 @@ const FEEDBACK_COPY: Record<
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
-  // 🔥 TAMBAHAN UI ERROR BUAT SPAMMER 🔥
   too_fast: {
     title: "WOY SANTAI!",
     description:
@@ -149,7 +146,6 @@ async function createWalletAction(formData: FormData) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  // 🔥 SUNTIKAN ANTI DDOS / SPAM BOT 🔥
   try {
     if (process.env.UPSTASH_REDIS_REST_URL) {
       const { success } = await ratelimit.limit(userId);
@@ -355,7 +351,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const limit = 4;
   const skip = (page - 1) * limit;
 
-  // 🔥 TARIK DATA PRIVATE ALPHA SEKALIAN DI SINI 🔥
   const [wallets, totalWallets, existingChatIdRecord, privateAlphaLogs] =
     await Promise.all([
       prisma.wallet
@@ -377,12 +372,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           select: { chatId: true },
         })
         .catch(() => null),
-      // Query ini otomatis nge-filter transaksi Paus yang cuma dipantau sama user yang lagi login
       prisma.transaction
         .findMany({
           where: {
             usdValue: { gte: 1000 },
-            wallet: { userId: userId }, // Kunci privasi 100% aman
+            wallet: { userId: userId },
           },
           include: { wallet: true },
           orderBy: { createdAt: "desc" },
@@ -446,7 +440,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </div>
       )}
 
-      {/* 🔥 GRID DIBAGI 3 SEKARANG (FORM, WATCHLIST, SIDEBAR ALPHA) 🔥 */}
       <div className="grid grid-cols-1 lg:grid-cols-12 xl:grid-cols-12 gap-6 relative">
         {/* =======================
             KOLOM 1: ACQUISITION FORM 
@@ -548,6 +541,78 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               </button>
             </form>
           </div>
+        </section>
+
+        {/* =======================
+            KOLOM MOBILE: TOMBOL ALPHA FEED KHUSUS HP 🔥
+            ======================= */}
+        <section className="block xl:hidden lg:col-span-8 w-full mt-2">
+          <details className="group">
+            <summary className="list-none cursor-pointer bg-[#121212] border border-emerald-500/30 p-5 rounded-[24px] flex items-center justify-between font-black text-emerald-400 uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-400 transition-all outline-none">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span>📱 Buka Alpha Feed</span>
+              </div>
+              <ChevronRight className="w-5 h-5 group-open:rotate-90 transition-transform duration-300" />
+            </summary>
+
+            <div className="mt-4 bg-[#121212] border border-white/10 rounded-[24px] p-5 shadow-2xl animate-in fade-in slide-in-from-top-4">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {privateAlphaLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="group p-4 bg-black/40 border border-white/5 rounded-2xl hover:border-emerald-500/30 transition-all"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <p className="text-xs font-bold text-white/80 group-hover:text-emerald-400 transition-colors uppercase truncate pr-2">
+                        {log.wallet.name}
+                      </p>
+                      <span className="text-[9px] text-white/40 font-mono">
+                        {new Date(log.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`px-2 py-1 border rounded-md text-[9px] font-black tracking-widest ${log.type === "BUY" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-rose-500/10 border-rose-500/20 text-rose-500"}`}
+                      >
+                        {log.type === "BUY" ? "BUY" : "SELL"}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black text-white leading-none mb-1">
+                          {log.tokenSymbol}
+                        </span>
+                        <span className="text-[10px] font-bold text-white/50 font-mono">
+                          ${Number(log.usdValue).toLocaleString()}
+                        </span>
+                      </div>
+                      <a
+                        href={log.explorerUrl}
+                        target="_blank"
+                        className="ml-auto p-2 bg-white/5 rounded-xl opacity-50 hover:opacity-100 transition-opacity hover:bg-emerald-500/20 text-emerald-400"
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+
+                {privateAlphaLogs.length === 0 && (
+                  <div className="text-center py-6">
+                    <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold">
+                      No private signals yet...
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </details>
         </section>
 
         {/* =======================
@@ -778,7 +843,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </section>
 
         {/* =======================
-            KOLOM 3: PRIVATE ALPHA FEED 
+            KOLOM 3: PRIVATE ALPHA FEED (DESKTOP)
             ======================= */}
         <section className="hidden xl:block xl:col-span-3 h-fit sticky top-10">
           <aside className="w-full bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl backdrop-blur-md">
@@ -814,7 +879,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    {/* 🔥 UPDATE UI DINAMIS BUY/SELL 🔥 */}
                     <div
                       className={`px-2 py-1 border rounded-md text-[9px] font-black tracking-widest ${log.type === "BUY" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-rose-500/10 border-rose-500/20 text-rose-500"}`}
                     >

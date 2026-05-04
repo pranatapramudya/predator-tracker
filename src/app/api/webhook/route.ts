@@ -199,9 +199,6 @@ export async function GET(request: Request) {
   try {
     const wallets = await prisma.wallet.findMany({ where: { isActive: true } });
 
-    // Ambil Chat ID Alpha dari env (Pastikan udah diset di Vercel!)
-    const globalAlphaChatId = process.env.TELEGRAM_ALPHA_CHAT_ID;
-
     for (const wallet of wallets) {
       try {
         const threshold = (wallet as any).minAlertUsd || 100;
@@ -343,19 +340,19 @@ export async function GET(request: Request) {
                   whaleStatsBlock +
                   metricsBlock;
 
+                // 🔥 UPDATE: Target khusus buat channel Alpha milik user
                 const targetAlpha =
-                  globalAlphaChatId || (wallet as any).alphaChannelId;
+                  (wallet as any).alphaChannelId || targetChatId;
 
-                // 🔥 FILTER DEWA SOLANA: Harus BUY, > $1000, bukan SOL, BUKAN STABLECOIN
+                // 🔥 UPDATE FILTER DEWA SOLANA: BUY / SELL > $1000 masuk Predator Alpha Feed!
                 const isAlphaWorthy =
-                  isBuy &&
                   usdAmount >= 1000 &&
                   tokenAddress !== "solana" &&
                   tokenSymbol !== "USDC" &&
                   tokenSymbol !== "USDT";
 
                 if (isAlphaWorthy && targetAlpha) {
-                  // === JALUR 1: MASUK ALPHA PREDATOR (Eksklusif) ===
+                  // === JALUR 1: MASUK ALPHA PREDATOR (Private Channel) ===
                   try {
                     const analysis = await analyzeWhaleAction(
                       tokenAddress,
@@ -379,7 +376,7 @@ export async function GET(request: Request) {
                     );
                   }
                 } else if (targetChatId) {
-                  // === JALUR 2: MASUK CHAT UMUM (Kalau gagal masuk kriteria Alpha) ===
+                  // === JALUR 2: MASUK CHAT UMUM ASISTEN CRYPTO (Di Bawah $1000) ===
                   const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
                   await sendTelegramMessage(targetChatId, generalMsg, keyboard);
                 }
@@ -522,12 +519,12 @@ export async function GET(request: Request) {
                   whaleStatsBlock +
                   metricsBlock;
 
+                // 🔥 UPDATE: Target khusus buat channel Alpha milik user
                 const targetAlpha =
-                  globalAlphaChatId || (wallet as any).alphaChannelId;
+                  (wallet as any).alphaChannelId || targetChatId;
 
-                // 🔥 FILTER DEWA EVM: Harus BUY, > $1000, dan BUKAN STABLECOIN
+                // 🔥 UPDATE FILTER DEWA EVM: BUY / SELL > $1000 masuk Predator Alpha Feed!
                 const isAlphaWorthy =
-                  isBuy &&
                   usdAmount >= 1000 &&
                   tokenSymbol !== "USDC" &&
                   tokenSymbol !== "USDT" &&
@@ -535,7 +532,7 @@ export async function GET(request: Request) {
                   tokenSymbol !== "WETH";
 
                 if (isAlphaWorthy && targetAlpha) {
-                  // === JALUR 1: MASUK ALPHA PREDATOR (Eksklusif EVM) ===
+                  // === JALUR 1: MASUK ALPHA PREDATOR (Private Channel) ===
                   try {
                     const analysis = await analyzeWhaleAction(
                       tokenAddress,
@@ -559,7 +556,7 @@ export async function GET(request: Request) {
                     );
                   }
                 } else if (targetChatId) {
-                  // === JALUR 2: MASUK CHAT UMUM (Kalau gagal masuk kriteria Alpha) ===
+                  // === JALUR 2: MASUK CHAT UMUM ASISTEN CRYPTO (Di Bawah $1000) ===
                   const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
                   await sendTelegramMessage(targetChatId, generalMsg, keyboard);
                 }
