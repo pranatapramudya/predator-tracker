@@ -59,45 +59,45 @@ const FEEDBACK_COPY: Record<
 > = {
   created: {
     title: "TARGET LOCKED",
-    description: "Whale masuk radar.",
+    description: "Whale successfully added to radar.",
     icon: CheckCircle2,
     color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
   },
   deleted: {
     title: "TARGET ELIMINATED",
-    description: "Target dihapus.",
+    description: "Target has been removed.",
     icon: Trash2,
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
   invalid: {
     title: "INVALID COORDS",
-    description: "Cek alamat/network.",
+    description: "Please check the wallet address or network.",
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
   failed: {
     title: "CORE ERROR",
-    description: "Gagal tersambung database/API.",
+    description: "Failed to connect to the database or API.",
     icon: AlertCircle,
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
   limit_reached: {
-    title: "LIMIT TERCAPAI",
-    description: "Radar penuh! Upgrade tier lu buat nambah target paus.",
+    title: "LIMIT REACHED",
+    description: "Radar is full! Upgrade your tier to add more targets.",
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
   locked: {
     title: "TARGET LOCKED",
     description:
-      "Akun FREE hanya bisa mengunci 1 target permanen. Upgrade tier untuk mengganti/menambah paus.",
+      "FREE accounts can only lock 1 permanent target. Upgrade tier to swap or add more whales.",
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
   too_fast: {
-    title: "WOY SANTAI!",
+    title: "SLOW DOWN!",
     description:
-      "Lu nge-spam form terlalu cepet. Sistem anti-DDoS aktif. Tunggu semenit lagi.",
+      "Anti-DDoS system triggered. You are submitting too fast. Wait a minute.",
     icon: AlertCircle,
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
@@ -150,7 +150,7 @@ async function createWalletAction(formData: FormData) {
     if (process.env.UPSTASH_REDIS_REST_URL) {
       const { success } = await ratelimit.limit(userId);
       if (!success) {
-        console.warn(`[SECURITY] User ${userId} nyepam form Add Wallet!`);
+        console.warn(`[SECURITY] User ${userId} spamming Add Wallet form!`);
         redirect("/?feedback=too_fast");
       }
     }
@@ -164,17 +164,23 @@ async function createWalletAction(formData: FormData) {
   const address = String(formData.get("address") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   let chatId = String(formData.get("chatId") ?? "").trim();
+  let alphaChannelId = String(formData.get("alphaChannelId") ?? "").trim();
   const network = String(
     formData.get("network") ?? "",
   ).toUpperCase() as WalletNetwork;
 
-  if (!chatId) {
-    const existingWallet = await prisma.wallet.findFirst({
-      where: { userId: userId, chatId: { not: "" } },
-      orderBy: { createdAt: "asc" },
+  if (!chatId || !alphaChannelId) {
+    const existingUserWallets = await prisma.wallet.findMany({
+      where: { userId: userId },
+      select: { chatId: true, alphaChannelId: true },
     });
-    if (existingWallet && existingWallet.chatId) {
-      chatId = existingWallet.chatId;
+
+    if (!chatId) {
+      chatId = existingUserWallets.find((w) => w.chatId)?.chatId || "";
+    }
+    if (!alphaChannelId) {
+      alphaChannelId =
+        existingUserWallets.find((w) => w.alphaChannelId)?.alphaChannelId || "";
     }
   }
 
@@ -230,12 +236,19 @@ async function createWalletAction(formData: FormData) {
           userId,
         },
       },
-      update: { name, chatId, lastBalance: balance, isActive: true },
+      update: {
+        name,
+        chatId,
+        alphaChannelId,
+        lastBalance: balance,
+        isActive: true,
+      },
       create: {
         address: normalized,
         name,
         network,
         chatId,
+        alphaChannelId,
         lastBalance: balance,
         isActive: true,
         userId,
@@ -265,7 +278,7 @@ async function createWalletAction(formData: FormData) {
           },
         );
       } catch (error) {
-        console.error("Gagal kirim notif add wallet:", error);
+        console.error("Failed to send add wallet notification:", error);
       }
     }
 
@@ -322,7 +335,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   });
 
   if (ghostUser && ghostUser.id !== userId) {
-    console.log("Menghapus data hantu lama untuk:", userEmail);
+    console.log("Removing legacy ghost data for:", userEmail);
     await prisma.wallet.deleteMany({ where: { userId: ghostUser.id } });
     await prisma.user.delete({ where: { id: ghostUser.id } });
   }
@@ -351,7 +364,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const limit = 4;
   const skip = (page - 1) * limit;
 
-  const [wallets, totalWallets, existingChatIdRecord, privateAlphaLogs] =
+  // 🔥 FETCH WALLET DATA FOR AUTO-SYNC ID 🔥
+  const [wallets, totalWallets, userWalletsRecord, privateAlphaLogs] =
     await Promise.all([
       prisma.wallet
         .findMany({
@@ -367,11 +381,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         .catch(() => []),
       prisma.wallet.count({ where: { userId: userId } }).catch(() => 0),
       prisma.wallet
-        .findFirst({
-          where: { userId: userId, chatId: { not: "" } },
-          select: { chatId: true },
+        .findMany({
+          where: { userId: userId },
+          select: { chatId: true, alphaChannelId: true },
         })
-        .catch(() => null),
+        .catch(() => []),
       prisma.transaction
         .findMany({
           where: {
@@ -386,7 +400,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     ]);
 
   const totalPages = Math.ceil(totalWallets / limit);
-  const savedChatId = existingChatIdRecord?.chatId || "";
+
+  const savedChatId = userWalletsRecord.find((w) => w.chatId)?.chatId || "";
+  const savedAlphaId =
+    userWalletsRecord.find((w) => w.alphaChannelId)?.alphaChannelId || "";
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-[1600px] mx-auto space-y-10 bg-[#080808] text-white overflow-x-hidden transition-colors duration-300">
@@ -441,9 +458,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 xl:grid-cols-12 gap-6 relative">
-        {/* =======================
-            KOLOM 1: ACQUISITION FORM 
-            ======================= */}
         <section className="lg:col-span-4 xl:col-span-3 h-fit lg:sticky lg:top-10">
           <div className="bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl transition-colors">
             <h2 className="text-lg font-black uppercase mb-6 flex items-center gap-3">
@@ -519,7 +533,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   required={!savedChatId}
                   defaultValue={savedChatId}
                   readOnly={!!savedChatId}
-                  placeholder="Contoh: 12345678"
+                  placeholder="Example: 12345678"
                   className={`w-full rounded-2xl px-5 py-4 font-bold outline-none text-sm transition-all ${
                     savedChatId
                       ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-not-allowed"
@@ -529,6 +543,68 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 {savedChatId && (
                   <p className="text-[8px] text-emerald-400/80 uppercase tracking-widest mt-2 ml-1 italic font-bold">
                     🔒 ID Locked (Auto-Sync)
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between ml-1">
+                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
+                    👑 Alpha Group ID (Optional)
+                  </label>
+                  {!savedAlphaId && (
+                    <details className="group relative">
+                      <summary className="text-[9px] font-bold text-amber-400 hover:text-amber-300 transition-colors uppercase tracking-widest bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 flex items-center gap-1 cursor-pointer list-none outline-none [&::-webkit-details-marker]:hidden">
+                        ❓ How to get ID
+                      </summary>
+                      <div className="absolute z-50 top-full right-0 mt-2 w-[280px] bg-[#121212] border border-amber-500/30 rounded-2xl p-4 shadow-2xl text-xs text-white/80 normal-case hidden group-open:block">
+                        <p className="font-black text-amber-400 mb-2 uppercase tracking-widest text-[10px]">
+                          Tutorial:
+                        </p>
+                        <ol className="list-decimal pl-4 space-y-1.5 text-[10px] font-medium">
+                          <li>Create a new Telegram Group/Channel.</li>
+                          <li>
+                            Add{" "}
+                            <span className="text-amber-400 font-bold">
+                              @RawDataBot
+                            </span>{" "}
+                            to the group.
+                          </li>
+                          <li>
+                            The bot will send your Group ID (starts with{" "}
+                            <code className="bg-black/50 px-1 py-0.5 rounded text-white">
+                              -100...
+                            </code>
+                            ).
+                          </li>
+                          <li>Copy and paste it here.</li>
+                          <li>
+                            Don't forget to invite your Predator Tracker bot to
+                            that group too!
+                          </li>
+                        </ol>
+                      </div>
+                    </details>
+                  )}
+                </div>
+                <input
+                  name="alphaChannelId"
+                  defaultValue={savedAlphaId}
+                  readOnly={!!savedAlphaId}
+                  placeholder="Example: -100xxxxxx"
+                  className={`w-full rounded-2xl px-5 py-4 font-bold outline-none text-sm transition-all ${
+                    savedAlphaId
+                      ? "bg-amber-500/10 border border-amber-500/30 text-amber-400 cursor-not-allowed"
+                      : "bg-black/60 border border-white/10 text-white focus:border-amber-500/50"
+                  }`}
+                />
+                {savedAlphaId ? (
+                  <p className="text-[8px] text-amber-400/80 uppercase tracking-widest mt-2 ml-1 italic font-bold">
+                    🔒 ID Locked (Auto-Sync)
+                  </p>
+                ) : (
+                  <p className="text-[8px] text-white/40 uppercase tracking-widest mt-2 ml-1 italic font-bold">
+                    *Leave blank to receive Alpha alerts in the standard chat
                   </p>
                 )}
               </div>
@@ -543,9 +619,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </div>
         </section>
 
-        {/* =======================
-            KOLOM MOBILE: TOMBOL ALPHA FEED KHUSUS HP 🔥
-            ======================= */}
         <section className="block xl:hidden lg:col-span-8 w-full mt-2">
           <details className="group">
             <summary className="list-none cursor-pointer bg-[#121212] border border-emerald-500/30 p-5 rounded-[24px] flex items-center justify-between font-black text-emerald-400 uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-400 transition-all outline-none">
@@ -554,7 +627,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                 </span>
-                <span>📱 Buka Alpha Feed</span>
+                <span>📱 Open Alpha Feed</span>
               </div>
               <ChevronRight className="w-5 h-5 group-open:rotate-90 transition-transform duration-300" />
             </summary>
@@ -615,9 +688,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </details>
         </section>
 
-        {/* =======================
-            KOLOM 2: WATCHLIST PAUS 
-            ======================= */}
         <section className="lg:col-span-8 xl:col-span-6 space-y-6">
           <h3 className="flex items-center gap-2 text-sm font-black text-white/60 uppercase tracking-[0.2em] px-2">
             <Activity className="text-cyan-400 w-4 h-4" /> Your Watchlist
@@ -689,13 +759,9 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                             dbUser.role !== "OWNER" ? (
                               <button
                                 type="button"
-                                onClick={() =>
-                                  alert(
-                                    "Slot terkunci! Upgrade radar lu ke SCOUT/PREDATOR buat ganti target.",
-                                  )
-                                }
-                                className="p-1.5 text-white/20 hover:text-amber-500 cursor-not-allowed transition-colors"
-                                title="Upgrade to unlock"
+                                disabled
+                                className="p-1.5 text-white/20 cursor-not-allowed transition-colors"
+                                title="Slot locked! Upgrade your radar to SCOUT/PREDATOR to change targets."
                               >
                                 🔒
                               </button>
@@ -842,9 +908,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           )}
         </section>
 
-        {/* =======================
-            KOLOM 3: PRIVATE ALPHA FEED (DESKTOP)
-            ======================= */}
         <section className="hidden xl:block xl:col-span-3 h-fit sticky top-10">
           <aside className="w-full bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl backdrop-blur-md">
             <div className="flex items-center justify-between mb-6">
