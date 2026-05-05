@@ -19,6 +19,9 @@ model User {
   tier          SubscriptionTier @default(FREE)
   maxWallets    Int              @default(1) // Akun gratis cuma bisa add 1 wallet
   
+  // FITUR NO 4: Portfolio "Shadowing" Mode
+  shadowBalance Float            @default(100.0) // Modal kertas (simulasi) buat ngitung "What If" PnL
+
   wallets       Wallet[] // Relasi: 1 User bisa punya banyak Wallet
   
   createdAt     DateTime @default(now())
@@ -30,13 +33,12 @@ enum Role {
   MEMBER
 }
 
-// 👇 1. TAMBAHIN ENUM INI 👇
 enum SubscriptionTier {
   FREE
   SCOUT
   PREDATOR
   APEX
-  }
+}
 
 // ==========================================
 // MODUL UTAMA: Wallet & Radar
@@ -49,16 +51,16 @@ model Wallet {
   network       Network
   isActive      Boolean         @default(true)
   
-  // 🔴 PENENTU KEPEMILIKAN: Hubungkan ke User
+  // PENENTU KEPEMILIKAN: Hubungkan ke User
   userId        String?         // ID User pemilik wallet ini
   
-  // 🔥 FIX 1: Tambah onDelete: Cascade.
+  // FIX 1: Tambah onDelete: Cascade.
   // Kalau User dihapus -> Wallet lenyap -> Transaction & Position ikut lenyap.
   user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Fitur Notifikasi & Caching
   chatId        String?         // ID Telegram User (Japri/Asisten)
-  alphaChannelId String?        // 🔴 ID Telegram Channel (Alpha Feed Khusus User Ini)
+  alphaChannelId String?        // ID Telegram Channel (Alpha Feed Khusus User Ini)
   lastBalance   Decimal         @default(0) @db.Decimal(38, 18)
   
   // FILTER DINAMIS: Batas minimal transaksi buat tembus ke Alpha Feed
@@ -69,13 +71,16 @@ model Wallet {
   totalTrades   Int             @default(0)   
   successTrades Int             @default(0)   
   
+  // FITUR NO 2: Hold Duration Tagging
+  tradeStyle    TradeStyle      @default(UNKNOWN) // Label gaya trading
+
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   
   transactions  Transaction[]
-  positions     TokenPosition[] 
+  positions     TokenPosition[]
 
-  // 🔥 INI FIX NYA: Gabungan Address + Network + UserID jadi gembok unik 🔥
+  // INI FIX NYA: Gabungan Address + Network + UserID jadi gembok unik
   @@unique([address, network, userId])
   @@index([network, isActive])
   @@index([chatId])
@@ -124,9 +129,35 @@ model Transaction {
   @@index([signature])
 }
 
+// ==========================================
+// MODUL BARU: Whale Panic / Exit Alert Log (Fitur No 1)
+// ==========================================
+model SaleEvent {
+  id           String   @id @default(cuid())
+  walletId     String
+  tokenAddress String
+  tokenSymbol  String
+  usdValue     Decimal  @db.Decimal(18, 2)
+  
+  createdAt    DateTime @default(now())
+
+  // Index ini sangat krusial biar database nggak lemot pas ngecek "3 paus jual dalam 1 jam"
+  @@index([tokenAddress, createdAt(sort: Desc)])
+}
+
 enum Network {
   BITCOIN
   SOLANA
   ETHEREUM
   BASE
+}
+
+// ==========================================
+// ENUM BARU: Gaya Trading Paus (Fitur No 2)
+// ==========================================
+enum TradeStyle {
+  UNKNOWN
+  SCALPER       // Hit and run (hitungan menit/jam)
+  SWING_TRADER  // Hold beberapa hari
+  DIAMOND_HANDS // Hold sampai ribuan persen / jangka panjang
 }
