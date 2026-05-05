@@ -22,6 +22,7 @@ import {
   Trash2,
   Send,
   ExternalLink,
+  Ghost, // Icon baru buat mode bayangan
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -103,9 +104,6 @@ const FEEDBACK_COPY: Record<
   },
 };
 
-// ==========================================
-// 🔥 MODUL BARU: FUNGSI KALKULATOR GAYA TRADING
-// ==========================================
 export function getTradeStyleBadge(transactions: any[]) {
   if (!transactions || transactions.length < 2) {
     return {
@@ -436,7 +434,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const limit = 4;
   const skip = (page - 1) * limit;
 
-  // 🔥 FETCH WALLET DATA FOR AUTO-SYNC ID 🔥
+  // 🔥 FETCH WALLET DATA 🔥
   const [wallets, totalWallets, userWalletsRecord, privateAlphaLogs] =
     await Promise.all([
       prisma.wallet
@@ -446,7 +444,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           take: limit,
           orderBy: { createdAt: "desc" },
           include: {
-            transactions: { orderBy: { createdAt: "desc" }, take: 50 }, // Ambil lebih banyak tx buat akurasi kalkulasi Trade Style
+            transactions: { orderBy: { createdAt: "desc" }, take: 50 },
             positions: true,
           },
         })
@@ -778,9 +776,25 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   );
                   const whaleTag = getWhaleTag(w.winRate, w.totalTrades);
                   const safeName = w.name || "Target";
-
-                  // 🔥 Terapkan Kalkulasi Style disini 🔥
                   const tradeStyle = getTradeStyleBadge(w.transactions);
+
+                  // 🔥 KALKULASI FOMO METER (SHADOW BALANCE) 🔥
+                  const totalInvested = w.positions.reduce(
+                    (sum, p) => sum + Number(p.totalInvestedUsd),
+                    0,
+                  );
+                  const totalPnl = w.positions.reduce(
+                    (sum, p) => sum + Number(p.realizedPnlUsd),
+                    0,
+                  );
+                  const roiPercent =
+                    totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+
+                  // Base shadow balance lu ambil dari dbUser, kalau belum ada kita kasih default $100
+                  const baseShadow = dbUser.shadowBalance || 100;
+                  const shadowProfit = (baseShadow * roiPercent) / 100;
+                  const shadowTotal = baseShadow + shadowProfit;
+                  const isFomoPositive = shadowProfit >= 0;
 
                   return (
                     <div
@@ -807,7 +821,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               {safeName}
                             </h4>
 
-                            {/* 🔥 NATIVE BALANCE & TRADE STYLE BADGE 🔥 */}
                             <div className="flex flex-col gap-2 mt-2">
                               <div className="flex items-center gap-2">
                                 <img
@@ -907,6 +920,42 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               pnl: Number(p.realizedPnlUsd) || 0,
                             }))}
                           />
+                        </div>
+
+                        {/* 🔥 FOMO CARD / SHADOW MODE UI 🔥 */}
+                        <div
+                          className={`mt-4 p-3 border rounded-xl flex justify-between items-center relative overflow-hidden transition-all ${isFomoPositive ? "bg-emerald-500/10 border-emerald-500/30" : "bg-rose-500/10 border-rose-500/30"}`}
+                        >
+                          <div
+                            className={`absolute -right-4 -top-4 w-16 h-16 blur-xl rounded-full ${isFomoPositive ? "bg-emerald-500/20" : "bg-rose-500/20"}`}
+                          />
+                          <div className="relative z-10">
+                            <p
+                              className={`text-[9px] font-black uppercase tracking-widest mb-1 flex items-center gap-1.5 ${isFomoPositive ? "text-emerald-400" : "text-rose-400"}`}
+                            >
+                              <Ghost className="w-3 h-3" /> Shadow Mode (Base: $
+                              {baseShadow})
+                            </p>
+                            <p className="text-xs font-bold text-white/80">
+                              If copied:{" "}
+                              <span
+                                className={`font-black text-sm ${isFomoPositive ? "text-emerald-400" : "text-rose-400"}`}
+                              >
+                                ${shadowTotal.toFixed(2)}
+                              </span>
+                            </p>
+                          </div>
+                          <div className="text-right relative z-10">
+                            <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest">
+                              Est. Profit
+                            </p>
+                            <p
+                              className={`text-sm font-black ${isFomoPositive ? "text-emerald-400" : "text-rose-400"}`}
+                            >
+                              {isFomoPositive ? "+" : ""}
+                              {shadowProfit.toFixed(2)} USD
+                            </p>
+                          </div>
                         </div>
 
                         <div className="mt-4 pt-3 border-t border-white/5">
