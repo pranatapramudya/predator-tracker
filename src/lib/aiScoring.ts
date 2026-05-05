@@ -29,7 +29,7 @@ The reason MUST BE STRICTLY IN ENGLISH.
 Return ONLY in valid JSON format with keys "score" (number) and "reason" (string).`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
