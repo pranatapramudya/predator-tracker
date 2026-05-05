@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { ConfluenceSignal } from "@prisma/client"; // IMPORT ENUM DARI PRISMA
+import {
+  GoogleGenerativeAI,
+  HarmCategory,
+  HarmBlockThreshold,
+} from "@google/generative-ai"; // 🔥 IMPORT BARU DITAMBAHIN
+import { ConfluenceSignal } from "@prisma/client";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -26,15 +30,38 @@ export async function getOrFetchTokenIntel(
       `[AI FETCH] Menganalisis narasi dan confluency ${tokenSymbol}...`,
     );
 
-    // Panggil versi 2.5 Flash
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
+    // 🔥 FIX UTAMA: Pasang Safety Bypass & JSON MimeType di SDK
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash-8b",
+      generationConfig: {
+        responseMimeType: "application/json", // Paksa output murni JSON dari sisi server Google
+        temperature: 0.2,
+      },
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+      ],
+    });
 
     // 2. BUILD PROMPT DENGAN CONFLUENCY LOGIC (ENGLISH)
     let prompt = `
       You are an expert Crypto Analyst. Analyze the token symbol: ${tokenSymbol} (Address: ${tokenAddress}).
     `;
 
-    // Inject data teknikal jika tersedia (saat paus beli)
     if (currentPrice && ema50 && rsi14) {
       prompt += `
       Current Market Data:
@@ -58,7 +85,6 @@ export async function getOrFetchTokenIntel(
       `;
     }
 
-    // Paksa output murni JSON
     prompt += `
       Return ONLY a valid JSON object. No markdown, no text, no explanations.
       Format exact keys and types:
@@ -73,15 +99,13 @@ export async function getOrFetchTokenIntel(
     const result = await model.generateContent(prompt);
     let responseText = result.response.text();
 
-    // FIX 1: Regex dirapihin jadi satu baris biar nggak syntax error
     responseText = responseText
       .replace(/```json/gi, "")
-      .replace(/```/g, "")
+      .replace(/=```/g, "")
       .trim();
 
     const aiData = JSON.parse(responseText);
 
-    // FIX 2: Validasi Enum dan Casting Tipe Data agar TypeScript nggak ngomel
     const validConfluence = (
       ["SUPER_ALPHA", "HIGH_RISK", "NEUTRAL", "PENDING"].includes(
         aiData.confluence,
@@ -114,7 +138,7 @@ export async function getOrFetchTokenIntel(
         narrative: "Unknown",
         aiScore: 50,
         mindshare: "Low",
-        confluence: ConfluenceSignal.PENDING, // Pakai Enum dari Prisma langsung
+        confluence: ConfluenceSignal.PENDING,
       },
     });
   }
