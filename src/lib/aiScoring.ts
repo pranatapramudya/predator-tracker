@@ -38,9 +38,22 @@ Return ONLY in valid JSON format with keys "score" (number) and "reason" (string
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.2,
+            temperature: 0.1, // Suhu dikecilin biar respon JSON makin stabil
             responseMimeType: "application/json",
           },
+          // 🛡️ SUPER SHIELD: Matikan filter moral Google biar gak nge-blokir analisis koin micin
+          safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_NONE",
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_NONE",
+            },
+          ],
         }),
       },
     );
@@ -51,30 +64,44 @@ Return ONLY in valid JSON format with keys "score" (number) and "reason" (string
         `[GEMINI ERROR API] Status: ${response.status}, Detail:`,
         errorDetail,
       );
-      throw new Error("Gagal nembak API Gemini");
+      return { score: 0, reason: "API Connection Error" };
     }
 
     const data = await response.json();
 
+    // 🛡️ CEK KOSONG: Tangkap kalau Google tetep ngeyel nge-blokir respon
+    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      console.error(
+        "⚠️ Gemini tidak memberikan jawaban (Mungkin terfilter):",
+        JSON.stringify(data),
+      );
+      return { score: 10, reason: "Safety filter blocked" };
+    }
+
     let aiText = data.candidates[0].content.parts[0].text;
 
-    // 🧹 PEMBERSIH JSON: Regex-nya udah dirapihin ke satu baris biar gak error!
+    // 🧹 PEMBERSIH JSON
     aiText = aiText
       .replace(/```json/gi, "")
       .replace(/```/gi, "")
       .trim();
 
-    const aiResult = JSON.parse(aiText);
-
-    return {
-      score: aiResult.score || 0,
-      reason: aiResult.reason || "Reason undetected",
-    };
+    // 🛡️ SAFE PARSE: Biar kalau JSON pecah, sistem gak langsung mati
+    try {
+      const aiResult = JSON.parse(aiText);
+      return {
+        score: aiResult.score || 0,
+        reason: aiResult.reason || "Analysis completed",
+      };
+    } catch (parseError) {
+      console.error("❌ Gagal Parse JSON Gemini:", aiText);
+      return { score: 5, reason: "Format error from AI" };
+    }
   } catch (error) {
-    console.error("🤖 Error AI Scoring:", error);
+    console.error("🤖 Error Fatal AI Scoring:", error);
     return {
       score: 0,
-      reason: "AI System is currently offline",
+      reason: "AI System error",
     };
   }
 }
