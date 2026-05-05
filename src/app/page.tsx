@@ -103,6 +103,78 @@ const FEEDBACK_COPY: Record<
   },
 };
 
+// ==========================================
+// 🔥 MODUL BARU: FUNGSI KALKULATOR GAYA TRADING
+// ==========================================
+export function getTradeStyleBadge(transactions: any[]) {
+  if (!transactions || transactions.length < 2) {
+    return {
+      label: "Unknown",
+      color: "bg-white/10 text-white/50 border border-white/5",
+      icon: "❓",
+    };
+  }
+
+  let totalHoldTimeHours = 0;
+  let pairCount = 0;
+
+  const tokenGroups: Record<string, any[]> = {};
+  transactions.forEach((tx) => {
+    if (!tx.tokenAddress || tx.tokenAddress === "solana") return;
+    if (!tokenGroups[tx.tokenAddress]) tokenGroups[tx.tokenAddress] = [];
+    tokenGroups[tx.tokenAddress].push(tx);
+  });
+
+  for (const token in tokenGroups) {
+    const txs = tokenGroups[token].sort(
+      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+    );
+
+    let firstBuyTime = null;
+    for (const tx of txs) {
+      if (tx.type === "BUY" && !firstBuyTime) {
+        firstBuyTime = tx.createdAt.getTime();
+      } else if (tx.type === "SELL" && firstBuyTime) {
+        const sellTime = tx.createdAt.getTime();
+        const diffInHours = (sellTime - firstBuyTime) / (1000 * 60 * 60);
+        totalHoldTimeHours += diffInHours;
+        pairCount++;
+        firstBuyTime = null;
+      }
+    }
+  }
+
+  if (pairCount === 0) {
+    return {
+      label: "Diamond Hands",
+      color: "bg-blue-600/20 text-blue-400 border border-blue-500/30",
+      icon: "💎",
+    };
+  }
+
+  const avgHoldTime = totalHoldTimeHours / pairCount;
+
+  if (avgHoldTime < 24) {
+    return {
+      label: "Scalper",
+      color: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
+      icon: "⚡",
+    };
+  } else if (avgHoldTime >= 24 && avgHoldTime <= 168) {
+    return {
+      label: "Swing Trader",
+      color: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
+      icon: "🏄‍♂️",
+    };
+  } else {
+    return {
+      label: "Diamond Hands",
+      color: "bg-blue-600/20 text-blue-400 border border-blue-500/30",
+      icon: "💎",
+    };
+  }
+}
+
 function isValidAddress(address: string, network: WalletNetwork): boolean {
   if (network === "BITCOIN")
     return /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/.test(address);
@@ -374,7 +446,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           take: limit,
           orderBy: { createdAt: "desc" },
           include: {
-            transactions: { orderBy: { createdAt: "desc" }, take: 10 },
+            transactions: { orderBy: { createdAt: "desc" }, take: 50 }, // Ambil lebih banyak tx buat akurasi kalkulasi Trade Style
             positions: true,
           },
         })
@@ -707,6 +779,9 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   const whaleTag = getWhaleTag(w.winRate, w.totalTrades);
                   const safeName = w.name || "Target";
 
+                  // 🔥 Terapkan Kalkulasi Style disini 🔥
+                  const tradeStyle = getTradeStyleBadge(w.transactions);
+
                   return (
                     <div
                       key={w.id}
@@ -731,21 +806,33 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                             >
                               {safeName}
                             </h4>
-                            <div className="flex items-center gap-2 mt-2">
-                              <img
-                                src={NETWORK_LOGOS[w.network as WalletNetwork]}
-                                alt=""
-                                className="w-5 h-5 rounded-full bg-white p-0.5 shrink-0 shadow-sm"
-                              />
-                              <span
-                                className={`text-base font-black tracking-tight truncate ${config?.color}`}
+
+                            {/* 🔥 NATIVE BALANCE & TRADE STYLE BADGE 🔥 */}
+                            <div className="flex flex-col gap-2 mt-2">
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={
+                                    NETWORK_LOGOS[w.network as WalletNetwork]
+                                  }
+                                  alt=""
+                                  className="w-5 h-5 rounded-full bg-white p-0.5 shrink-0 shadow-sm"
+                                />
+                                <span
+                                  className={`text-base font-black tracking-tight truncate ${config?.color}`}
+                                >
+                                  {w.network === "BITCOIN"
+                                    ? `₿ ${Number(w.lastBalance).toFixed(8)}`
+                                    : w.network === "SOLANA"
+                                      ? `◎ ${Number(w.lastBalance).toFixed(2)}`
+                                      : `Ξ ${Number(w.lastBalance).toFixed(4)}`}
+                                </span>
+                              </div>
+                              <div
+                                className={`text-[9px] px-2 py-1 rounded w-fit uppercase font-bold tracking-widest flex items-center gap-1.5 shadow-sm ${tradeStyle.color}`}
                               >
-                                {w.network === "BITCOIN"
-                                  ? `₿ ${Number(w.lastBalance).toFixed(8)}`
-                                  : w.network === "SOLANA"
-                                    ? `◎ ${Number(w.lastBalance).toFixed(2)}`
-                                    : `Ξ ${Number(w.lastBalance).toFixed(4)}`}
-                              </span>
+                                <span>{tradeStyle.icon}</span>{" "}
+                                {tradeStyle.label}
+                              </div>
                             </div>
                           </div>
                           <div className="flex flex-col items-end gap-2 shrink-0">
@@ -828,7 +915,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {w.transactions.length > 0 ? (
-                              w.transactions.map((tx, idx) => (
+                              w.transactions.slice(0, 10).map((tx, idx) => (
                                 <div
                                   key={tx.id}
                                   className="flex items-center gap-1"
