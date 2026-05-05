@@ -109,6 +109,14 @@ Mengkombinasikan agregasi data _on-chain_ dengan analisis sentimen AI lintas tar
 - **AI Narrative & Mindshare:** Ditenagai oleh Google Gemini 2.5 Flash API untuk menganalisis dan melabeli narasi sektor token (misal: RWA, AI Memecoin) sekaligus mengukur tingkat _hype_ di pasar (_Early Alpha_, _Hype Train_).
 - **Smart Data Deduplication:** Sistem Caching khusus (`TokenIntel`) tertanam di PostgreSQL menggunakan Prisma untuk menyimpan ingatan AI. Melindungi sistem dari batas kuota (Rate Limit) API dengan memastikan AI hanya memproses _scanning_ satu kali per koin.
 
+### 15. Technical Confluency AI Engine (Trend & Momentum) 📊
+
+Menggabungkan data _On-Chain_ dengan Indikator Teknikal klasik untuk validasi sinyal (Confluency 2 dari 3).
+
+- **Dynamic Indicator Calculation:** Menghitung pergerakan harga melalui Indikator EMA-50 dan RSI-14 secara _server-side_ menggunakan _library_ NodeJS tanpa bergantung pada API teknikal berbayar.
+- **AI Logic Validation:** Model AI memvalidasi posisi harga terhadap EMA (Tren) dan nilai RSI (Momentum) berbarengan dengan transaksi _Whale_ untuk mencari probabilitas menang tertinggi.
+- **Clean UI Badges & Alerts:** Mengonversi data teknikal rumit menjadi visual elegan (⚡ _Super Alpha_, ⚠️ _High Risk_, ⚖️ _Neutral_) di UI Dashboard Next.js dan pesan Telegram.
+
 ---
 
 ## 🏗️ Teknologi yang Digunakan
@@ -147,4 +155,5 @@ Mengkombinasikan agregasi data _on-chain_ dengan analisis sentimen AI lintas tar
 - [x] Massive Exit Warning Alert & Database Schema Setup.
 - [x] User Dashboard Tagging: Scalper vs Diamond Hands Status.
 - [x] Shadowing Mode Database Setup.
-- [x] **Global Smart Trends Leaderboard & AI Mindshare Cache (Gemini API).**
+- [x] Global Smart Trends Leaderboard & AI Mindshare Cache (Gemini API).
+- [x] **Technical Confluency AI Engine (Trend & Momentum) & UI Badges.**

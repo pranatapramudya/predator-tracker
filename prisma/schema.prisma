@@ -122,6 +122,12 @@ model Transaction {
   usdValue     Decimal  @db.Decimal(18, 2)
   explorerUrl  String
   
+  // MODUL BARU: Sinyal Confluency (Data Mentah Saat Transaksi)
+  // Biar lu punya rekam jejak harga saat paus beli (buat backtest atau di-show di UI kalau perlu)
+  priceAtTx    Decimal? @db.Decimal(38, 18) // Harga koin pas transaksi
+  ema50AtTx    Decimal? @db.Decimal(38, 18) // Nilai EMA-50 saat transaksi (Indikator Tren)
+  rsi14AtTx    Decimal? @db.Decimal(18, 2)  // Nilai RSI-14 saat transaksi (Indikator Momentum)
+  
   createdAt    DateTime @default(now())
   wallet       Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
@@ -163,6 +169,16 @@ enum TradeStyle {
 }
 
 // ==========================================
+// ENUM BARU: Status Confluency dari AI
+// ==========================================
+enum ConfluenceSignal {
+  PENDING
+  SUPER_ALPHA   // Trend & Momentum mendukung
+  HIGH_RISK     // Paus beli tapi nabrak trend/momentum
+  NEUTRAL
+}
+
+// ==========================================
 // MODUL BARU: AI Mindshare Cache (Fitur ala Kaito)
 // ==========================================
 model TokenIntel {
@@ -174,6 +190,10 @@ model TokenIntel {
   narrative    String   @default("Unknown") // Label: "AI Memecoin", "RWA", "DeFi", dll
   aiScore      Int      @default(0)         // Tingkat kepercayaan/skor keamanan (0-100)
   mindshare    String   @default("Low")     // Status hype: "Early Alpha", "Trending", atau "Hype Train"
+  
+  // MODUL BARU: Sinyal Confluency (Hasil Terjemahan AI)
+  // Ini yang bakal lu pake buat nampilin Badge elegan di UI lu
+  confluence   ConfluenceSignal @default(PENDING) 
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

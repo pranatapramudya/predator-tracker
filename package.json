@@ -27,7 +27,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.8.1",
-    "svix": "^1.92.2"
+    "svix": "^1.92.2",
+    "technicalindicators": "^3.1.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.4",
