@@ -157,3 +157,9 @@ Menggabungkan data _On-Chain_ dengan Indikator Teknikal klasik untuk validasi si
 - [x] Shadowing Mode Database Setup.
 - [x] Global Smart Trends Leaderboard & AI Mindshare Cache (Gemini API).
 - [x] **Technical Confluency AI Engine (Trend & Momentum) & UI Badges.**
+
+### 🚀 Latest Updates
+
+- **Anti-Receh Protection**: AI analysis now only triggers for whale transactions >= $1000 to optimize API quota.
+- **AI Model Upgrade**: Switched to Gemini 1.5 Flash 8B for faster processing and higher rate limits.
+- **Bypass Safety Filter**: AI now provides uncensored analysis on high-risk tokens (Honeypot/Rugpull checks).

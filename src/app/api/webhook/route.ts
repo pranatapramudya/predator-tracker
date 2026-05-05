@@ -19,12 +19,10 @@ export const dynamic = "force-dynamic";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// 🔥 FIX: MOCK DATA HARGA DITAMBAHKAN DI SINI
 async function fetchHistoricalClosePrices(
   tokenAddress: string,
 ): Promise<number[]> {
   try {
-    // Bikin 50 angka random (harga buatan) biar library bisa ngitung EMA & RSI
     let mockPrices = [];
     let basePrice = 100;
     for (let i = 0; i < 50; i++) {
@@ -266,7 +264,9 @@ export async function GET(request: Request) {
               }
 
               let aiConfluenceMsg = "";
-              if (tokenAddress !== "solana") {
+              // 🔥 FIX UTAMA: SATPAM ANTI-RECEH BUAT SOLANA!
+              // Hanya panggil AI kalau nilai transaksinya >= 1000 dollar
+              if (tokenAddress !== "solana" && usdAmount >= 1000) {
                 try {
                   const closePrices =
                     await fetchHistoricalClosePrices(tokenAddress);
@@ -530,7 +530,9 @@ export async function GET(request: Request) {
               }
 
               let aiConfluenceMsg = "";
-              if (tokenAddress) {
+              // 🔥 FIX UTAMA: SATPAM ANTI-RECEH BUAT EVM/BASE!
+              // Hanya panggil AI kalau nilai transaksinya >= 1000 dollar
+              if (tokenAddress && usdAmount >= 1000) {
                 try {
                   const closePrices =
                     await fetchHistoricalClosePrices(tokenAddress);
