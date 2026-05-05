@@ -27,7 +27,7 @@ export async function getOrFetchTokenIntel(
     );
 
     // Panggil versi 2.5 Flash
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
 
     // 2. BUILD PROMPT DENGAN CONFLUENCY LOGIC (ENGLISH)
     let prompt = `
