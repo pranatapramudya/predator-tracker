@@ -68,13 +68,13 @@ Return ONLY in valid JSON format with keys "score" (number) and "reason" (string
 
     return {
       score: aiResult.score || 0,
-      reason: aiResult.reason || "Alasan tidak terdeteksi",
+      reason: aiResult.reason || "Reason undetected",
     };
   } catch (error) {
     console.error("🤖 Error AI Scoring:", error);
     return {
       score: 0,
-      reason: "Sistem AI sedang offline",
+      reason: "AI System is currently offline",
     };
   }
 }

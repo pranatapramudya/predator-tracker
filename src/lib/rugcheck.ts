@@ -22,9 +22,9 @@ export async function getSecurityData(tokenAddress: string) {
       for (const risk of data.risks) {
         // Deteksi tombol maut dev
         if (risk.name.toLowerCase().includes("mint"))
-          mint = "🚫 Enabled (Bahaya)";
+          mint = "🚫 Enabled (Danger)";
         if (risk.name.toLowerCase().includes("freeze"))
-          freeze = "🚫 Enabled (Bahaya)";
+          freeze = "🚫 Enabled (Danger)";
 
         // Deteksi masalah likuiditas
         if (risk.name.toLowerCase().includes("liquidity"))
