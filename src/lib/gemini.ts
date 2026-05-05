@@ -18,6 +18,33 @@ export async function getOrFetchTokenIntel(
   rsi14?: number,
 ) {
   try {
+    // 🛡️ 0. BYPASS STABLECOIN & NATIVE (Hemat Kuota API & Cegah Spam!)
+    const ignoredTokens = [
+      "USDC",
+      "USDT",
+      "DAI",
+      "WETH",
+      "WSOL",
+      "SOL",
+      "WBTC",
+      "EURC",
+    ];
+    if (ignoredTokens.includes(tokenSymbol.toUpperCase())) {
+      console.log(`[BYPASS] ${tokenSymbol} adalah Stablecoin/Native. Skip AI!`);
+      return await prisma.tokenIntel.upsert({
+        where: { tokenAddress },
+        update: {},
+        create: {
+          tokenAddress,
+          tokenSymbol,
+          narrative: "Stablecoin / Native",
+          aiScore: 50,
+          mindshare: "Low",
+          confluence: ConfluenceSignal.NEUTRAL,
+        },
+      });
+    }
+
     // 1. CEK CACHE DATABASE
     const cachedIntel = await prisma.tokenIntel.findUnique({
       where: { tokenAddress },
