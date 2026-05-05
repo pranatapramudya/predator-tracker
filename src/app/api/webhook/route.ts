@@ -134,7 +134,7 @@ function buildKeyboard(
       ],
       [
         {
-          text: "🐦 Cek X",
+          text: "🐦 Search on X",
           url: `https://twitter.com/search?q=${tokenAddress}`,
         },
         {
@@ -427,7 +427,7 @@ export async function GET(request: Request) {
                     await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
                   } catch (aiError) {
                     console.error("AI Limit, ngirim Alpha tanpa AI.");
-                    const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight: Sistem AI sedang offline (Kena Limit)${dyorFooter}`;
+                    const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight:  AI System is currently offline (Rate Limited) ${dyorFooter}`;
                     await sendTelegramMessage(
                       targetAlpha,
                       fallbackMsg,
@@ -648,7 +648,7 @@ export async function GET(request: Request) {
                     await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
                   } catch (aiError) {
                     console.error("AI Limit, ngirim Alpha tanpa AI.");
-                    const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight: Sistem AI sedang offline (Kena Limit)${dyorFooter}`;
+                    const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight: AI System is currently offline (Rate Limited)${dyorFooter}`;
                     await sendTelegramMessage(
                       targetAlpha,
                       fallbackMsg,
