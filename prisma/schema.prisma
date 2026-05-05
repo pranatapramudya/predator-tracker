@@ -161,3 +161,22 @@ enum TradeStyle {
   SWING_TRADER  // Hold beberapa hari
   DIAMOND_HANDS // Hold sampai ribuan persen / jangka panjang
 }
+
+// ==========================================
+// MODUL BARU: AI Mindshare Cache (Fitur ala Kaito)
+// ==========================================
+model TokenIntel {
+  id           String   @id @default(cuid())
+  tokenAddress String   @unique // Jadiin patokan biar AI gak nge-scan koin yang sama 2x
+  tokenSymbol  String
+  
+  // Hasil Analisis Gemini API
+  narrative    String   @default("Unknown") // Label: "AI Memecoin", "RWA", "DeFi", dll
+  aiScore      Int      @default(0)         // Tingkat kepercayaan/skor keamanan (0-100)
+  mindshare    String   @default("Low")     // Status hype: "Early Alpha", "Trending", atau "Hype Train"
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tokenAddress])
+}
