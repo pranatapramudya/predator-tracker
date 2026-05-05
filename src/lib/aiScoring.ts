@@ -28,9 +28,8 @@ Provide a profit probability score from 0 to 100. Also provide a very short reas
 The reason MUST BE STRICTLY IN ENGLISH. 
 Return ONLY in valid JSON format with keys "score" (number) and "reason" (string).`;
 
-    // 🔥 Pindah ke model Gemini 2.5 Flash (Sesuai List API Lu)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -40,7 +39,7 @@ Return ONLY in valid JSON format with keys "score" (number) and "reason" (string
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.2,
-            responseMimeType: "application/json", // Aktifin lagi fitur sakti JSON murni
+            responseMimeType: "application/json",
           },
         }),
       },
@@ -59,7 +58,7 @@ Return ONLY in valid JSON format with keys "score" (number) and "reason" (string
 
     let aiText = data.candidates[0].content.parts[0].text;
 
-    // 🧹 PEMBERSIH JSON: Jaga-jaga kalau Gemini ngebandel nambahin ```json ... ```
+    // 🧹 PEMBERSIH JSON: Regex-nya udah dirapihin ke satu baris biar gak error!
     aiText = aiText
       .replace(/```json/gi, "")
       .replace(/```/gi, "")
