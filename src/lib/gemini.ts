@@ -1,9 +1,11 @@
+// src/lib/gemini.ts
+
 import { prisma } from "@/lib/prisma";
 import {
   GoogleGenerativeAI,
   HarmCategory,
   HarmBlockThreshold,
-} from "@google/generative-ai"; // 🔥 IMPORT BARU DITAMBAHIN
+} from "@google/generative-ai";
 import { ConfluenceSignal } from "@prisma/client";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
@@ -34,7 +36,7 @@ export async function getOrFetchTokenIntel(
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash-8b",
       generationConfig: {
-        responseMimeType: "application/json", // Paksa output murni JSON dari sisi server Google
+        responseMimeType: "application/json",
         temperature: 0.2,
       },
       safetySettings: [
@@ -96,12 +98,17 @@ export async function getOrFetchTokenIntel(
       }
     `;
 
+    // 🚦 SISTEM ANTRIAN: Kasih jeda acak 1 sampai 4 detik biar Google gak dikeroyok request barengan
+    const delayMs = Math.floor(Math.random() * 3000) + 1000;
+    console.log(`[AI QUEUE] Ngerem bentar ${delayMs}ms buat ${tokenSymbol}...`);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+
     const result = await model.generateContent(prompt);
     let responseText = result.response.text();
 
     responseText = responseText
       .replace(/```json/gi, "")
-      .replace(/=```/g, "")
+      .replace(/```/g, "")
       .trim();
 
     const aiData = JSON.parse(responseText);
