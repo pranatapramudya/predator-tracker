@@ -1,8 +1,5 @@
 // src/app/api/webhook/route.ts
 
-// Fungsi buat ngasih napas (delay) dalam milidetik
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -16,6 +13,9 @@ import { processWhaleTrade } from "./pnl";
 import { analyzeWhaleAction } from "@/lib/scanner";
 
 export const dynamic = "force-dynamic";
+
+// Fungsi buat ngasih napas (delay) dalam milidetik - HARUS DI BAWAH IMPORT
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ==========================================
 // 🔥 MODUL: DEXSCREENER API (MARKET CAP)
@@ -164,6 +164,21 @@ function buildKeyboard(
   return inline_keyboard;
 }
 
+// FORMATTER PESAN EXIT ALERT
+function buildMegaAlertMessage(
+  tokenSymbol: string,
+  walletCount: number,
+  timeframeHours: number,
+): string {
+  return [
+    "🚨🔴 MASSIVE EXIT DETECTED! 🔴🚨",
+    `⚠️ Panic Sell Warning for: $${tokenSymbol}`,
+    `👀 ${walletCount} Smart Money wallets just DUMPED this token`,
+    `⏱️ Timeframe: Last ${timeframeHours} Hour(s)`,
+    `🏃‍♂️ Consider taking profits or managing risk NOW!`,
+  ].join("\n");
+}
+
 async function sendTelegramMessage(
   chatId: string,
   message: string,
@@ -303,6 +318,51 @@ export async function GET(request: Request) {
                   },
                 });
 
+                // 🔥 FITUR NO 1: WHALE PANIC ALERT (MASSIVE EXIT) 🔥
+                if (
+                  !isBuy &&
+                  usdAmount >= 1000 &&
+                  tokenAddress !== "solana" &&
+                  tokenSymbol !== "USDC" &&
+                  tokenSymbol !== "USDT"
+                ) {
+                  await prisma.saleEvent.create({
+                    data: {
+                      walletId: wallet.id,
+                      tokenAddress: tokenAddress as string,
+                      tokenSymbol: tokenSymbol as string,
+                      usdValue: usdAmount,
+                    },
+                  });
+
+                  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                  const panicSellers = await prisma.saleEvent.groupBy({
+                    by: ["walletId"],
+                    where: {
+                      tokenAddress: tokenAddress as string,
+                      createdAt: { gte: oneHourAgo },
+                    },
+                  });
+
+                  if (panicSellers.length >= 3) {
+                    const megaMsg = buildMegaAlertMessage(
+                      tokenSymbol as string,
+                      panicSellers.length,
+                      1,
+                    );
+                    const megaTargetAlpha =
+                      (wallet as any).alphaChannelId ||
+                      targetChatId ||
+                      globalAlphaChatId;
+                    if (megaTargetAlpha) {
+                      await sendTelegramMessage(
+                        megaTargetAlpha as string,
+                        megaMsg,
+                      );
+                    }
+                  }
+                }
+
                 const whaleData = await prisma.wallet.findUnique({
                   where: { id: wallet.id },
                   select: { winRate: true, totalTrades: true },
@@ -342,11 +402,9 @@ export async function GET(request: Request) {
                   whaleStatsBlock +
                   metricsBlock;
 
-                // 🔥 UPDATE: Kembalikan targetAlpha ke Environment Vercel
                 const targetAlpha =
                   (wallet as any).alphaChannelId || targetChatId;
 
-                // 🔥 UPDATE: Buy dan Sell > $1000 bakal masuk ke Grup VIP (Asumsi bukan token native/stablecoin)
                 const isAlphaWorthy =
                   usdAmount >= 1000 &&
                   tokenAddress !== "solana" &&
@@ -477,6 +535,53 @@ export async function GET(request: Request) {
                   },
                 });
 
+                // 🔥 FITUR NO 1: WHALE PANIC ALERT (MASSIVE EXIT) BUAT EVM 🔥
+                if (
+                  !isBuy &&
+                  usdAmount >= 1000 &&
+                  tokenAddress &&
+                  tokenSymbol !== "USDC" &&
+                  tokenSymbol !== "USDT" &&
+                  tokenSymbol !== "DAI" &&
+                  tokenSymbol !== "WETH"
+                ) {
+                  await prisma.saleEvent.create({
+                    data: {
+                      walletId: wallet.id,
+                      tokenAddress: tokenAddress as string,
+                      tokenSymbol: tokenSymbol as string,
+                      usdValue: usdAmount,
+                    },
+                  });
+
+                  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                  const panicSellers = await prisma.saleEvent.groupBy({
+                    by: ["walletId"],
+                    where: {
+                      tokenAddress: tokenAddress as string,
+                      createdAt: { gte: oneHourAgo },
+                    },
+                  });
+
+                  if (panicSellers.length >= 3) {
+                    const megaMsg = buildMegaAlertMessage(
+                      tokenSymbol as string,
+                      panicSellers.length,
+                      1,
+                    );
+                    const megaTargetAlpha =
+                      (wallet as any).alphaChannelId ||
+                      targetChatId ||
+                      globalAlphaChatId;
+                    if (megaTargetAlpha) {
+                      await sendTelegramMessage(
+                        megaTargetAlpha as string,
+                        megaMsg,
+                      );
+                    }
+                  }
+                }
+
                 const whaleData = await prisma.wallet.findUnique({
                   where: { id: wallet.id },
                   select: { winRate: true, totalTrades: true },
@@ -517,11 +622,9 @@ export async function GET(request: Request) {
                   whaleStatsBlock +
                   metricsBlock;
 
-                // 🔥 UPDATE: Kembalikan targetAlpha ke Environment Vercel
                 const targetAlpha =
                   (wallet as any).alphaChannelId || targetChatId;
 
-                // 🔥 UPDATE: Buy dan Sell > $1000 masuk Predator Feed (Non Stablecoin)
                 const isAlphaWorthy =
                   usdAmount >= 1000 &&
                   tokenSymbol !== "USDC" &&
