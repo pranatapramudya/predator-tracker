@@ -12,14 +12,23 @@ import {
 import { processWhaleTrade } from "./pnl";
 import { analyzeWhaleAction } from "@/lib/scanner";
 
+import { EMA, RSI } from "technicalindicators";
+import { getOrFetchTokenIntel } from "@/lib/gemini";
+
 export const dynamic = "force-dynamic";
 
-// Fungsi buat ngasih napas (delay) dalam milidetik - HARUS DI BAWAH IMPORT
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// ==========================================
-// 🔥 MODUL: DEXSCREENER API (MARKET CAP)
-// ==========================================
+async function fetchHistoricalClosePrices(
+  tokenAddress: string,
+): Promise<number[]> {
+  try {
+    return [];
+  } catch (error) {
+    return [];
+  }
+}
+
 async function getTokenMarketInfo(tokenAddress: string) {
   if (!tokenAddress || tokenAddress === "solana") return null;
   try {
@@ -44,9 +53,6 @@ async function getTokenMarketInfo(tokenAddress: string) {
   }
 }
 
-// ==========================================
-// 🔥 MODUL: HELIUS INSIDER RISK DETECTIVE
-// ==========================================
 async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
   try {
     const apiKey = process.env.HELIUS_API_KEY;
@@ -104,9 +110,6 @@ async function checkSolanaInsiderRisk(tokenAddress: string): Promise<string> {
   }
 }
 
-// ==========================================
-// 🔥 HELPER: BUILD KEYBOARD & SEND TELEGRAM
-// ==========================================
 function buildKeyboard(
   network: string,
   tokenAddress: string,
@@ -164,7 +167,6 @@ function buildKeyboard(
   return inline_keyboard;
 }
 
-// FORMATTER PESAN EXIT ALERT
 function buildMegaAlertMessage(
   tokenSymbol: string,
   walletCount: number,
@@ -207,14 +209,9 @@ async function sendTelegramMessage(
   }
 }
 
-// ==========================================
-// 🔥 MAIN ENGINE: SWEEPER (GET)
-// ==========================================
 export async function GET(request: Request) {
   try {
     const wallets = await prisma.wallet.findMany({ where: { isActive: true } });
-
-    // 🔥 TARIK ID GRUP ALPHA DARI VERCEL ENVIRONMENT 🔥
     const globalAlphaChatId = process.env.TELEGRAM_ALPHA_CHAT_ID;
 
     for (const wallet of wallets) {
@@ -248,10 +245,53 @@ export async function GET(request: Request) {
               let metricsBlock = "";
               let liquidityStringForAI = "Unknown";
               let tokenAgeHours = 0;
+              let currentPrice = 0;
+
+              // 🔥 FIX 1: Pindahin deklarasi ini ke atas biar kebaca pas simpan ke database
+              let ema50Value: number | undefined = undefined;
+              let rsi14Value: number | undefined = undefined;
 
               const marketInfo = await getTokenMarketInfo(tokenAddress);
+              if (marketInfo) currentPrice = marketInfo.priceUsd;
+
               if (usdAmount === 0 && tokenAddress !== "solana" && marketInfo) {
                 usdAmount = amountToken * marketInfo.priceUsd;
+              }
+
+              let aiConfluenceMsg = "";
+              if (tokenAddress !== "solana") {
+                try {
+                  const closePrices =
+                    await fetchHistoricalClosePrices(tokenAddress);
+                  if (closePrices.length >= 50) {
+                    const emaResult = EMA.calculate({
+                      period: 50,
+                      values: closePrices,
+                    });
+                    const rsiResult = RSI.calculate({
+                      period: 14,
+                      values: closePrices,
+                    });
+                    ema50Value = emaResult[emaResult.length - 1];
+                    rsi14Value = rsiResult[rsiResult.length - 1];
+                  }
+                } catch (e) {}
+
+                const intel = await getOrFetchTokenIntel(
+                  tokenAddress,
+                  tokenSymbol,
+                  currentPrice,
+                  ema50Value,
+                  rsi14Value,
+                );
+                if (intel?.confluence === "SUPER_ALPHA")
+                  aiConfluenceMsg =
+                    "\n🎯 *AI Signal:* 🟢 SUPER ALPHA (Trend & Momentum)";
+                else if (intel?.confluence === "HIGH_RISK")
+                  aiConfluenceMsg =
+                    "\n🎯 *AI Signal:* 🔴 HIGH RISK (Counter Trend)";
+                else if (intel?.confluence === "NEUTRAL")
+                  aiConfluenceMsg = "\n🎯 *AI Signal:* ⚪ NEUTRAL";
               }
 
               if (isBuy && tokenAddress !== "solana") {
@@ -315,10 +355,13 @@ export async function GET(request: Request) {
                     tokenAddress,
                     usdValue: usdAmount,
                     explorerUrl,
+                    // 🔥 FIX 2: Masukin data indikator ke Database
+                    priceAtTx: currentPrice || null,
+                    ema50AtTx: ema50Value || null,
+                    rsi14AtTx: rsi14Value || null,
                   },
                 });
 
-                // 🔥 FITUR NO 1: WHALE PANIC ALERT (MASSIVE EXIT) 🔥
                 if (
                   !isBuy &&
                   usdAmount >= 1000 &&
@@ -400,7 +443,8 @@ export async function GET(request: Request) {
                   `🪙 *Token:* ${tokenSymbol}\n` +
                   `💰 *Value:* $${usdAmount.toFixed(2)}${liquidityWarning}` +
                   whaleStatsBlock +
-                  metricsBlock;
+                  metricsBlock +
+                  aiConfluenceMsg;
 
                 const targetAlpha =
                   (wallet as any).alphaChannelId || targetChatId;
@@ -426,7 +470,6 @@ export async function GET(request: Request) {
                     const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
                     await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
                   } catch (aiError) {
-                    console.error("AI Limit, ngirim Alpha tanpa AI.");
                     const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight:  AI System is currently offline (Rate Limited) ${dyorFooter}`;
                     await sendTelegramMessage(
                       targetAlpha,
@@ -468,10 +511,53 @@ export async function GET(request: Request) {
               let metricsBlock = "";
               let liquidityStringForAI = "Unknown";
               let tokenAgeHours = 0;
+              let currentPrice = 0;
+
+              // 🔥 FIX 1: Pindahin deklarasi ini ke atas
+              let ema50Value: number | undefined = undefined;
+              let rsi14Value: number | undefined = undefined;
 
               const marketInfo = await getTokenMarketInfo(tokenAddress);
+              if (marketInfo) currentPrice = marketInfo.priceUsd;
+
               if (usdAmount === 0 && tokenAddress && marketInfo) {
                 usdAmount = amountToken * marketInfo.priceUsd;
+              }
+
+              let aiConfluenceMsg = "";
+              if (tokenAddress) {
+                try {
+                  const closePrices =
+                    await fetchHistoricalClosePrices(tokenAddress);
+                  if (closePrices.length >= 50) {
+                    const emaResult = EMA.calculate({
+                      period: 50,
+                      values: closePrices,
+                    });
+                    const rsiResult = RSI.calculate({
+                      period: 14,
+                      values: closePrices,
+                    });
+                    ema50Value = emaResult[emaResult.length - 1];
+                    rsi14Value = rsiResult[rsiResult.length - 1];
+                  }
+                } catch (e) {}
+
+                const intel = await getOrFetchTokenIntel(
+                  tokenAddress,
+                  tokenSymbol,
+                  currentPrice,
+                  ema50Value,
+                  rsi14Value,
+                );
+                if (intel?.confluence === "SUPER_ALPHA")
+                  aiConfluenceMsg =
+                    "\n🎯 *AI Signal:* 🟢 SUPER ALPHA (Trend & Momentum)";
+                else if (intel?.confluence === "HIGH_RISK")
+                  aiConfluenceMsg =
+                    "\n🎯 *AI Signal:* 🔴 HIGH RISK (Counter Trend)";
+                else if (intel?.confluence === "NEUTRAL")
+                  aiConfluenceMsg = "\n🎯 *AI Signal:* ⚪ NEUTRAL";
               }
 
               if (isBuy && tokenAddress) {
@@ -532,10 +618,13 @@ export async function GET(request: Request) {
                     tokenAddress,
                     usdValue: usdAmount,
                     explorerUrl: tokenTx.explorerUrl,
+                    // 🔥 FIX 2: Masukin data indikator ke Database
+                    priceAtTx: currentPrice || null,
+                    ema50AtTx: ema50Value || null,
+                    rsi14AtTx: rsi14Value || null,
                   },
                 });
 
-                // 🔥 FITUR NO 1: WHALE PANIC ALERT (MASSIVE EXIT) BUAT EVM 🔥
                 if (
                   !isBuy &&
                   usdAmount >= 1000 &&
@@ -620,7 +709,8 @@ export async function GET(request: Request) {
                   `🪙 *Token:* ${tokenSymbol}\n` +
                   `💰 *Value:* $${usdAmount.toFixed(2)}${liquidityWarning}` +
                   whaleStatsBlock +
-                  metricsBlock;
+                  metricsBlock +
+                  aiConfluenceMsg;
 
                 const targetAlpha =
                   (wallet as any).alphaChannelId || targetChatId;
@@ -647,7 +737,6 @@ export async function GET(request: Request) {
                     const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
                     await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
                   } catch (aiError) {
-                    console.error("AI Limit, ngirim Alpha tanpa AI.");
                     const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight: AI System is currently offline (Rate Limited)${dyorFooter}`;
                     await sendTelegramMessage(
                       targetAlpha,
@@ -729,7 +818,6 @@ export async function GET(request: Request) {
         }
       } catch (innerError) {}
 
-      // 🛑 NAPAS BUATAN S.KOM 🛑
       console.log(`[RADAR] Jeda 0.5 detik...`);
       await delay(500);
     }

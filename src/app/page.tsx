@@ -1,7 +1,6 @@
 // src/app/page.tsx
 import UpgradeModal from "@/components/UpgradeModal";
 import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
-// Sesuaikan import ini kalau lu naruh fungsinya di src/lib/scanner.ts
 import { getOrFetchTokenIntel } from "@/lib/gemini";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -25,9 +24,9 @@ import {
   Send,
   ExternalLink,
   Ghost,
-  Flame, // Icon Api buat Trending
-  BrainCircuit, // Icon AI buat narasi
-  TrendingUp, // Icon Chart naik
+  Flame,
+  BrainCircuit,
+  TrendingUp,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -225,14 +224,12 @@ async function createWalletAction(formData: FormData) {
     if (process.env.UPSTASH_REDIS_REST_URL) {
       const { success } = await ratelimit.limit(userId);
       if (!success) {
-        console.warn(`[SECURITY] User ${userId} spamming Add Wallet form!`);
         redirect("/?feedback=too_fast");
       }
     }
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT")
       throw error;
-    console.error("Redis Error:", error);
   }
 
   let feedback = "failed";
@@ -439,7 +436,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const limit = 4;
   const skip = (page - 1) * limit;
 
-  // 🔥 FETCH WALLET DATA 🔥
   const [wallets, totalWallets, userWalletsRecord, privateAlphaLogs] =
     await Promise.all([
       prisma.wallet
@@ -474,7 +470,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         .catch(() => []),
     ]);
 
-  // 🔥 KAITO & NANSEN ENGINE: FETCH TOP TRENDING TOKENS + AI INTEL 🔥
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const trendingBuys = await prisma.transaction.groupBy({
     by: ["tokenAddress", "tokenSymbol"],
@@ -490,12 +485,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     take: 3,
   });
 
-  // Eksekusi asinkron ke Gemini untuk dapet narasi
   const smartMoneyTrends = await Promise.all(
     trendingBuys.map(async (t) => {
       let intel = null;
       try {
-        // 🔥 Tambahin "as string" di sini biar TypeScript nggak bawel
         intel = await getOrFetchTokenIntel(
           t.tokenAddress as string,
           t.tokenSymbol as string,
@@ -509,6 +502,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         buyCount: t._count.walletId,
         narrative: intel?.narrative || "Scanning...",
         mindshare: intel?.mindshare || "TBD",
+        confluence: intel?.confluence || "PENDING",
       };
     }),
   );
@@ -765,7 +759,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       {trend.buyCount} Whales
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
                     <span className="text-[8px] font-bold px-2 py-1 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase flex items-center gap-1">
                       <BrainCircuit className="w-3 h-3" /> {trend.narrative}
                     </span>
@@ -774,6 +768,21 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     >
                       {trend.mindshare}
                     </span>
+                    {trend.confluence === "SUPER_ALPHA" && (
+                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase">
+                        ⚡ Super Alpha
+                      </span>
+                    )}
+                    {trend.confluence === "HIGH_RISK" && (
+                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 uppercase">
+                        ⚠️ High Risk
+                      </span>
+                    )}
+                    {trend.confluence === "NEUTRAL" && (
+                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-gray-500/20 text-gray-400 border border-gray-500/30 uppercase">
+                        ⚖️ Neutral
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -829,9 +838,17 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                         <span className="text-sm font-black text-white leading-none mb-1">
                           {log.tokenSymbol}
                         </span>
-                        <span className="text-[10px] font-bold text-white/50 font-mono">
-                          ${Number(log.usdValue).toLocaleString()}
-                        </span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-bold text-white/50 font-mono">
+                            ${Number(log.usdValue).toLocaleString()}
+                          </span>
+                          {/* 🔥 INJEK UI RAW DATA TEKNIKAL MOBILE 🔥 */}
+                          {log.rsi14AtTx && (
+                            <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 whitespace-nowrap">
+                              RSI: {Number(log.rsi14AtTx).toFixed(1)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <a
                         href={log.explorerUrl}
@@ -876,7 +893,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   const safeName = w.name || "Target";
                   const tradeStyle = getTradeStyleBadge(w.transactions);
 
-                  // 🔥 KALKULASI FOMO METER (SHADOW BALANCE) 🔥
                   const totalInvested = w.positions.reduce(
                     (sum, p) => sum + Number(p.totalInvestedUsd),
                     0,
@@ -888,7 +904,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   const roiPercent =
                     totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
 
-                  // Base shadow balance lu ambil dari dbUser, kalau belum ada kita kasih default $100
                   const baseShadow = dbUser.shadowBalance || 100;
                   const shadowProfit = (baseShadow * roiPercent) / 100;
                   const shadowTotal = baseShadow + shadowProfit;
@@ -1020,7 +1035,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           />
                         </div>
 
-                        {/* 🔥 FOMO CARD / SHADOW MODE UI 🔥 */}
                         <div
                           className={`mt-4 p-3 border rounded-xl flex justify-between items-center relative overflow-hidden transition-all ${isFomoPositive ? "bg-emerald-500/10 border-emerald-500/30" : "bg-rose-500/10 border-rose-500/30"}`}
                         >
@@ -1175,7 +1189,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       {trend.buyCount} Whales
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
                     <span className="text-[8px] font-bold px-2 py-1 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase flex items-center gap-1">
                       <BrainCircuit className="w-3 h-3" /> {trend.narrative}
                     </span>
@@ -1184,6 +1198,21 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     >
                       {trend.mindshare}
                     </span>
+                    {trend.confluence === "SUPER_ALPHA" && (
+                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase">
+                        ⚡ Super Alpha
+                      </span>
+                    )}
+                    {trend.confluence === "HIGH_RISK" && (
+                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 uppercase">
+                        ⚠️ High Risk
+                      </span>
+                    )}
+                    {trend.confluence === "NEUTRAL" && (
+                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-gray-500/20 text-gray-400 border border-gray-500/30 uppercase">
+                        ⚖️ Neutral
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1242,9 +1271,17 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       <span className="text-sm font-black text-white leading-none mb-1">
                         {log.tokenSymbol}
                       </span>
-                      <span className="text-[10px] font-bold text-white/50 font-mono">
-                        ${Number(log.usdValue).toLocaleString()}
-                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-bold text-white/50 font-mono">
+                          ${Number(log.usdValue).toLocaleString()}
+                        </span>
+                        {/* 🔥 INJEK UI RAW DATA TEKNIKAL DESKTOP 🔥 */}
+                        {log.rsi14AtTx && (
+                          <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 whitespace-nowrap">
+                            RSI: {Number(log.rsi14AtTx).toFixed(1)}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <a
