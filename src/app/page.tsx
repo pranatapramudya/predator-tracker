@@ -1,6 +1,8 @@
 // src/app/page.tsx
 import UpgradeModal from "@/components/UpgradeModal";
 import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
+// Sesuaikan import ini kalau lu naruh fungsinya di src/lib/scanner.ts
+import { getOrFetchTokenIntel } from "@/lib/gemini";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -22,7 +24,10 @@ import {
   Trash2,
   Send,
   ExternalLink,
-  Ghost, // Icon baru buat mode bayangan
+  Ghost,
+  Flame, // Icon Api buat Trending
+  BrainCircuit, // Icon AI buat narasi
+  TrendingUp, // Icon Chart naik
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -469,6 +474,45 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         .catch(() => []),
     ]);
 
+  // 🔥 KAITO & NANSEN ENGINE: FETCH TOP TRENDING TOKENS + AI INTEL 🔥
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const trendingBuys = await prisma.transaction.groupBy({
+    by: ["tokenAddress", "tokenSymbol"],
+    where: {
+      type: "BUY",
+      createdAt: { gte: twentyFourHoursAgo },
+      tokenAddress: {
+        notIn: ["solana", "eth", "btc", "USDC", "USDT", "WETH", "DAI"],
+      },
+    },
+    _count: { walletId: true },
+    orderBy: { _count: { walletId: "desc" } },
+    take: 3,
+  });
+
+  // Eksekusi asinkron ke Gemini untuk dapet narasi
+  const smartMoneyTrends = await Promise.all(
+    trendingBuys.map(async (t) => {
+      let intel = null;
+      try {
+        // 🔥 Tambahin "as string" di sini biar TypeScript nggak bawel
+        intel = await getOrFetchTokenIntel(
+          t.tokenAddress as string,
+          t.tokenSymbol as string,
+        );
+      } catch (e) {
+        console.error("Gagal load AI Intel", e);
+      }
+      return {
+        symbol: t.tokenSymbol || "UNKNOWN",
+        address: t.tokenAddress as string,
+        buyCount: t._count.walletId,
+        narrative: intel?.narrative || "Scanning...",
+        mindshare: intel?.mindshare || "TBD",
+      };
+    }),
+  );
+
   const totalPages = Math.ceil(totalWallets / limit);
 
   const savedChatId = userWalletsRecord.find((w) => w.chatId)?.chatId || "";
@@ -690,6 +734,57 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </section>
 
         <section className="block xl:hidden lg:col-span-8 w-full mt-2">
+          {/* 🔥 TRENDING MOBILE/TABLET VIEW 🔥 */}
+          <div className="bg-[#121212] border border-orange-500/30 rounded-[24px] p-5 shadow-2xl mb-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-[40px] rounded-full"></div>
+            <div className="flex items-center justify-between mb-4 relative z-10">
+              <h2 className="text-xs font-black text-orange-400 tracking-widest flex items-center gap-2 uppercase">
+                <Flame className="w-4 h-4" /> Smart Trends
+              </h2>
+              <span className="text-[8px] text-orange-400/50 uppercase tracking-widest font-bold border border-orange-500/20 px-2 py-1 rounded bg-orange-500/10">
+                AI Mindshare
+              </span>
+            </div>
+            <div className="space-y-2 relative z-10">
+              {smartMoneyTrends.map((trend, i) => (
+                <div
+                  key={trend.address}
+                  className="p-3 bg-black/40 border border-white/5 rounded-2xl flex flex-col gap-2"
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-white/40">
+                        #{i + 1}
+                      </span>
+                      <span className="text-sm font-black text-white">
+                        {trend.symbol}
+                      </span>
+                    </div>
+                    <div className="text-[9px] font-bold text-white/50 flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3 text-emerald-400" />{" "}
+                      {trend.buyCount} Whales
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[8px] font-bold px-2 py-1 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase flex items-center gap-1">
+                      <BrainCircuit className="w-3 h-3" /> {trend.narrative}
+                    </span>
+                    <span
+                      className={`text-[8px] font-bold px-2 py-1 rounded uppercase border ${trend.mindshare.includes("Hype") ? "bg-rose-500/20 text-rose-400 border-rose-500/30" : "bg-amber-500/20 text-amber-400 border-amber-500/30"}`}
+                    >
+                      {trend.mindshare}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {smartMoneyTrends.length === 0 && (
+                <p className="text-[9px] text-white/30 text-center py-2 font-bold uppercase">
+                  Gathering Data...
+                </p>
+              )}
+            </div>
+          </div>
+
           <details className="group">
             <summary className="list-none cursor-pointer bg-[#121212] border border-emerald-500/30 p-5 rounded-[24px] flex items-center justify-between font-black text-emerald-400 uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-400 transition-all outline-none">
               <div className="flex items-center gap-3">
@@ -713,7 +808,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       <p className="text-xs font-bold text-white/80 group-hover:text-emerald-400 transition-colors uppercase truncate pr-2">
                         {log.wallet.name}
                       </p>
-                      <span className="text-[9px] text-white/40 font-mono">
+                      <span
+                        suppressHydrationWarning
+                        className="text-[9px] text-white/40 font-mono"
+                      >
                         {new Date(log.createdAt).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -1045,6 +1143,59 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </section>
 
         <section className="hidden xl:block xl:col-span-3 h-fit sticky top-10">
+          {/* 🔥 TRENDING DESKTOP VIEW 🔥 */}
+          <div className="bg-[#121212] border border-orange-500/30 rounded-[32px] p-6 shadow-2xl mb-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-[40px] rounded-full"></div>
+            <div className="flex items-center justify-between mb-6 relative z-10">
+              <h2 className="text-sm font-black text-orange-400 tracking-widest flex items-center gap-2 uppercase">
+                <Flame className="w-4 h-4" /> Smart Trends
+              </h2>
+              <span className="text-[9px] text-orange-400/50 uppercase tracking-widest font-bold border border-orange-500/20 px-2 py-1 rounded bg-orange-500/10">
+                AI Mindshare
+              </span>
+            </div>
+
+            <div className="space-y-3 relative z-10">
+              {smartMoneyTrends.map((trend, i) => (
+                <div
+                  key={trend.address}
+                  className="p-3 bg-black/40 border border-white/5 rounded-2xl hover:border-orange-500/30 transition-all flex flex-col gap-2"
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-white/40">
+                        #{i + 1}
+                      </span>
+                      <span className="text-sm font-black text-white">
+                        {trend.symbol}
+                      </span>
+                    </div>
+                    <div className="text-[9px] font-bold text-white/50 flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3 text-emerald-400" />{" "}
+                      {trend.buyCount} Whales
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[8px] font-bold px-2 py-1 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase flex items-center gap-1">
+                      <BrainCircuit className="w-3 h-3" /> {trend.narrative}
+                    </span>
+                    <span
+                      className={`text-[8px] font-bold px-2 py-1 rounded uppercase border ${trend.mindshare.includes("Hype") ? "bg-rose-500/20 text-rose-400 border-rose-500/30" : "bg-amber-500/20 text-amber-400 border-amber-500/30"}`}
+                    >
+                      {trend.mindshare}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {smartMoneyTrends.length === 0 && (
+                <p className="text-[10px] text-white/30 text-center py-4 font-bold uppercase">
+                  Accumulating Data...
+                </p>
+              )}
+            </div>
+          </div>
+
           <aside className="w-full bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl backdrop-blur-md">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-sm font-black text-emerald-400 tracking-widest flex items-center gap-2 uppercase">
@@ -1069,7 +1220,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     <p className="text-xs font-bold text-white/80 group-hover:text-emerald-400 transition-colors uppercase truncate pr-2">
                       {log.wallet.name}
                     </p>
-                    <span className="text-[9px] text-white/40 font-mono">
+                    <span
+                      suppressHydrationWarning
+                      className="text-[9px] text-white/40 font-mono"
+                    >
                       {new Date(log.createdAt).toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
