@@ -247,15 +247,7 @@ export async function GET(request: Request) {
                 !swapData.description.toUpperCase().includes("FOR USDC");
               const explorerUrl = `https://solscan.io/tx/${swapData.signature}`;
 
-              let liquidityWarning = "";
-              let metricsBlock = "";
-              let liquidityStringForAI = "Unknown";
-              let tokenAgeHours = 0;
               let currentPrice = 0;
-
-              let ema50Value: number | undefined = undefined;
-              let rsi14Value: number | undefined = undefined;
-
               const marketInfo = await getTokenMarketInfo(tokenAddress);
               if (marketInfo) currentPrice = marketInfo.priceUsd;
 
@@ -263,10 +255,25 @@ export async function GET(request: Request) {
                 usdAmount = amountToken * marketInfo.priceUsd;
               }
 
+              // 🔥 🛑 SATPAM VIP KILL SWITCH (SOLANA) 🛑 🔥
+              if (usdAmount < 1000) {
+                console.log(
+                  `[🛑 KILL SWITCH] Tx Solana dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${usdAmount.toFixed(2)} (< $1000)`,
+                );
+                continue;
+              }
+
+              let liquidityWarning = "";
+              let metricsBlock = "";
+              let liquidityStringForAI = "Unknown";
+              let tokenAgeHours = 0;
+
+              let ema50Value: number | undefined = undefined;
+              let rsi14Value: number | undefined = undefined;
+
               let aiConfluenceMsg = "";
-              // 🔥 FIX UTAMA: SATPAM ANTI-RECEH BUAT SOLANA!
-              // Hanya panggil AI kalau nilai transaksinya >= 1000 dollar
-              if (tokenAddress !== "solana" && usdAmount >= 1000) {
+
+              if (tokenAddress !== "solana") {
                 try {
                   const closePrices =
                     await fetchHistoricalClosePrices(tokenAddress);
@@ -350,143 +357,135 @@ export async function GET(request: Request) {
                 );
               }
 
-              if (usdAmount > 0 && usdAmount >= threshold) {
-                await prisma.transaction.create({
+              await prisma.transaction.create({
+                data: {
+                  walletId: wallet.id,
+                  dedupeKey: `${wallet.id}-${swapData.signature}`,
+                  signature: swapData.signature,
+                  type: isBuy ? "BUY" : "SELL",
+                  amount: amountToken,
+                  tokenSymbol,
+                  tokenAddress,
+                  usdValue: usdAmount,
+                  explorerUrl,
+                  priceAtTx: currentPrice || null,
+                  ema50AtTx: ema50Value || null,
+                  rsi14AtTx: rsi14Value || null,
+                },
+              });
+
+              if (
+                !isBuy &&
+                tokenAddress !== "solana" &&
+                tokenSymbol !== "USDC" &&
+                tokenSymbol !== "USDT"
+              ) {
+                await prisma.saleEvent.create({
                   data: {
                     walletId: wallet.id,
-                    dedupeKey: `${wallet.id}-${swapData.signature}`,
-                    signature: swapData.signature,
-                    type: isBuy ? "BUY" : "SELL",
-                    amount: amountToken,
-                    tokenSymbol,
-                    tokenAddress,
+                    tokenAddress: tokenAddress as string,
+                    tokenSymbol: tokenSymbol as string,
                     usdValue: usdAmount,
-                    explorerUrl,
-                    priceAtTx: currentPrice || null,
-                    ema50AtTx: ema50Value || null,
-                    rsi14AtTx: rsi14Value || null,
                   },
                 });
 
-                if (
-                  !isBuy &&
-                  usdAmount >= 1000 &&
-                  tokenAddress !== "solana" &&
-                  tokenSymbol !== "USDC" &&
-                  tokenSymbol !== "USDT"
-                ) {
-                  await prisma.saleEvent.create({
-                    data: {
-                      walletId: wallet.id,
-                      tokenAddress: tokenAddress as string,
-                      tokenSymbol: tokenSymbol as string,
-                      usdValue: usdAmount,
-                    },
-                  });
-
-                  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-                  const panicSellers = await prisma.saleEvent.groupBy({
-                    by: ["walletId"],
-                    where: {
-                      tokenAddress: tokenAddress as string,
-                      createdAt: { gte: oneHourAgo },
-                    },
-                  });
-
-                  if (panicSellers.length >= 3) {
-                    const megaMsg = buildMegaAlertMessage(
-                      tokenSymbol as string,
-                      panicSellers.length,
-                      1,
-                    );
-                    const megaTargetAlpha =
-                      (wallet as any).alphaChannelId ||
-                      targetChatId ||
-                      globalAlphaChatId;
-                    if (megaTargetAlpha) {
-                      await sendTelegramMessage(
-                        megaTargetAlpha as string,
-                        megaMsg,
-                      );
-                    }
-                  }
-                }
-
-                const whaleData = await prisma.wallet.findUnique({
-                  where: { id: wallet.id },
-                  select: { winRate: true, totalTrades: true },
+                const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                const panicSellers = await prisma.saleEvent.groupBy({
+                  by: ["walletId"],
+                  where: {
+                    tokenAddress: tokenAddress as string,
+                    createdAt: { gte: oneHourAgo },
+                  },
                 });
-                const allPositions = await prisma.tokenPosition.findMany({
-                  where: { walletId: wallet.id },
-                  select: { realizedPnlUsd: true },
-                });
-                const totalRealizedPnl = allPositions.reduce(
-                  (sum, pos) => sum + Number(pos.realizedPnlUsd),
-                  0,
-                );
-                const winRateText =
-                  whaleData && whaleData.totalTrades > 0
-                    ? `${Number(whaleData.winRate).toFixed(1)}%`
-                    : "N/A (No Sells Yet)";
-                const pnlText =
-                  totalRealizedPnl >= 0
-                    ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
-                    : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
 
-                const whaleStatsBlock = `\n\n🏆 *WHALE STATS*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
-                const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
-                const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
-                const keyboard = buildKeyboard(
-                  "SOLANA",
-                  tokenAddress,
-                  explorerUrl,
-                );
-
-                const baseMessage =
-                  `👤 *Whale:* ${wallet.name ?? "Unknown Target"}\n` +
-                  `📍 *Address:* \`${wallet.address}\`\n` +
-                  `📈 *Action:* ${actionText}\n` +
-                  `🪙 *Token:* ${tokenSymbol}\n` +
-                  `💰 *Value:* $${usdAmount.toFixed(2)}${liquidityWarning}` +
-                  whaleStatsBlock +
-                  metricsBlock +
-                  aiConfluenceMsg;
-
-                const targetAlpha =
-                  (wallet as any).alphaChannelId || targetChatId;
-
-                const isAlphaWorthy =
-                  usdAmount >= 1000 &&
-                  tokenAddress !== "solana" &&
-                  tokenSymbol !== "USDC" &&
-                  tokenSymbol !== "USDT";
-
-                if (isAlphaWorthy && targetAlpha) {
-                  try {
-                    const analysis = await analyzeWhaleAction(
-                      tokenAddress,
-                      liquidityStringForAI,
-                      tokenAgeHours > 0
-                        ? `${tokenAgeHours.toFixed(1)}h`
-                        : "Unknown",
-                    );
-
-                    const securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
-
-                    const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
-                    await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
-                  } catch (aiError) {
-                    const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight:  AI System is currently offline (Rate Limited) ${dyorFooter}`;
+                if (panicSellers.length >= 3) {
+                  const megaMsg = buildMegaAlertMessage(
+                    tokenSymbol as string,
+                    panicSellers.length,
+                    1,
+                  );
+                  const megaTargetAlpha =
+                    (wallet as any).alphaChannelId ||
+                    targetChatId ||
+                    globalAlphaChatId;
+                  if (megaTargetAlpha) {
                     await sendTelegramMessage(
-                      targetAlpha,
-                      fallbackMsg,
-                      keyboard,
+                      megaTargetAlpha as string,
+                      megaMsg,
                     );
                   }
-                } else if (targetChatId) {
-                  const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
-                  await sendTelegramMessage(targetChatId, generalMsg, keyboard);
                 }
+              }
+
+              const whaleData = await prisma.wallet.findUnique({
+                where: { id: wallet.id },
+                select: { winRate: true, totalTrades: true },
+              });
+              const allPositions = await prisma.tokenPosition.findMany({
+                where: { walletId: wallet.id },
+                select: { realizedPnlUsd: true },
+              });
+              const totalRealizedPnl = allPositions.reduce(
+                (sum, pos) => sum + Number(pos.realizedPnlUsd),
+                0,
+              );
+              const winRateText =
+                whaleData && whaleData.totalTrades > 0
+                  ? `${Number(whaleData.winRate).toFixed(1)}%`
+                  : "N/A (No Sells Yet)";
+              const pnlText =
+                totalRealizedPnl >= 0
+                  ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
+                  : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
+
+              const whaleStatsBlock = `\n\n🏆 *WHALE STATS*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
+              const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
+              const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
+              const keyboard = buildKeyboard(
+                "SOLANA",
+                tokenAddress,
+                explorerUrl,
+              );
+
+              const baseMessage =
+                `👤 *Whale:* ${wallet.name ?? "Unknown Target"}\n` +
+                `📍 *Address:* \`${wallet.address}\`\n` +
+                `📈 *Action:* ${actionText}\n` +
+                `🪙 *Token:* ${tokenSymbol}\n` +
+                `💰 *Value:* $${usdAmount.toFixed(2)}${liquidityWarning}` +
+                whaleStatsBlock +
+                metricsBlock +
+                aiConfluenceMsg;
+
+              const targetAlpha =
+                (wallet as any).alphaChannelId || targetChatId;
+
+              const isAlphaWorthy =
+                tokenAddress !== "solana" &&
+                tokenSymbol !== "USDC" &&
+                tokenSymbol !== "USDT";
+
+              if (isAlphaWorthy && targetAlpha) {
+                try {
+                  const analysis = await analyzeWhaleAction(
+                    tokenAddress,
+                    liquidityStringForAI,
+                    tokenAgeHours > 0
+                      ? `${tokenAgeHours.toFixed(1)}h`
+                      : "Unknown",
+                  );
+
+                  const securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
+
+                  const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
+                  await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
+                } catch (aiError) {
+                  const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight:  AI System is currently offline (Rate Limited) ${dyorFooter}`;
+                  await sendTelegramMessage(targetAlpha, fallbackMsg, keyboard);
+                }
+              } else if (targetChatId) {
+                const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
+                await sendTelegramMessage(targetChatId, generalMsg, keyboard);
               }
             }
           }
@@ -513,15 +512,7 @@ export async function GET(request: Request) {
               const tokenSymbol = (tokenTx as any).tokenSymbol || "TOKEN";
               const isBuy = tokenTx.description.includes("🟢");
 
-              let liquidityWarning = "";
-              let metricsBlock = "";
-              let liquidityStringForAI = "Unknown";
-              let tokenAgeHours = 0;
               let currentPrice = 0;
-
-              let ema50Value: number | undefined = undefined;
-              let rsi14Value: number | undefined = undefined;
-
               const marketInfo = await getTokenMarketInfo(tokenAddress);
               if (marketInfo) currentPrice = marketInfo.priceUsd;
 
@@ -529,10 +520,24 @@ export async function GET(request: Request) {
                 usdAmount = amountToken * marketInfo.priceUsd;
               }
 
+              // 🔥 🛑 SATPAM VIP KILL SWITCH (EVM/BASE) 🛑 🔥
+              if (usdAmount < 1000) {
+                console.log(
+                  `[🛑 KILL SWITCH] Tx EVM/BASE dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${usdAmount.toFixed(2)} (< $1000)`,
+                );
+                continue;
+              }
+
+              let liquidityWarning = "";
+              let metricsBlock = "";
+              let liquidityStringForAI = "Unknown";
+              let tokenAgeHours = 0;
+
+              let ema50Value: number | undefined = undefined;
+              let rsi14Value: number | undefined = undefined;
               let aiConfluenceMsg = "";
-              // 🔥 FIX UTAMA: SATPAM ANTI-RECEH BUAT EVM/BASE!
-              // Hanya panggil AI kalau nilai transaksinya >= 1000 dollar
-              if (tokenAddress && usdAmount >= 1000) {
+
+              if (tokenAddress) {
                 try {
                   const closePrices =
                     await fetchHistoricalClosePrices(tokenAddress);
@@ -613,147 +618,139 @@ export async function GET(request: Request) {
                 );
               }
 
-              if (usdAmount > 0 && usdAmount >= threshold) {
-                await prisma.transaction.create({
+              await prisma.transaction.create({
+                data: {
+                  walletId: wallet.id,
+                  dedupeKey: `${wallet.id}-${tokenTx.signature}`,
+                  signature: tokenTx.signature,
+                  type: isBuy ? "BUY" : "SELL",
+                  amount: amountToken,
+                  tokenSymbol,
+                  tokenAddress,
+                  usdValue: usdAmount,
+                  explorerUrl: tokenTx.explorerUrl,
+                  priceAtTx: currentPrice || null,
+                  ema50AtTx: ema50Value || null,
+                  rsi14AtTx: rsi14Value || null,
+                },
+              });
+
+              if (
+                !isBuy &&
+                tokenAddress &&
+                tokenSymbol !== "USDC" &&
+                tokenSymbol !== "USDT" &&
+                tokenSymbol !== "DAI" &&
+                tokenSymbol !== "WETH"
+              ) {
+                await prisma.saleEvent.create({
                   data: {
                     walletId: wallet.id,
-                    dedupeKey: `${wallet.id}-${tokenTx.signature}`,
-                    signature: tokenTx.signature,
-                    type: isBuy ? "BUY" : "SELL",
-                    amount: amountToken,
-                    tokenSymbol,
-                    tokenAddress,
+                    tokenAddress: tokenAddress as string,
+                    tokenSymbol: tokenSymbol as string,
                     usdValue: usdAmount,
-                    explorerUrl: tokenTx.explorerUrl,
-                    priceAtTx: currentPrice || null,
-                    ema50AtTx: ema50Value || null,
-                    rsi14AtTx: rsi14Value || null,
                   },
                 });
 
-                if (
-                  !isBuy &&
-                  usdAmount >= 1000 &&
-                  tokenAddress &&
-                  tokenSymbol !== "USDC" &&
-                  tokenSymbol !== "USDT" &&
-                  tokenSymbol !== "DAI" &&
-                  tokenSymbol !== "WETH"
-                ) {
-                  await prisma.saleEvent.create({
-                    data: {
-                      walletId: wallet.id,
-                      tokenAddress: tokenAddress as string,
-                      tokenSymbol: tokenSymbol as string,
-                      usdValue: usdAmount,
-                    },
-                  });
-
-                  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-                  const panicSellers = await prisma.saleEvent.groupBy({
-                    by: ["walletId"],
-                    where: {
-                      tokenAddress: tokenAddress as string,
-                      createdAt: { gte: oneHourAgo },
-                    },
-                  });
-
-                  if (panicSellers.length >= 3) {
-                    const megaMsg = buildMegaAlertMessage(
-                      tokenSymbol as string,
-                      panicSellers.length,
-                      1,
-                    );
-                    const megaTargetAlpha =
-                      (wallet as any).alphaChannelId ||
-                      targetChatId ||
-                      globalAlphaChatId;
-                    if (megaTargetAlpha) {
-                      await sendTelegramMessage(
-                        megaTargetAlpha as string,
-                        megaMsg,
-                      );
-                    }
-                  }
-                }
-
-                const whaleData = await prisma.wallet.findUnique({
-                  where: { id: wallet.id },
-                  select: { winRate: true, totalTrades: true },
+                const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                const panicSellers = await prisma.saleEvent.groupBy({
+                  by: ["walletId"],
+                  where: {
+                    tokenAddress: tokenAddress as string,
+                    createdAt: { gte: oneHourAgo },
+                  },
                 });
-                const allPositions = await prisma.tokenPosition.findMany({
-                  where: { walletId: wallet.id },
-                  select: { realizedPnlUsd: true },
-                });
-                const totalRealizedPnl = allPositions.reduce(
-                  (sum, pos) => sum + Number(pos.realizedPnlUsd),
-                  0,
-                );
 
-                const winRateText =
-                  whaleData && whaleData.totalTrades > 0
-                    ? `${Number(whaleData.winRate).toFixed(1)}%`
-                    : "N/A (No Sells Yet)";
-                const pnlText =
-                  totalRealizedPnl >= 0
-                    ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
-                    : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
-                const whaleStatsBlock = `\n\n🏆 *WHALE STATS*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
-
-                const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
-                const keyboard = buildKeyboard(
-                  wallet.network,
-                  tokenAddress,
-                  tokenTx.explorerUrl,
-                );
-                const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
-
-                const baseMessage =
-                  `👤 *Whale:* ${wallet.name ?? "Unknown Target"}\n` +
-                  `📍 *Address:* \`${wallet.address}\`\n` +
-                  `📈 *Action:* ${actionText}\n` +
-                  `🪙 *Token:* ${tokenSymbol}\n` +
-                  `💰 *Value:* $${usdAmount.toFixed(2)}${liquidityWarning}` +
-                  whaleStatsBlock +
-                  metricsBlock +
-                  aiConfluenceMsg;
-
-                const targetAlpha =
-                  (wallet as any).alphaChannelId || targetChatId;
-
-                const isAlphaWorthy =
-                  usdAmount >= 1000 &&
-                  tokenSymbol !== "USDC" &&
-                  tokenSymbol !== "USDT" &&
-                  tokenSymbol !== "DAI" &&
-                  tokenSymbol !== "WETH";
-
-                if (isAlphaWorthy && targetAlpha) {
-                  try {
-                    const analysis = await analyzeWhaleAction(
-                      tokenAddress,
-                      liquidityStringForAI,
-                      tokenAgeHours > 0
-                        ? `${tokenAgeHours.toFixed(1)}h`
-                        : "Unknown",
-                    );
-
-                    const securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
-
-                    const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
-                    await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
-                  } catch (aiError) {
-                    const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight: AI System is currently offline (Rate Limited)${dyorFooter}`;
+                if (panicSellers.length >= 3) {
+                  const megaMsg = buildMegaAlertMessage(
+                    tokenSymbol as string,
+                    panicSellers.length,
+                    1,
+                  );
+                  const megaTargetAlpha =
+                    (wallet as any).alphaChannelId ||
+                    targetChatId ||
+                    globalAlphaChatId;
+                  if (megaTargetAlpha) {
                     await sendTelegramMessage(
-                      targetAlpha,
-                      fallbackMsg,
-                      keyboard,
+                      megaTargetAlpha as string,
+                      megaMsg,
                     );
                   }
-                } else if (targetChatId) {
-                  const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
-                  await sendTelegramMessage(targetChatId, generalMsg, keyboard);
                 }
+              }
+
+              const whaleData = await prisma.wallet.findUnique({
+                where: { id: wallet.id },
+                select: { winRate: true, totalTrades: true },
+              });
+              const allPositions = await prisma.tokenPosition.findMany({
+                where: { walletId: wallet.id },
+                select: { realizedPnlUsd: true },
+              });
+              const totalRealizedPnl = allPositions.reduce(
+                (sum, pos) => sum + Number(pos.realizedPnlUsd),
+                0,
+              );
+
+              const winRateText =
+                whaleData && whaleData.totalTrades > 0
+                  ? `${Number(whaleData.winRate).toFixed(1)}%`
+                  : "N/A (No Sells Yet)";
+              const pnlText =
+                totalRealizedPnl >= 0
+                  ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
+                  : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
+              const whaleStatsBlock = `\n\n🏆 *WHALE STATS*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
+
+              const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
+              const keyboard = buildKeyboard(
+                wallet.network,
+                tokenAddress,
+                tokenTx.explorerUrl,
+              );
+              const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
+
+              const baseMessage =
+                `👤 *Whale:* ${wallet.name ?? "Unknown Target"}\n` +
+                `📍 *Address:* \`${wallet.address}\`\n` +
+                `📈 *Action:* ${actionText}\n` +
+                `🪙 *Token:* ${tokenSymbol}\n` +
+                `💰 *Value:* $${usdAmount.toFixed(2)}${liquidityWarning}` +
+                whaleStatsBlock +
+                metricsBlock +
+                aiConfluenceMsg;
+
+              const targetAlpha =
+                (wallet as any).alphaChannelId || targetChatId;
+
+              const isAlphaWorthy =
+                tokenSymbol !== "USDC" &&
+                tokenSymbol !== "USDT" &&
+                tokenSymbol !== "DAI" &&
+                tokenSymbol !== "WETH";
+
+              if (isAlphaWorthy && targetAlpha) {
+                try {
+                  const analysis = await analyzeWhaleAction(
+                    tokenAddress,
+                    liquidityStringForAI,
+                    tokenAgeHours > 0
+                      ? `${tokenAgeHours.toFixed(1)}h`
+                      : "Unknown",
+                  );
+
+                  const securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
+
+                  const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
+                  await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
+                } catch (aiError) {
+                  const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight: AI System is currently offline (Rate Limited)${dyorFooter}`;
+                  await sendTelegramMessage(targetAlpha, fallbackMsg, keyboard);
+                }
+              } else if (targetChatId) {
+                const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
+                await sendTelegramMessage(targetChatId, generalMsg, keyboard);
               }
             }
           }
@@ -784,10 +781,20 @@ export async function GET(request: Request) {
         const diffUsdValue = Math.abs(diff) * nativePriceEstimasi;
 
         if (Math.abs(diff) > 0.00000001) {
+          // Tetap update saldo biar gak ngecek selisih yg sama terus
           await prisma.wallet.update({
             where: { id: wallet.id },
             data: { lastBalance: currentBalance },
           });
+
+          // 🔥 🛑 SATPAM VIP KILL SWITCH (NATIVE) 🛑 🔥
+          if (diffUsdValue < 1000) {
+            console.log(
+              `[🛑 KILL SWITCH] Tx NATIVE dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${diffUsdValue.toFixed(2)} (< $1000)`,
+            );
+            continue;
+          }
+
           await prisma.transaction.create({
             data: {
               walletId: wallet.id,
@@ -809,8 +816,7 @@ export async function GET(request: Request) {
           if (
             !isSwapOrTokenAlertSent &&
             targetChatId &&
-            process.env.TELEGRAM_BOT_TOKEN &&
-            diffUsdValue >= threshold
+            process.env.TELEGRAM_BOT_TOKEN
           ) {
             const sym =
               wallet.network === "BITCOIN"
