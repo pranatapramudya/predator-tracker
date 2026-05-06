@@ -106,7 +106,7 @@ Fitur eksklusif yang dirancang untuk membangkitkan FOMO pada pengguna dengan mem
 Mengkombinasikan agregasi data _on-chain_ dengan analisis sentimen AI lintas target paus untuk menemukan token yang sedang _hype_.
 
 - **Global Whale Aggregator:** Melacak secara makro dan merangkum _Top 3_ token yang paling banyak diborong oleh _seluruh_ daftar target paus secara global dalam 24 jam terakhir (menggunakan fungsi _group-by_ pada tingkat _database_).
-- **AI Narrative & Mindshare:** Ditenagai oleh Google Gemini 2.5 Flash API untuk menganalisis dan melabeli narasi sektor token (misal: RWA, AI Memecoin) sekaligus mengukur tingkat _hype_ di pasar (_Early Alpha_, _Hype Train_).
+- **AI Narrative & Mindshare:** Ditenagai oleh Google Gemini API untuk menganalisis dan melabeli narasi sektor token (misal: RWA, AI Memecoin) sekaligus mengukur tingkat _hype_ di pasar (_Early Alpha_, _Hype Train_).
 - **Smart Data Deduplication:** Sistem Caching khusus (`TokenIntel`) tertanam di PostgreSQL menggunakan Prisma untuk menyimpan ingatan AI. Melindungi sistem dari batas kuota (Rate Limit) API dengan memastikan AI hanya memproses _scanning_ satu kali per koin.
 
 ### 15. Technical Confluency AI Engine (Trend & Momentum) 📊
@@ -125,7 +125,7 @@ Menggabungkan data _On-Chain_ dengan Indikator Teknikal klasik untuk validasi si
 - **Authentication:** Clerk
 - **Database:** Prisma ORM & PostgreSQL (Neon DB)
 - **Rate Limiting/Cache:** Upstash Redis & In-Memory Map
-- **Scanner Engine:** Helius RPC, Alchemy, DexScreener API, RugCheck API, Coinglass API, DeepSeek API, **Gemini 2.5 Flash API**
+- **Scanner Engine:** Helius RPC, Alchemy, DexScreener API, RugCheck API, Coinglass API, DeepSeek API, **Gemini 2.5 Flash-Lite API**
 - **Payment Gateway:** MoonPay (Pay Links & Webhooks)
 - **State Management:** Prisma `$transaction` (Atomic DB Locks)
 - **Bot Infrastructure:** Telegram Bot API (Inline Keyboards & Markdown)
@@ -156,10 +156,10 @@ Menggabungkan data _On-Chain_ dengan Indikator Teknikal klasik untuk validasi si
 - [x] User Dashboard Tagging: Scalper vs Diamond Hands Status.
 - [x] Shadowing Mode Database Setup.
 - [x] Global Smart Trends Leaderboard & AI Mindshare Cache (Gemini API).
-- [x] **Technical Confluency AI Engine (Trend & Momentum) & UI Badges.**
+- [x] Technical Confluency AI Engine (Trend & Momentum) & UI Badges.
 
 ### 🚀 Latest Updates
 
-- **Anti-Receh Protection**: AI analysis now only triggers for whale transactions >= $1000 to optimize API quota.
-- **AI Model Upgrade**: Switched to Gemini 1.5 Flash 8B for faster processing and higher rate limits.
-- **Bypass Safety Filter**: AI now provides uncensored analysis on high-risk tokens (Honeypot/Rugpull checks).
+- **Satpam VIP (Kill Switch) $1000:** Membuang transaksi _Smart Money_ di bawah $1000 sejak di pintu masuk _Webhook_. Menjaga _database_ tetap steril dari spam _bot market maker_ dan menghemat kuota server secara drastis.
+- **AI Model Upgrade:** Beralih menggunakan `gemini-2.5-flash-lite` untuk performa _parsing_ JSON yang jauh lebih cepat, hemat kuota API, dan stabil.
+- **Bypass Safety Filter:** Fitur keamanan Google API dimatikan secara khusus (_Safety Settings Disabled_) untuk memastikan AI tetap memberikan _insight_ tajam meskipun menganalisis _memecoin/scam token_ berisiko tinggi.
