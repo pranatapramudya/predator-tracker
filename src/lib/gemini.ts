@@ -61,7 +61,7 @@ export async function getOrFetchTokenIntel(
 
     // 🔥 FIX UTAMA: Pasang Safety Bypass & JSON MimeType di SDK
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash-8b",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.2,
