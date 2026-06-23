@@ -756,7 +756,7 @@ async function saveTransactionAndNotify(params: {
     let targetChatId = params.wallet.chatId || process.env.TELEGRAM_CHAT_ID;
 
     if (params.usdValue >= 1000) {
-      targetChatId = process.env.TELEGRAM_ALPHA_CHAT_ID;
+      targetChatId = process.env.TELEGRAM_ALPHA_CHAT_ID || targetChatId;
     }
 
     if (targetChatId && process.env.TELEGRAM_BOT_TOKEN) {
