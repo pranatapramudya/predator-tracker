@@ -223,7 +223,7 @@ export async function GET(request: Request) {
     for (const wallet of wallets) {
       try {
         const threshold = (wallet as any).minAlertUsd || 100;
-        const targetChatId = wallet.chatId;
+        const targetChatId = wallet.chatId || process.env.TELEGRAM_CHAT_ID;
         let isSwapOrTokenAlertSent = false;
 
         // ------------------------------------------
@@ -256,9 +256,9 @@ export async function GET(request: Request) {
               }
 
               // 🔥 🛑 SATPAM VIP KILL SWITCH (SOLANA) 🛑 🔥
-              if (usdAmount < 1000) {
+              if (usdAmount < 3000) {
                 console.log(
-                  `[🛑 KILL SWITCH] Tx Solana dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${usdAmount.toFixed(2)} (< $1000)`,
+                  `[🛑 KILL SWITCH] Tx Solana dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${usdAmount.toFixed(2)} (< $3000)`,
                 );
                 continue;
               }
@@ -458,14 +458,15 @@ export async function GET(request: Request) {
                 aiConfluenceMsg;
 
               const targetAlpha =
-                (wallet as any).alphaChannelId || targetChatId;
+                (wallet as any).alphaChannelId || targetChatId || process.env.TELEGRAM_ALPHA_CHAT_ID;
 
               const isAlphaWorthy =
                 tokenAddress !== "solana" &&
                 tokenSymbol !== "USDC" &&
                 tokenSymbol !== "USDT";
 
-              if (isAlphaWorthy && targetAlpha) {
+              let securityBlock = "";
+              if (isAlphaWorthy) {
                 try {
                   const analysis = await analyzeWhaleAction(
                     tokenAddress,
@@ -474,17 +475,17 @@ export async function GET(request: Request) {
                       ? `${tokenAgeHours.toFixed(1)}h`
                       : "Unknown",
                   );
-
-                  const securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
-
-                  const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
-                  await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
+                  securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
                 } catch (aiError) {
-                  const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight:  AI System is currently offline (Rate Limited) ${dyorFooter}`;
-                  await sendTelegramMessage(targetAlpha, fallbackMsg, keyboard);
+                  securityBlock = `\n\n🤖 *AI Confidence Score:* 0/100\n💡 *AI Insight:* AI System is currently offline (Rate Limited)`;
                 }
+              }
+
+              if (isAlphaWorthy && targetAlpha) {
+                const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
+                await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
               } else if (targetChatId) {
-                const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
+                const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${securityBlock}${dyorFooter}`;
                 await sendTelegramMessage(targetChatId, generalMsg, keyboard);
               }
             }
@@ -521,9 +522,9 @@ export async function GET(request: Request) {
               }
 
               // 🔥 🛑 SATPAM VIP KILL SWITCH (EVM/BASE) 🛑 🔥
-              if (usdAmount < 1000) {
+              if (usdAmount < 3000) {
                 console.log(
-                  `[🛑 KILL SWITCH] Tx EVM/BASE dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${usdAmount.toFixed(2)} (< $1000)`,
+                  `[🛑 KILL SWITCH] Tx EVM/BASE dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${usdAmount.toFixed(2)} (< $3000)`,
                 );
                 continue;
               }
@@ -722,7 +723,7 @@ export async function GET(request: Request) {
                 aiConfluenceMsg;
 
               const targetAlpha =
-                (wallet as any).alphaChannelId || targetChatId;
+                (wallet as any).alphaChannelId || targetChatId || process.env.TELEGRAM_ALPHA_CHAT_ID;
 
               const isAlphaWorthy =
                 tokenSymbol !== "USDC" &&
@@ -730,7 +731,8 @@ export async function GET(request: Request) {
                 tokenSymbol !== "DAI" &&
                 tokenSymbol !== "WETH";
 
-              if (isAlphaWorthy && targetAlpha) {
+              let securityBlock = "";
+              if (isAlphaWorthy) {
                 try {
                   const analysis = await analyzeWhaleAction(
                     tokenAddress,
@@ -739,17 +741,17 @@ export async function GET(request: Request) {
                       ? `${tokenAgeHours.toFixed(1)}h`
                       : "Unknown",
                   );
-
-                  const securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
-
-                  const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
-                  await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
+                  securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Confidence Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
                 } catch (aiError) {
-                  const fallbackMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}\n\n🤖 AI Confidence Score: 0/100\n💡 AI Insight: AI System is currently offline (Rate Limited)${dyorFooter}`;
-                  await sendTelegramMessage(targetAlpha, fallbackMsg, keyboard);
+                  securityBlock = `\n\n🤖 *AI Confidence Score:* 0/100\n💡 *AI Insight:* AI System is currently offline (Rate Limited)`;
                 }
+              }
+
+              if (isAlphaWorthy && targetAlpha) {
+                const alphaMsg = `👑 *ALPHA PREDATOR ALERT!*\n\n${baseMessage}${securityBlock}${dyorFooter}`;
+                await sendTelegramMessage(targetAlpha, alphaMsg, keyboard);
               } else if (targetChatId) {
-                const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${dyorFooter}`;
+                const generalMsg = `🚨 *WHALE ALERT* 🚨\n\n${baseMessage}${securityBlock}${dyorFooter}`;
                 await sendTelegramMessage(targetChatId, generalMsg, keyboard);
               }
             }
@@ -788,9 +790,9 @@ export async function GET(request: Request) {
           });
 
           // 🔥 🛑 SATPAM VIP KILL SWITCH (NATIVE) 🛑 🔥
-          if (diffUsdValue < 1000) {
+          if (diffUsdValue < 3000) {
             console.log(
-              `[🛑 KILL SWITCH] Tx NATIVE dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${diffUsdValue.toFixed(2)} (< $1000)`,
+              `[🛑 KILL SWITCH] Tx NATIVE dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${diffUsdValue.toFixed(2)} (< $3000)`,
             );
             continue;
           }
@@ -828,7 +830,13 @@ export async function GET(request: Request) {
             await sendTelegramMessage(targetChatId, message);
           }
         }
-      } catch (innerError) {}
+      } catch (innerError: any) {
+        console.error(`[WEBHOOK ERROR] Wallet ${wallet.address} failed:`, innerError?.message || innerError);
+        if (innerError?.status === 429 || innerError?.message?.includes('429') || innerError?.status === 500 || innerError?.message?.includes('500')) {
+          console.log("[WEBHOOK] Rate limit / Server Error detected, delaying for 3 seconds...");
+          await delay(3000);
+        }
+      }
 
       console.log(`[RADAR] Jeda 0.5 detik...`);
       await delay(500);
@@ -838,10 +846,12 @@ export async function GET(request: Request) {
       success: true,
       message: "Radar sweep completed",
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("[WEBHOOK FATAL ERROR]", error);
+    // Kembalikan status 200 agar cron-job.org tidak mendisable webhook
     return NextResponse.json(
-      { success: false, error: "Sweep failed" },
-      { status: 500 },
+      { success: false, error: "Sweep failed but survived", details: error?.message },
+      { status: 200 },
     );
   }
 }
