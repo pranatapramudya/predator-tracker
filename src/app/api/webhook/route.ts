@@ -16,6 +16,7 @@ import { EMA, RSI } from "technicalindicators";
 import { getOrFetchTokenIntel } from "@/lib/gemini";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
