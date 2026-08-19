@@ -2,7 +2,7 @@
 import UpgradeModal from "@/components/UpgradeModal";
 import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
 import { getOrFetchTokenIntel } from "@/lib/gemini";
-import { unstable_noStore as noStore, revalidatePath } from "next/cache";
+import { unstable_cache, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
@@ -29,7 +29,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-export const dynamic = "force-dynamic";
+// [PHASE 3] force-dynamic dihapus — halaman kini bisa di-cache oleh Next.js.
+// Mutasi (Server Actions) sudah memanggil revalidatePath sehingga cache invalidated otomatis.
 
 const NETWORK_OPTIONS = [
   { value: "BITCOIN", label: "Bitcoin", color: "text-orange-500" },
@@ -393,7 +394,8 @@ async function deleteWalletAction(formData: FormData) {
 }
 
 export default async function Page({ searchParams }: { searchParams: any }) {
-  noStore();
+  // [PHASE 3] noStore() dihapus — digantikan oleh unstable_cache pada data publik.
+  // Data per-user (wallets, dbUser) tetap fresh karena tidak di-cache.
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
@@ -436,7 +438,9 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const limit = 4;
   const skip = (page - 1) * limit;
 
-  const [wallets, totalWallets, userWalletsRecord, privateAlphaLogs] =
+  // [PHASE 2] Hapus query userWalletsRecord yang redundan.
+  // chatId & alphaChannelId diambil langsung dari hasil wallets di bawah.
+  const [wallets, totalWallets, privateAlphaLogs] =
     await Promise.all([
       prisma.wallet
         .findMany({
@@ -451,12 +455,6 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         })
         .catch(() => []),
       prisma.wallet.count({ where: { userId: userId } }).catch(() => 0),
-      prisma.wallet
-        .findMany({
-          where: { userId: userId },
-          select: { chatId: true, alphaChannelId: true },
-        })
-        .catch(() => []),
       prisma.transaction
         .findMany({
           where: {
@@ -470,48 +468,76 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         .catch(() => []),
     ]);
 
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const trendingBuys = await prisma.transaction.groupBy({
-    by: ["tokenAddress", "tokenSymbol"],
-    where: {
-      type: "BUY",
-      createdAt: { gte: twentyFourHoursAgo },
-      tokenAddress: {
-        notIn: ["solana", "eth", "btc", "USDC", "USDT", "WETH", "DAI"],
-      },
-    },
-    _count: { walletId: true },
-    orderBy: { _count: { walletId: "desc" } },
-    take: 3,
-  });
+  // [PHASE 3] Bungkus trendingBuys + AI Intel dalam unstable_cache dengan TTL 300 detik.
+  // Ini mencegah Gemini API dipanggil pada setiap render halaman.
+  // Cache di-share antar semua user karena data ini bersifat global (bukan per-user).
+  const getTrendingData = unstable_cache(
+    async () => {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const trendingBuys = await prisma.transaction.groupBy({
+        by: ["tokenAddress", "tokenSymbol"],
+        where: {
+          type: "BUY",
+          createdAt: { gte: twentyFourHoursAgo },
+          tokenAddress: {
+            notIn: ["solana", "eth", "btc", "USDC", "USDT", "WETH", "DAI"],
+          },
+        },
+        _count: { walletId: true },
+        orderBy: { _count: { walletId: "desc" } },
+        take: 3,
+      });
 
-  const smartMoneyTrends = await Promise.all(
-    trendingBuys.map(async (t) => {
-      let intel = null;
-      try {
-        intel = await getOrFetchTokenIntel(
-          t.tokenAddress as string,
-          t.tokenSymbol as string,
-        );
-      } catch (e) {
-        console.error("Gagal load AI Intel", e);
-      }
-      return {
-        symbol: t.tokenSymbol || "UNKNOWN",
-        address: t.tokenAddress as string,
-        buyCount: t._count.walletId,
-        narrative: intel?.narrative || "Scanning...",
-        mindshare: intel?.mindshare || "TBD",
-        confluence: intel?.confluence || "PENDING",
-      };
-    }),
+      const smartMoneyTrends = await Promise.all(
+        trendingBuys.map(async (t) => {
+          let intel = null;
+          try {
+            intel = await getOrFetchTokenIntel(
+              t.tokenAddress as string,
+              t.tokenSymbol as string,
+            );
+          } catch (e) {
+            console.error("Gagal load AI Intel", e);
+          }
+          return {
+            symbol: t.tokenSymbol || "UNKNOWN",
+            address: t.tokenAddress as string,
+            buyCount: t._count.walletId,
+            narrative: intel?.narrative || "Scanning...",
+            mindshare: intel?.mindshare || "TBD",
+            confluence: (intel?.confluence || "PENDING") as string,
+          };
+        }),
+      );
+
+      return smartMoneyTrends;
+    },
+    ["smart-money-trends"],
+    { revalidate: 300, tags: ["smart-money-trends"] },
   );
+
+  const smartMoneyTrends = await getTrendingData();
 
   const totalPages = Math.ceil(totalWallets / limit);
 
-  const savedChatId = userWalletsRecord.find((w) => w.chatId)?.chatId || "";
-  const savedAlphaId =
-    userWalletsRecord.find((w) => w.alphaChannelId)?.alphaChannelId || "";
+  // [PHASE 2] Reuse data wallets yang sudah di-fetch — hapus userWalletsRecord redundan.
+  const savedChatId = wallets.find((w) => w.chatId)?.chatId || "";
+  const savedAlphaId = wallets.find((w) => w.alphaChannelId)?.alphaChannelId || "";
+
+  // [PHASE 2] Pindahkan reduce() dari JSX ke server-side.
+  // Dihitung sekali di sini, bukan diulang setiap render card wallet.
+  const walletStats = wallets.map((w) => {
+    const totalInvested = w.positions.reduce(
+      (sum, p) => sum + Number(p.totalInvestedUsd),
+      0,
+    );
+    const totalPnl = w.positions.reduce(
+      (sum, p) => sum + Number(p.realizedPnlUsd),
+      0,
+    );
+    const roiPercent = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+    return { id: w.id, totalInvested, totalPnl, roiPercent };
+  });
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-[1600px] mx-auto space-y-10 bg-[#080808] text-white overflow-x-hidden transition-colors duration-300">
@@ -893,16 +919,9 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   const safeName = w.name || "Target";
                   const tradeStyle = getTradeStyleBadge(w.transactions);
 
-                  const totalInvested = w.positions.reduce(
-                    (sum, p) => sum + Number(p.totalInvestedUsd),
-                    0,
-                  );
-                  const totalPnl = w.positions.reduce(
-                    (sum, p) => sum + Number(p.realizedPnlUsd),
-                    0,
-                  );
-                  const roiPercent =
-                    totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+                  // [PHASE 2] Ambil dari walletStats yang sudah dihitung di server block.
+                  const stats = walletStats.find((s) => s.id === w.id)!;
+                  const { totalInvested, totalPnl, roiPercent } = stats;
 
                   const baseShadow = dbUser.shadowBalance || 100;
                   const shadowProfit = (baseShadow * roiPercent) / 100;

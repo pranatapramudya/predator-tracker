@@ -418,28 +418,23 @@ export async function GET(request: Request) {
                 }
               }
 
-              const whaleData = await prisma.wallet.findUnique({
-                where: { id: wallet.id },
-                select: { winRate: true, totalTrades: true },
-              });
-              const allPositions = await prisma.tokenPosition.findMany({
+              // [REFACTOR] Gunakan aggregate DB untuk SUM — menghapus findMany + in-memory reduce.
+              // Gunakan wallet object dari loop awal — menghapus findUnique redundan.
+              const pnlAggregate = await prisma.tokenPosition.aggregate({
                 where: { walletId: wallet.id },
-                select: { realizedPnlUsd: true },
+                _sum: { realizedPnlUsd: true },
               });
-              const totalRealizedPnl = allPositions.reduce(
-                (sum, pos) => sum + Number(pos.realizedPnlUsd),
-                0,
-              );
+              const totalRealizedPnl = Number(pnlAggregate._sum.realizedPnlUsd ?? 0);
               const winRateText =
-                whaleData && whaleData.totalTrades > 0
-                  ? `${Number(whaleData.winRate).toFixed(1)}%`
+                wallet.totalTrades > 0
+                  ? `${Number(wallet.winRate).toFixed(1)}%`
                   : "N/A (No Sells Yet)";
               const pnlText =
                 totalRealizedPnl >= 0
                   ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
                   : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
 
-              const whaleStatsBlock = `\n\n🏆 *WHALE STATS*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
+              const whaleStatsBlock = `\n\n🏆 *WHALE STATS*\n🎯 *Winrate:* ${winRateText} (${wallet.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
               const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
               const dyorFooter = `\n\n⚠️ *DISCLAIMER:*\n_Auto-generated from blockchain data. Not financial advice (NFA). Do your own research (DYOR)!_`;
               const keyboard = buildKeyboard(
@@ -682,28 +677,23 @@ export async function GET(request: Request) {
                 }
               }
 
-              const whaleData = await prisma.wallet.findUnique({
-                where: { id: wallet.id },
-                select: { winRate: true, totalTrades: true },
-              });
-              const allPositions = await prisma.tokenPosition.findMany({
+              // [REFACTOR] Gunakan aggregate DB untuk SUM — menghapus findMany + in-memory reduce.
+              // Gunakan wallet object dari loop awal — menghapus findUnique redundan.
+              const pnlAggregate = await prisma.tokenPosition.aggregate({
                 where: { walletId: wallet.id },
-                select: { realizedPnlUsd: true },
+                _sum: { realizedPnlUsd: true },
               });
-              const totalRealizedPnl = allPositions.reduce(
-                (sum, pos) => sum + Number(pos.realizedPnlUsd),
-                0,
-              );
+              const totalRealizedPnl = Number(pnlAggregate._sum.realizedPnlUsd ?? 0);
 
               const winRateText =
-                whaleData && whaleData.totalTrades > 0
-                  ? `${Number(whaleData.winRate).toFixed(1)}%`
+                wallet.totalTrades > 0
+                  ? `${Number(wallet.winRate).toFixed(1)}%`
                   : "N/A (No Sells Yet)";
               const pnlText =
                 totalRealizedPnl >= 0
                   ? `+$${totalRealizedPnl.toFixed(2)} 🤑`
                   : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
-              const whaleStatsBlock = `\n\n🏆 *WHALE STATS*\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
+              const whaleStatsBlock = `\n\n🏆 *WHALE STATS*\n🎯 *Winrate:* ${winRateText} (${wallet.totalTrades || 0} Trades)\n💰 *Total PnL:* ${pnlText}`;
 
               const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
               const keyboard = buildKeyboard(
@@ -801,7 +791,10 @@ export async function GET(request: Request) {
           await prisma.transaction.create({
             data: {
               walletId: wallet.id,
-              dedupeKey: `NATIVE-${wallet.id}-${Date.now()}`,
+              // [REFACTOR] Ganti Date.now() dengan identifier deterministik:
+              // Pembulatan ke jam (3600000ms) + amount rounded 8 desimal.
+              // Hasilnya: transaksi yang sama dalam 1 jam = key yang sama = deduplicated.
+              dedupeKey: `NATIVE-${wallet.id}-${Math.round(Math.abs(diff) * 1e8)}-${Math.floor(Date.now() / 3_600_000)}`,
               signature: "NATIVE_TRANSFER",
               type: diff > 0 ? "RECEIVE_NATIVE" : "SEND_NATIVE",
               amount: Math.abs(diff),
