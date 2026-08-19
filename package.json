@@ -4,6 +4,7 @@
   "description": "Whale Tracking Dashboard for Solana, Ethereum, and Base",
   "scripts": {
     "dev": "next dev",
+    "dev:webpack": "cross-env NEXT_DEV_BUNDLER=webpack next dev",
     "build": "next build",
     "start": "next start",
     "postinstall": "prisma generate"
@@ -36,6 +37,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.5.0",
+    "cross-env": "^10.1.0",
     "postcss": "^8.5.10",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.7.0"

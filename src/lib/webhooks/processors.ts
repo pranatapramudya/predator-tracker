@@ -260,6 +260,9 @@ async function loadTrackedWallets(candidates: TransferCandidate[]) {
       name: true,
       network: true,
       chatId: true,
+      // [REFACTOR] Tambahkan field ini agar saveTransactionAndNotify tidak perlu findUnique ulang.
+      winRate: true,
+      totalTrades: true,
     },
   });
 
@@ -491,6 +494,9 @@ async function saveTransactionAndNotify(params: {
     name: string | null;
     network: Network;
     chatId: string | null;
+    // [REFACTOR] Tersedia dari loadTrackedWallets — tidak perlu findUnique ulang.
+    winRate: number;
+    totalTrades: number;
   };
   action: WhaleAction;
   symbol: string;
@@ -634,24 +640,17 @@ async function saveTransactionAndNotify(params: {
     }
 
     // 2. TARIK DATA RAPOR WHALE
-    const whaleData = await prisma.wallet.findUnique({
-      where: { id: params.wallet.id },
-      select: { winRate: true, totalTrades: true },
-    });
-
-    const allPositions = await prisma.tokenPosition.findMany({
+    // [REFACTOR] Gunakan aggregate DB untuk SUM — menghapus findMany + in-memory reduce.
+    // Gunakan params.wallet dari caller — menghapus findUnique redundan.
+    const pnlAggregate = await prisma.tokenPosition.aggregate({
       where: { walletId: params.wallet.id },
-      select: { realizedPnlUsd: true },
+      _sum: { realizedPnlUsd: true },
     });
-
-    const totalRealizedPnl = allPositions.reduce(
-      (sum, pos) => sum + Number(pos.realizedPnlUsd),
-      0,
-    );
+    const totalRealizedPnl = Number(pnlAggregate._sum.realizedPnlUsd ?? 0);
 
     const winRateText =
-      whaleData && whaleData.totalTrades > 0
-        ? `${Number(whaleData.winRate).toFixed(1)}%`
+      params.wallet.totalTrades > 0
+        ? `${Number(params.wallet.winRate).toFixed(1)}%`
         : "N/A (No Sells Yet)";
 
     const pnlText =
@@ -661,7 +660,7 @@ async function saveTransactionAndNotify(params: {
 
     const whaleStatsBlock =
       `\n\n🏆 *WHALE STATS*` +
-      `\n🎯 *Winrate:* ${winRateText} (${whaleData?.totalTrades || 0} Trades)` +
+      `\n🎯 *Winrate:* ${winRateText} (${params.wallet.totalTrades || 0} Trades)` +
       `\n💰 *Total PnL:* ${pnlText}`;
 
     // 3. FORMATTING TELEGRAM
