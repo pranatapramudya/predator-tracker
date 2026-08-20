@@ -2,7 +2,7 @@
 import UpgradeModal from "@/components/UpgradeModal";
 import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
 import { getOrFetchTokenIntel } from "@/lib/gemini";
-import { unstable_cache, revalidatePath } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
@@ -29,8 +29,53 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-// [PHASE 3] force-dynamic dihapus — halaman kini bisa di-cache oleh Next.js.
-// Mutasi (Server Actions) sudah memanggil revalidatePath sehingga cache invalidated otomatis.
+// WAJIB: force-dynamic karena halaman ini menggunakan auth() dari Clerk
+// yang merupakan dynamic API — Next.js tidak bisa static render halaman ini.
+// unstable_cache di bawah tetap bekerja untuk meng-cache data trending saja.
+export const dynamic = "force-dynamic";
+
+// [PHASE 3] Cache dihapus karena bentrokan dengan Clerk Auth
+// Menggunakan fungsi async biasa.
+const getTrendingData = async () => {
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const trendingBuys = await prisma.transaction.groupBy({
+    by: ["tokenAddress", "tokenSymbol"],
+    where: {
+      type: "BUY",
+      createdAt: { gte: twentyFourHoursAgo },
+      tokenAddress: {
+        notIn: ["solana", "eth", "btc", "USDC", "USDT", "WETH", "DAI"],
+      },
+    },
+    _count: { walletId: true },
+    orderBy: { _count: { walletId: "desc" } },
+    take: 3,
+  });
+
+  const smartMoneyTrends = await Promise.all(
+    trendingBuys.map(async (t) => {
+      let intel = null;
+      try {
+        intel = await getOrFetchTokenIntel(
+          t.tokenAddress as string,
+          t.tokenSymbol as string,
+        );
+      } catch (e) {
+        console.error("Gagal load AI Intel", e);
+      }
+      return {
+        symbol: t.tokenSymbol || "UNKNOWN",
+        address: t.tokenAddress as string,
+        buyCount: t._count.walletId,
+        narrative: intel?.narrative || "Scanning...",
+        mindshare: intel?.mindshare || "TBD",
+        confluence: (intel?.confluence || "PENDING") as string,
+      };
+    }),
+  );
+
+  return smartMoneyTrends;
+};
 
 const NETWORK_OPTIONS = [
   { value: "BITCOIN", label: "Bitcoin", color: "text-orange-500" },
@@ -394,8 +439,6 @@ async function deleteWalletAction(formData: FormData) {
 }
 
 export default async function Page({ searchParams }: { searchParams: any }) {
-  // [PHASE 3] noStore() dihapus — digantikan oleh unstable_cache pada data publik.
-  // Data per-user (wallets, dbUser) tetap fresh karena tidak di-cache.
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
@@ -468,54 +511,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         .catch(() => []),
     ]);
 
-  // [PHASE 3] Bungkus trendingBuys + AI Intel dalam unstable_cache dengan TTL 300 detik.
-  // Ini mencegah Gemini API dipanggil pada setiap render halaman.
-  // Cache di-share antar semua user karena data ini bersifat global (bukan per-user).
-  const getTrendingData = unstable_cache(
-    async () => {
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const trendingBuys = await prisma.transaction.groupBy({
-        by: ["tokenAddress", "tokenSymbol"],
-        where: {
-          type: "BUY",
-          createdAt: { gte: twentyFourHoursAgo },
-          tokenAddress: {
-            notIn: ["solana", "eth", "btc", "USDC", "USDT", "WETH", "DAI"],
-          },
-        },
-        _count: { walletId: true },
-        orderBy: { _count: { walletId: "desc" } },
-        take: 3,
-      });
-
-      const smartMoneyTrends = await Promise.all(
-        trendingBuys.map(async (t) => {
-          let intel = null;
-          try {
-            intel = await getOrFetchTokenIntel(
-              t.tokenAddress as string,
-              t.tokenSymbol as string,
-            );
-          } catch (e) {
-            console.error("Gagal load AI Intel", e);
-          }
-          return {
-            symbol: t.tokenSymbol || "UNKNOWN",
-            address: t.tokenAddress as string,
-            buyCount: t._count.walletId,
-            narrative: intel?.narrative || "Scanning...",
-            mindshare: intel?.mindshare || "TBD",
-            confluence: (intel?.confluence || "PENDING") as string,
-          };
-        }),
-      );
-
-      return smartMoneyTrends;
-    },
-    ["smart-money-trends"],
-    { revalidate: 300, tags: ["smart-money-trends"] },
-  );
-
+  // [PHASE 3] Gunakan getTrendingData yang sudah di-cache di module scope.
+  // Gemini API hanya dipanggil max 1x per 300 detik, bukan setiap render.
   const smartMoneyTrends = await getTrendingData();
 
   const totalPages = Math.ceil(totalWallets / limit);
