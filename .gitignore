@@ -31,3 +31,5 @@ yarn-error.log*
 .vercel
 
 PRD.md
+# clerk configuration (can include secrets)
+/.clerk/

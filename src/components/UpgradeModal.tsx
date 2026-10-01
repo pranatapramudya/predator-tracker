@@ -69,13 +69,13 @@ export default function UpgradeModal() {
                 setIsOpen(false);
                 setSelectedTier(null);
               }}
-              className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors"
+              className="absolute top-4 right-4 text-neutral-500 hover:text-foreground transition-colors"
             >
               ✕
             </button>
 
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-black text-white uppercase tracking-wider">
+              <h2 className="text-2xl font-black text-foreground uppercase tracking-wider">
                 Unlock <span className="text-emerald-400">Premium Target</span>
               </h2>
               <p className="text-neutral-400 text-sm mt-2">
@@ -101,10 +101,10 @@ export default function UpgradeModal() {
                         BEST VALUE
                       </span>
                     )}
-                    <h3 className="text-lg font-bold text-white uppercase">
+                    <h3 className="text-lg font-bold text-foreground uppercase">
                       {t.name}
                     </h3>
-                    <div className="text-3xl font-black mt-2 text-white">
+                    <div className="text-3xl font-black mt-2 text-foreground">
                       ${t.price}
                     </div>
                     <div className="mt-4 text-sm text-neutral-400">
@@ -121,11 +121,11 @@ export default function UpgradeModal() {
               <div className="max-w-md mx-auto bg-neutral-900 rounded-xl p-6 border border-neutral-800 text-center">
                 <button
                   onClick={() => setSelectedTier(null)}
-                  className="text-xs text-neutral-500 mb-4 hover:text-white transition-colors"
+                  className="text-xs text-neutral-500 mb-4 hover:text-foreground transition-colors"
                 >
                   ← Back to tiers
                 </button>
-                <h3 className="text-xl font-bold text-white">
+                <h3 className="text-xl font-bold text-foreground">
                   {selectedTier.name} TIER
                 </h3>
                 <div className="text-5xl font-black text-emerald-400 my-4 tracking-tighter">
