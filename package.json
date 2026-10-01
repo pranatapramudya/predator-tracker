@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:webpack": "cross-env NEXT_DEV_BUNDLER=webpack next dev",
-    "build": "next build",
+    "build": "prisma generate && prisma db push --accept-data-loss && next build",
     "start": "next start",
     "postinstall": "prisma generate",
     "prepare": "husky"
