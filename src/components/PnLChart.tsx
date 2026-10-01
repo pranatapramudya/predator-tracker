@@ -22,7 +22,7 @@ export default function PnLChart({ data }: { data: any[] }) {
   // Pas di server (sebelum nyampe HP), tampilin animasi loading detak jantung
   if (!isMounted) {
     return (
-      <div className="h-32 w-full mt-2 border border-white/5 bg-white/[0.02] rounded-2xl flex items-center justify-center">
+      <div className="h-32 w-full mt-2 border border-border bg-white/[0.02] rounded-2xl flex items-center justify-center">
         <span className="w-4 h-4 rounded-full bg-emerald-500 animate-ping opacity-50" />
       </div>
     );
@@ -31,8 +31,8 @@ export default function PnLChart({ data }: { data: any[] }) {
   // Jika data kosong, tampilkan placeholder
   if (!data || data.length === 0) {
     return (
-      <div className="h-32 w-full flex items-center justify-center border border-white/5 bg-white/[0.02] rounded-2xl mt-2">
-        <p className="text-[10px] text-white/20 uppercase tracking-widest font-bold">
+      <div className="h-32 w-full flex items-center justify-center border border-border bg-white/[0.02] rounded-2xl mt-2">
+        <p className="text-[10px] text-foreground/20 uppercase tracking-widest font-bold">
           No Data Found
         </p>
       </div>
@@ -40,7 +40,7 @@ export default function PnLChart({ data }: { data: any[] }) {
   }
 
   return (
-    <div className="h-32 w-full mt-2 bg-white/[0.03] border border-white/5 rounded-2xl p-2">
+    <div className="h-32 w-full mt-2 bg-white/[0.03] border border-border rounded-2xl p-2">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data}>
           <XAxis dataKey="tokenSymbol" hide={true} />

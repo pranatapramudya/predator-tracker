@@ -158,7 +158,7 @@ export function getTradeStyleBadge(transactions: any[]) {
   if (!transactions || transactions.length < 2) {
     return {
       label: "Unknown",
-      color: "bg-white/10 text-white/50 border border-white/5",
+      color: "bg-muted text-foreground/50 border border-border",
       icon: "❓",
     };
   }
@@ -537,10 +537,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   });
 
   return (
-    <main className="min-h-screen p-4 md:p-10 max-w-[1600px] mx-auto space-y-10 bg-[#080808] text-white overflow-x-hidden transition-colors duration-300">
-      <header className="flex flex-row items-center justify-between gap-4 pb-8 border-b border-white/10">
+    <main className="min-h-screen p-4 md:p-10 max-w-[1600px] mx-auto space-y-10 bg-background text-foreground overflow-x-hidden transition-colors duration-300">
+      <header className="flex flex-row items-center justify-between gap-4 pb-8 border-b border-border">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] uppercase mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 border border-border text-[10px] font-bold tracking-[0.3em] uppercase mb-4">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse will-change-opacity transform-gpu" />{" "}
             Targeting System Online
           </div>
@@ -550,13 +550,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </div>
 
         <div className="flex items-center gap-4 md:gap-6">
-          <div className="hidden md:block px-5 py-3 bg-white/5 border border-white/10 rounded-2xl text-right">
-            <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold">
+          <div className="hidden md:block px-5 py-3 bg-muted/50 border border-border rounded-2xl text-right">
+            <p className="text-[10px] text-foreground/60 uppercase tracking-widest font-bold">
               Your Whales
             </p>
             <p className="text-xl font-black">
               {totalWallets}{" "}
-              <span className="text-xs font-normal text-white/40 italic">
+              <span className="text-xs font-normal text-foreground/40 italic">
                 TARGETS
               </span>
             </p>
@@ -564,7 +564,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
           <UpgradeModal />
 
-          <div className="border border-white/20 rounded-full p-1 hover:border-emerald-500/50 transition-colors bg-white/5">
+          <div className="border border-border rounded-full p-1 hover:border-emerald-500/50 transition-colors bg-muted/50">
             <UserButton
               appearance={{
                 elements: { userButtonAvatarBox: "w-10 h-10 md:w-12 md:h-12" },
@@ -590,7 +590,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 xl:grid-cols-12 gap-6 relative">
         <section className="lg:col-span-4 xl:col-span-3 h-fit lg:sticky lg:top-10">
-          <div className="bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl transition-colors">
+          <div className="bg-card border border-border rounded-[32px] p-6 shadow-2xl transition-colors">
             <h2 className="text-lg font-black uppercase mb-6 flex items-center gap-3">
               <Shield className="text-emerald-400 w-5 h-5" /> Acquisition
             </h2>
@@ -600,7 +600,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               autoComplete="off"
             >
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
+                <label className="text-[10px] font-black text-foreground/60 uppercase tracking-widest ml-1">
                   Wallet Address
                 </label>
                 <input
@@ -608,22 +608,22 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   required
                   autoComplete="new-password"
                   placeholder="BTC, SOL, or EVM..."
-                  className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none font-mono text-sm focus:border-emerald-500/50 transition-all text-white"
+                  className="w-full bg-muted border border-border rounded-2xl px-5 py-4 font-bold outline-none font-mono text-sm focus:border-emerald-500/50 transition-all text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
+                <label className="text-[10px] font-black text-foreground/60 uppercase tracking-widest ml-1">
                   Network
                 </label>
                 <select
                   name="network"
-                  className="w-full bg-black/60 border border-white/10 rounded-2xl px-4 py-4 font-bold outline-none cursor-pointer text-sm text-white"
+                  className="w-full bg-muted border border-border rounded-2xl px-4 py-4 font-bold outline-none cursor-pointer text-sm text-foreground"
                 >
                   {NETWORK_OPTIONS.map((n) => (
                     <option
                       key={n.value}
                       value={n.value}
-                      className="bg-zinc-900"
+                      className="bg-card"
                     >
                       {n.label}
                     </option>
@@ -631,7 +631,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
+                <label className="text-[10px] font-black text-foreground/60 uppercase tracking-widest ml-1">
                   Alias Name
                 </label>
                 <input
@@ -639,13 +639,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   required
                   autoComplete="off"
                   placeholder="Whale #1"
-                  className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-emerald-500/50 transition-all text-white"
+                  className="w-full bg-muted border border-border rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-emerald-500/50 transition-all text-foreground"
                 />
               </div>
 
               <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between ml-1">
-                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
+                  <label className="text-[10px] font-black text-foreground/60 uppercase tracking-widest flex items-center gap-2">
                     <Send className="w-3 h-3 text-cyan-400" /> Telegram ID
                   </label>
                   {!savedChatId && (
@@ -668,7 +668,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   className={`w-full rounded-2xl px-5 py-4 font-bold outline-none text-sm transition-all ${
                     savedChatId
                       ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-not-allowed"
-                      : "bg-black/60 border border-white/10 text-white focus:border-cyan-500/50"
+                      : "bg-muted border border-border text-foreground focus:border-cyan-500/50"
                   }`}
                 />
                 {savedChatId && (
@@ -680,7 +680,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
               <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between ml-1">
-                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
+                  <label className="text-[10px] font-black text-foreground/60 uppercase tracking-widest flex items-center gap-2">
                     👑 Alpha Group ID (Optional)
                   </label>
                   {!savedAlphaId && (
@@ -688,7 +688,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       <summary className="text-[9px] font-bold text-amber-400 hover:text-amber-300 transition-colors uppercase tracking-widest bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 flex items-center gap-1 cursor-pointer list-none outline-none [&::-webkit-details-marker]:hidden">
                         ❓ How to get ID
                       </summary>
-                      <div className="absolute z-50 top-full right-0 mt-2 w-[280px] bg-[#121212] border border-amber-500/30 rounded-2xl p-4 shadow-2xl text-xs text-white/80 normal-case hidden group-open:block">
+                      <div className="absolute z-50 top-full right-0 mt-2 w-[280px] bg-card border border-amber-500/30 rounded-2xl p-4 shadow-2xl text-xs text-foreground/80 normal-case hidden group-open:block">
                         <p className="font-black text-amber-400 mb-2 uppercase tracking-widest text-[10px]">
                           Tutorial:
                         </p>
@@ -703,7 +703,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           </li>
                           <li>
                             The bot will send your Group ID (starts with{" "}
-                            <code className="bg-black/50 px-1 py-0.5 rounded text-white">
+                            <code className="bg-muted px-1 py-0.5 rounded text-foreground">
                               -100...
                             </code>
                             ).
@@ -726,7 +726,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   className={`w-full rounded-2xl px-5 py-4 font-bold outline-none text-sm transition-all ${
                     savedAlphaId
                       ? "bg-amber-500/10 border border-amber-500/30 text-amber-400 cursor-not-allowed"
-                      : "bg-black/60 border border-white/10 text-white focus:border-amber-500/50"
+                      : "bg-muted border border-border text-foreground focus:border-amber-500/50"
                   }`}
                 />
                 {savedAlphaId ? (
@@ -734,7 +734,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     🔒 ID Locked (Auto-Sync)
                   </p>
                 ) : (
-                  <p className="text-[8px] text-white/40 uppercase tracking-widest mt-2 ml-1 italic font-bold">
+                  <p className="text-[8px] text-foreground/40 uppercase tracking-widest mt-2 ml-1 italic font-bold">
                     *Leave blank to receive Alpha alerts in the standard chat
                   </p>
                 )}
@@ -752,7 +752,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
         <section className="block xl:hidden lg:col-span-8 w-full mt-2">
           {/* 🔥 TRENDING MOBILE/TABLET VIEW 🔥 */}
-          <div className="bg-[#121212] border border-orange-500/30 rounded-[24px] p-5 shadow-2xl mb-4 relative overflow-hidden">
+          <div className="bg-card border border-orange-500/30 rounded-[24px] p-5 shadow-2xl mb-4 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-[40px] rounded-full"></div>
             <div className="flex items-center justify-between mb-4 relative z-10">
               <h2 className="text-xs font-black text-orange-400 tracking-widest flex items-center gap-2 uppercase">
@@ -766,18 +766,18 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               {smartMoneyTrends.map((trend, i) => (
                 <div
                   key={trend.address}
-                  className="p-3 bg-black/40 border border-white/5 rounded-2xl flex flex-col gap-2"
+                  className="p-3 bg-muted border border-border rounded-2xl flex flex-col gap-2"
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-white/40">
+                      <span className="text-xs font-black text-foreground/40">
                         #{i + 1}
                       </span>
-                      <span className="text-sm font-black text-white">
+                      <span className="text-sm font-black text-foreground">
                         {trend.symbol}
                       </span>
                     </div>
-                    <div className="text-[9px] font-bold text-white/50 flex items-center gap-1">
+                    <div className="text-[9px] font-bold text-foreground/50 flex items-center gap-1">
                       <TrendingUp className="w-3 h-3 text-emerald-400" />{" "}
                       {trend.buyCount} Whales
                     </div>
@@ -810,7 +810,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 </div>
               ))}
               {smartMoneyTrends.length === 0 && (
-                <p className="text-[9px] text-white/30 text-center py-2 font-bold uppercase">
+                <p className="text-[9px] text-foreground/30 text-center py-2 font-bold uppercase">
                   Gathering Data...
                 </p>
               )}
@@ -818,7 +818,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </div>
 
           <details className="group">
-            <summary className="list-none cursor-pointer bg-[#121212] border border-emerald-500/30 p-5 rounded-[24px] flex items-center justify-between font-black text-emerald-400 uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-400 transition-all outline-none">
+            <summary className="list-none cursor-pointer bg-card border border-emerald-500/30 p-5 rounded-[24px] flex items-center justify-between font-black text-emerald-400 uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-400 transition-all outline-none">
               <div className="flex items-center gap-3">
                 <span className="relative flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -829,20 +829,20 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               <ChevronRight className="w-5 h-5 group-open:rotate-90 transition-transform duration-300" />
             </summary>
 
-            <div className="mt-4 bg-[#121212] border border-white/10 rounded-[24px] p-5 shadow-2xl animate-in fade-in slide-in-from-top-4">
+            <div className="mt-4 bg-card border border-border rounded-[24px] p-5 shadow-2xl animate-in fade-in slide-in-from-top-4">
               <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {privateAlphaLogs.map((log) => (
                   <div
                     key={log.id}
-                    className="group p-4 bg-black/40 border border-white/5 rounded-2xl hover:border-emerald-500/30 transition-all"
+                    className="group p-4 bg-muted border border-border rounded-2xl hover:border-emerald-500/30 transition-all"
                   >
                     <div className="flex justify-between items-start mb-3">
-                      <p className="text-xs font-bold text-white/80 group-hover:text-emerald-400 transition-colors uppercase truncate pr-2">
+                      <p className="text-xs font-bold text-foreground/80 group-hover:text-emerald-400 transition-colors uppercase truncate pr-2">
                         {log.wallet.name}
                       </p>
                       <span
                         suppressHydrationWarning
-                        className="text-[9px] text-white/40 font-mono"
+                        className="text-[9px] text-foreground/40 font-mono"
                       >
                         {new Date(log.createdAt).toLocaleTimeString([], {
                           hour: "2-digit",
@@ -858,11 +858,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                         {log.type === "BUY" ? "BUY" : "SELL"}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-black text-white leading-none mb-1">
+                        <span className="text-sm font-black text-foreground leading-none mb-1">
                           {log.tokenSymbol}
                         </span>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-bold text-white/50 font-mono">
+                          <span className="text-[10px] font-bold text-foreground/50 font-mono">
                             ${Number(log.usdValue).toLocaleString()}
                           </span>
                           {/* 🔥 INJEK UI RAW DATA TEKNIKAL MOBILE 🔥 */}
@@ -876,7 +876,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                       <a
                         href={log.explorerUrl}
                         target="_blank"
-                        className="ml-auto p-2 bg-white/5 rounded-xl opacity-50 hover:opacity-100 transition-opacity hover:bg-emerald-500/20 text-emerald-400"
+                        className="ml-auto p-2 bg-muted/50 rounded-xl opacity-50 hover:opacity-100 transition-opacity hover:bg-emerald-500/20 text-emerald-400"
                       >
                         <ExternalLink size={14} />
                       </a>
@@ -886,7 +886,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
                 {privateAlphaLogs.length === 0 && (
                   <div className="text-center py-6">
-                    <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold">
+                    <p className="text-foreground/30 text-[10px] uppercase tracking-widest font-bold">
                       No private signals yet...
                     </p>
                   </div>
@@ -897,11 +897,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         </section>
 
         <section className="lg:col-span-8 xl:col-span-6 space-y-6">
-          <h3 className="flex items-center gap-2 text-sm font-black text-white/60 uppercase tracking-[0.2em] px-2">
+          <h3 className="flex items-center gap-2 text-sm font-black text-foreground/60 uppercase tracking-[0.2em] px-2">
             <Activity className="text-cyan-400 w-4 h-4" /> Your Watchlist
           </h3>
           {wallets.length === 0 ? (
-            <div className="border-2 border-dashed border-white/5 rounded-[32px] p-20 text-center text-white/40 italic uppercase tracking-widest text-xs">
+            <div className="border-2 border-dashed border-border rounded-[32px] p-20 text-center text-foreground/40 italic uppercase tracking-widest text-xs">
               <Radio className="mx-auto mb-4 animate-pulse will-change-opacity" />
               Scanning Targets...
             </div>
@@ -928,13 +928,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   return (
                     <div
                       key={w.id}
-                      className="group bg-[#121212] border border-white/5 p-5 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between transform-gpu will-change-transform contain-content"
+                      className="group bg-card border border-border p-5 rounded-3xl hover:border-border transition-all shadow-xl relative overflow-hidden flex flex-col justify-between transform-gpu will-change-transform contain-content"
                     >
                       <div>
                         <div className="flex justify-between items-start mb-4 relative z-10 gap-2">
                           <div className="flex-1 min-w-0 pr-2">
                             <div className="flex items-center gap-2 mb-2">
-                              <p className="text-[9px] font-black text-white/40 uppercase tracking-widest whitespace-nowrap">
+                              <p className="text-[9px] font-black text-foreground/40 uppercase tracking-widest whitespace-nowrap">
                                 Target Whale
                               </p>
                               <span
@@ -979,7 +979,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           </div>
                           <div className="flex flex-col items-end gap-2 shrink-0">
                             <span
-                              className={`text-[8px] font-black px-2 py-1 rounded-full border border-white/10 bg-black/60 tracking-tighter uppercase ${config?.color}`}
+                              className={`text-[8px] font-black px-2 py-1 rounded-full border border-border bg-muted tracking-tighter uppercase ${config?.color}`}
                             >
                               {w.network}
                             </span>
@@ -989,7 +989,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               <button
                                 type="button"
                                 disabled
-                                className="p-1.5 text-white/20 cursor-not-allowed transition-colors"
+                                className="p-1.5 text-foreground/20 cursor-not-allowed transition-colors"
                                 title="Slot locked! Upgrade your radar to SCOUT/PREDATOR to change targets."
                               >
                                 🔒
@@ -999,7 +999,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                                 <input type="hidden" name="id" value={w.id} />
                                 <button
                                   type="submit"
-                                  className="p-1.5 text-white/20 hover:text-rose-500 cursor-pointer transition-colors"
+                                  className="p-1.5 text-foreground/20 hover:text-rose-500 cursor-pointer transition-colors"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -1009,38 +1009,38 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                         </div>
 
                         <div className="flex items-center gap-2 mt-4 relative z-10">
-                          <div className="flex-1 bg-black/40 border border-white/5 rounded-xl p-2.5 text-center">
-                            <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mb-1">
+                          <div className="flex-1 bg-muted border border-border rounded-xl p-2.5 text-center">
+                            <p className="text-[8px] font-black text-foreground/70 uppercase tracking-widest mb-1">
                               Win Rate
                             </p>
                             <p
-                              className={`text-sm font-black tracking-tight ${w.winRate >= 70 ? "text-amber-400" : w.winRate >= 40 ? "text-cyan-400" : w.winRate > 0 ? "text-rose-400" : "text-white"}`}
+                              className={`text-sm font-black tracking-tight ${w.winRate >= 70 ? "text-amber-400" : w.winRate >= 40 ? "text-cyan-400" : w.winRate > 0 ? "text-rose-400" : "text-foreground"}`}
                             >
                               {Number(w.winRate).toFixed(1)}%
                             </p>
                           </div>
-                          <div className="flex-1 bg-black/40 border border-white/5 rounded-xl p-2.5 text-center">
-                            <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mb-1">
+                          <div className="flex-1 bg-muted border border-border rounded-xl p-2.5 text-center">
+                            <p className="text-[8px] font-black text-foreground/70 uppercase tracking-widest mb-1">
                               Trades
                             </p>
-                            <p className="text-sm font-black tracking-tight text-white">
+                            <p className="text-sm font-black tracking-tight text-foreground">
                               <span
                                 className={
                                   w.successTrades > 0
                                     ? "text-emerald-400"
-                                    : "text-white"
+                                    : "text-foreground"
                                 }
                               >
                                 {w.successTrades}
                               </span>
-                              <span className="text-white/40 mx-1">/</span>
+                              <span className="text-foreground/40 mx-1">/</span>
                               <span>{w.totalTrades}</span>
                             </p>
                           </div>
                         </div>
 
                         <div className="mt-4">
-                          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">
+                          <p className="text-[8px] font-black text-foreground/40 uppercase tracking-widest mb-1">
                             PnL Performance
                           </p>
                           <PnLChart
@@ -1064,7 +1064,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                               <Ghost className="w-3 h-3" /> Shadow Mode (Base: $
                               {baseShadow})
                             </p>
-                            <p className="text-xs font-bold text-white/80">
+                            <p className="text-xs font-bold text-foreground/80">
                               If copied:{" "}
                               <span
                                 className={`font-black text-sm ${isFomoPositive ? "text-emerald-400" : "text-rose-400"}`}
@@ -1074,7 +1074,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                             </p>
                           </div>
                           <div className="text-right relative z-10">
-                            <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest">
+                            <p className="text-[9px] font-bold text-foreground/50 uppercase tracking-widest">
                               Est. Profit
                             </p>
                             <p
@@ -1086,8 +1086,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                           </div>
                         </div>
 
-                        <div className="mt-4 pt-3 border-t border-white/5">
-                          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-2">
+                        <div className="mt-4 pt-3 border-t border-border">
+                          <p className="text-[8px] font-black text-foreground/40 uppercase tracking-widest mb-2">
                             Recent Activity
                           </p>
                           <div className="flex flex-wrap gap-1.5">
@@ -1112,7 +1112,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                                 </div>
                               ))
                             ) : (
-                              <span className="text-[9px] text-white/20 italic">
+                              <span className="text-[9px] text-foreground/20 italic">
                                 No recent trades
                               </span>
                             )}
@@ -1120,13 +1120,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5 relative z-10">
-                        <code className="text-[9px] text-white/60 font-mono tracking-tighter truncate max-w-[120px]">
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border relative z-10">
+                        <code className="text-[9px] text-foreground/60 font-mono tracking-tighter truncate max-w-[120px]">
                           {formatAddress(w.address)}
                         </code>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse will-change-opacity transform-gpu" />
-                          <span className="text-[8px] font-bold text-white/60 uppercase tracking-widest">
+                          <span className="text-[8px] font-bold text-foreground/60 uppercase tracking-widest">
                             Live
                           </span>
                         </div>
@@ -1141,29 +1141,29 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                   {page > 1 ? (
                     <a
                       href={`/?page=${page - 1}`}
-                      className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors"
+                      className="p-3 bg-muted/50 hover:bg-muted rounded-xl border border-border transition-colors"
                     >
-                      <ChevronLeft className="w-5 h-5 text-white" />
+                      <ChevronLeft className="w-5 h-5 text-foreground" />
                     </a>
                   ) : (
-                    <div className="p-3 bg-white/5 opacity-30 rounded-xl border border-white/10 cursor-not-allowed">
-                      <ChevronLeft className="w-5 h-5 text-white/30" />
+                    <div className="p-3 bg-muted/50 opacity-30 rounded-xl border border-border cursor-not-allowed">
+                      <ChevronLeft className="w-5 h-5 text-foreground/30" />
                     </div>
                   )}
-                  <span className="text-sm font-bold text-white/80 uppercase tracking-widest">
-                    Page {page} <span className="text-white/30 mx-1">/</span>{" "}
+                  <span className="text-sm font-bold text-foreground/80 uppercase tracking-widest">
+                    Page {page} <span className="text-foreground/30 mx-1">/</span>{" "}
                     {totalPages}
                   </span>
                   {page < totalPages ? (
                     <a
                       href={`/?page=${page + 1}`}
-                      className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors"
+                      className="p-3 bg-muted/50 hover:bg-muted rounded-xl border border-border transition-colors"
                     >
-                      <ChevronRight className="w-5 h-5 text-white" />
+                      <ChevronRight className="w-5 h-5 text-foreground" />
                     </a>
                   ) : (
-                    <div className="p-3 bg-white/5 opacity-30 rounded-xl border border-white/10 cursor-not-allowed">
-                      <ChevronRight className="w-5 h-5 text-white/30" />
+                    <div className="p-3 bg-muted/50 opacity-30 rounded-xl border border-border cursor-not-allowed">
+                      <ChevronRight className="w-5 h-5 text-foreground/30" />
                     </div>
                   )}
                 </div>
@@ -1174,7 +1174,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
         <section className="hidden xl:block xl:col-span-3 h-fit sticky top-10">
           {/* 🔥 TRENDING DESKTOP VIEW 🔥 */}
-          <div className="bg-[#121212] border border-orange-500/30 rounded-[32px] p-6 shadow-2xl mb-6 relative overflow-hidden">
+          <div className="bg-card border border-orange-500/30 rounded-[32px] p-6 shadow-2xl mb-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-[40px] rounded-full"></div>
             <div className="flex items-center justify-between mb-6 relative z-10">
               <h2 className="text-sm font-black text-orange-400 tracking-widest flex items-center gap-2 uppercase">
@@ -1189,18 +1189,18 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               {smartMoneyTrends.map((trend, i) => (
                 <div
                   key={trend.address}
-                  className="p-3 bg-black/40 border border-white/5 rounded-2xl hover:border-orange-500/30 transition-all flex flex-col gap-2"
+                  className="p-3 bg-muted border border-border rounded-2xl hover:border-orange-500/30 transition-all flex flex-col gap-2"
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-white/40">
+                      <span className="text-xs font-black text-foreground/40">
                         #{i + 1}
                       </span>
-                      <span className="text-sm font-black text-white">
+                      <span className="text-sm font-black text-foreground">
                         {trend.symbol}
                       </span>
                     </div>
-                    <div className="text-[9px] font-bold text-white/50 flex items-center gap-1">
+                    <div className="text-[9px] font-bold text-foreground/50 flex items-center gap-1">
                       <TrendingUp className="w-3 h-3 text-emerald-400" />{" "}
                       {trend.buyCount} Whales
                     </div>
@@ -1234,14 +1234,14 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               ))}
 
               {smartMoneyTrends.length === 0 && (
-                <p className="text-[10px] text-white/30 text-center py-4 font-bold uppercase">
+                <p className="text-[10px] text-foreground/30 text-center py-4 font-bold uppercase">
                   Accumulating Data...
                 </p>
               )}
             </div>
           </div>
 
-          <aside className="w-full bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl backdrop-blur-md">
+          <aside className="w-full bg-card border border-border rounded-[32px] p-6 shadow-2xl backdrop-blur-md">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-sm font-black text-emerald-400 tracking-widest flex items-center gap-2 uppercase">
                 <span className="relative flex h-2 w-2">
@@ -1250,7 +1250,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 </span>
                 Alpha Feed
               </h2>
-              <span className="text-[9px] text-white/40 uppercase tracking-widest font-bold">
+              <span className="text-[9px] text-foreground/40 uppercase tracking-widest font-bold">
                 Live Sync
               </span>
             </div>
@@ -1259,15 +1259,15 @@ export default async function Page({ searchParams }: { searchParams: any }) {
               {privateAlphaLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="group p-4 bg-black/40 border border-white/5 rounded-2xl hover:border-emerald-500/30 transition-all"
+                  className="group p-4 bg-muted border border-border rounded-2xl hover:border-emerald-500/30 transition-all"
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-bold text-white/80 group-hover:text-emerald-400 transition-colors uppercase truncate pr-2">
+                    <p className="text-xs font-bold text-foreground/80 group-hover:text-emerald-400 transition-colors uppercase truncate pr-2">
                       {log.wallet.name}
                     </p>
                     <span
                       suppressHydrationWarning
-                      className="text-[9px] text-white/40 font-mono"
+                      className="text-[9px] text-foreground/40 font-mono"
                     >
                       {new Date(log.createdAt).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -1284,11 +1284,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     </div>
 
                     <div className="flex flex-col">
-                      <span className="text-sm font-black text-white leading-none mb-1">
+                      <span className="text-sm font-black text-foreground leading-none mb-1">
                         {log.tokenSymbol}
                       </span>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-bold text-white/50 font-mono">
+                        <span className="text-[10px] font-bold text-foreground/50 font-mono">
                           ${Number(log.usdValue).toLocaleString()}
                         </span>
                         {/* 🔥 INJEK UI RAW DATA TEKNIKAL DESKTOP 🔥 */}
@@ -1303,7 +1303,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                     <a
                       href={log.explorerUrl}
                       target="_blank"
-                      className="ml-auto p-2 bg-white/5 rounded-xl opacity-50 hover:opacity-100 transition-opacity hover:bg-emerald-500/20 text-emerald-400"
+                      className="ml-auto p-2 bg-muted/50 rounded-xl opacity-50 hover:opacity-100 transition-opacity hover:bg-emerald-500/20 text-emerald-400"
                     >
                       <ExternalLink size={14} />
                     </a>
@@ -1313,7 +1313,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
               {privateAlphaLogs.length === 0 && (
                 <div className="text-center py-10">
-                  <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold">
+                  <p className="text-foreground/30 text-[10px] uppercase tracking-widest font-bold">
                     No private signals yet...
                   </p>
                 </div>
