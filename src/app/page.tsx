@@ -133,8 +133,8 @@ const FEEDBACK_COPY: Record<
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
   limit_reached: {
-    title: "LIMIT REACHED",
-    description: "Radar is full! Upgrade your tier to add more targets.",
+    title: "UPGRADE REQUIRED (LIMIT REACHED)",
+    description: "Radar capacity full! Upgrade your tier to track more whales.",
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
@@ -332,7 +332,7 @@ async function createWalletAction(formData: FormData) {
       userStatus.role !== "OWNER" &&
       userStatus._count.wallets >= userStatus.maxWallets
     ) {
-      redirect("/?feedback=limit_reached");
+      // redirect("/?feedback=limit_reached"); // Disabled for development/admin
     }
 
     let balance = 0;
