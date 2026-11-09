@@ -92,14 +92,12 @@ export async function auditHistoricalWinRate(
           let estimatedPnl = 0; //[cite: 1]
 
           if (ledger.sellAmount > 0) {
-            //[cite: 1]
-            successTrades += 1; //[cite: 1]
-            // Simulasi Win (Karena kita belum nembak API harga real)
-            estimatedPnl = Math.floor(Math.random() * 300) + 50; //[cite: 1]
+            successTrades += 1;
+            // Real trade terjadi, tandai PnL netral jika belum ada data harga historis (tanpa data dummy)
+            estimatedPnl = 0;
           } else {
-            //[cite: 1]
-            // Simulasi Loss / Nyangkut (Belum ada aksi jual)
-            estimatedPnl = -(Math.floor(Math.random() * 50) + 10); //[cite: 1]
+            // Posisi masih di-hold
+            estimatedPnl = 0;
           }
 
           positionsToInsert.push({

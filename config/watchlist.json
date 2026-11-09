@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Smart Money Alpha #1",
+    "address": "HjxaEDvdje644vhUmE3VpjpteWLBmWgSsgvYhf6LVw2L",
+    "network": "SOLANA",
+    "isActive": true,
+    "minAlertUsd": 15
+  },
+  {
+    "name": "Smart Money Alpha #2",
+    "address": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "network": "SOLANA",
+    "isActive": true,
+    "minAlertUsd": 15
+  }
+]

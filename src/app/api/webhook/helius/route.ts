@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { processWhaleTrade } from "../pnl";
 import { analyzeWhaleAction } from "@/lib/scanner";
+import { auditTokenSecurity } from "@/lib/rugcheck";
 
 export const maxDuration = 60;
 
@@ -34,15 +35,27 @@ function buildKeyboard(tokenAddress: string, explorerUrl: string) {
   return [
     [
       { text: "🔍 Solscan Tx", url: explorerUrl },
-      { text: "📊 DexScreener", url: `https://dexscreener.com/solana/${tokenAddress}` },
+      {
+        text: "📊 DexScreener",
+        url: `https://dexscreener.com/solana/${tokenAddress}`,
+      },
     ],
     [
       { text: "⚡ Jupiter", url: `https://jup.ag/swap/SOL-${tokenAddress}` },
-      { text: "🤖 BonkBot", url: `https://t.me/bonkbot_bot?start=ref_${tokenAddress}` },
+      {
+        text: "🤖 BonkBot",
+        url: `https://t.me/bonkbot_bot?start=ref_${tokenAddress}`,
+      },
     ],
     [
-      { text: "🐦 Search X", url: `https://twitter.com/search?q=${tokenAddress}` },
-      { text: "🫧 Bubblemaps", url: `https://app.bubblemaps.io/sol/token/${tokenAddress}` },
+      {
+        text: "🐦 Search X",
+        url: `https://twitter.com/search?q=${tokenAddress}`,
+      },
+      {
+        text: "🫧 Bubblemaps",
+        url: `https://app.bubblemaps.io/sol/token/${tokenAddress}`,
+      },
     ],
   ];
 }
@@ -141,9 +154,10 @@ export async function POST(req: Request) {
         const currentPrice = marketInfo?.priceUsd || 0;
         const usdValue = tokenAmount * currentPrice;
 
-        if (usdValue < 3000) {
+        const minThreshold = (whale as any).minAlertUsd ?? 20;
+        if (usdValue < minThreshold) {
           console.log(
-            `[KILL SWITCH] Tx Solana ${whale.name} diabaikan: $${usdValue.toFixed(2)} (< $3000)`,
+            `[KILL SWITCH] Tx Solana ${whale.name} diabaikan: $${usdValue.toFixed(2)} (< $${minThreshold})`,
           );
           continue;
         }
@@ -189,18 +203,54 @@ export async function POST(req: Request) {
             : `-$${Math.abs(totalRealizedPnl).toFixed(2)} 🩸`;
 
         let securityBlock = "";
-        try {
-          const analysis = await analyzeWhaleAction(
-            targetToken,
-            `$${((marketInfo?.liquidityUsd || 0) / 1000).toFixed(1)}k`,
-            "1h",
-          );
-          securityBlock = `\n\n🔍 *SECURITY CHECK:*\n✅ Mint: ${analysis.security.mint}\n✅ Freeze: ${analysis.security.freeze}\n🔥 LP: ${analysis.security.lp}\n🛡️ Honeypot: ${analysis.security.honeypot}\n\n🤖 *AI Score:* ${analysis.aiScore}/100\n💡 *AI Insight:* ${analysis.aiInsight}`;
-        } catch {
-          securityBlock = `\n\n🤖 *AI Score:* N/A (Rate Limited)`;
+        let confluenceBlock = "";
+
+        if (isBuy) {
+          try {
+            const audit = await auditTokenSecurity(targetToken);
+            const verdictEmoji =
+              audit.verdict === "SAFE"
+                ? "🟢 PASSED ANTI-RUG"
+                : audit.verdict === "CAUTION"
+                  ? "🟡 CAUTION"
+                  : "🔴 DANGER / RUG RISK";
+
+            securityBlock =
+              `\n\n🛡️ *ANTI-RUGPULL SECURITY AUDIT*\n` +
+              `Status: *${verdictEmoji}* (Score: ${audit.score >= 0 ? audit.score : "N/A"})\n` +
+              `• *Liquidity:* ${audit.lpStatus}\n` +
+              `• *Mint Authority:* ${audit.mintStatus}\n` +
+              `• *Freeze Authority:* ${audit.freezeStatus}\n` +
+              `• *Top 10 Holders:* ${audit.top10Status}` +
+              (audit.warnings.length > 0
+                ? `\n⚠️ *Warnings:* ${audit.warnings.join(", ")}`
+                : "");
+          } catch {
+            securityBlock = `\n\n🛡️ *ANTI-RUGPULL AUDIT:* Rate Limited / Offline`;
+          }
+
+          // Check multi-wallet confluence in DB
+          try {
+            const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+            const smartMoneyCount = await prisma.transaction.groupBy({
+              by: ["walletId"],
+              where: {
+                tokenAddress: targetToken,
+                type: "BUY",
+                createdAt: { gte: twoHoursAgo },
+              },
+            });
+            if (smartMoneyCount.length >= 2) {
+              confluenceBlock = `\n\n🔥 *CONFLUENCE DETECTED: ${smartMoneyCount.length} WALLETS ACCUMULATING!*`;
+            }
+          } catch {}
         }
 
         const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
+        const microSizingBlock = isBuy
+          ? `\n\n🎯 *TACTICAL SIZING (SOP):*\n💵 *Modal:* $2 – $3 (Rp 30k – Rp 50k)\n🎯 *Take Profit:* Tangga 20% – 50%`
+          : "";
+
         const message =
           `👑 *ALPHA PREDATOR (HELIUS WEBHOOK)*\n\n` +
           `👤 *Whale:* ${whale.name ?? "Target"}\n` +
@@ -211,12 +261,17 @@ export async function POST(req: Request) {
           `🏆 *WHALE STATS*\n` +
           `🎯 *Winrate:* ${winRateText} (${whale.totalTrades || 0} Trades)\n` +
           `💰 *Total PnL:* ${pnlText}` +
+          confluenceBlock +
           securityBlock +
+          microSizingBlock +
           `\n\n⚠️ *DYOR! Auto-generated from Helius.*`;
 
         const keyboard = buildKeyboard(targetToken, explorerUrl);
         const targetChatId =
-          (whale as any).alphaChannelId || whale.chatId || globalAlphaChatId || process.env.TELEGRAM_CHAT_ID;
+          (whale as any).alphaChannelId ||
+          whale.chatId ||
+          globalAlphaChatId ||
+          process.env.TELEGRAM_CHAT_ID;
 
         if (targetChatId) {
           await sendTelegramMessage(targetChatId, message, keyboard);

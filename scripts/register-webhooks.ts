@@ -48,26 +48,34 @@ async function getActiveAddresses(network: Network): Promise<string[]> {
 
 async function registerHeliusWebhook(addresses: string[]) {
   const apiKey = getRequiredEnv("HELIUS_API_KEY");
-  const webhookUrl = getRequiredEnv("WEBHOOK_URL");
+  let webhookUrl = getRequiredEnv("WEBHOOK_URL");
+  if (!webhookUrl.endsWith("/helius")) {
+    webhookUrl = `${webhookUrl.replace(/\/$/, "")}/helius`;
+  }
   const sharedSecret = process.env.WEBHOOK_SHARED_SECRET?.trim();
 
-  const response = await fetch(`https://api-mainnet.helius-rpc.com/v0/webhooks?api-key=${apiKey}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetch(
+    `https://api-mainnet.helius-rpc.com/v0/webhooks?api-key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        webhookURL: webhookUrl,
+        transactionTypes: ["ANY"],
+        accountAddresses: addresses,
+        webhookType: "enhanced",
+        ...(sharedSecret ? { authHeader: `Bearer ${sharedSecret}` } : {}),
+      }),
     },
-    body: JSON.stringify({
-      webhookURL: webhookUrl,
-      transactionTypes: ["ANY"],
-      accountAddresses: addresses,
-      webhookType: "enhanced",
-      ...(sharedSecret ? { authHeader: `Bearer ${sharedSecret}` } : {}),
-    }),
-  });
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Helius create webhook failed (${response.status}): ${errorText}`);
+    throw new Error(
+      `Helius create webhook failed (${response.status}): ${errorText}`,
+    );
   }
 
   return (await response.json()) as HeliusCreateWebhookResponse;
@@ -81,35 +89,42 @@ async function registerAlchemyWebhook(params: {
   const authToken = getRequiredEnv("ALCHEMY_AUTH_TOKEN");
   const webhookUrl = getRequiredEnv("WEBHOOK_URL");
 
-  const response = await fetch("https://dashboard.alchemy.com/api/create-webhook", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Alchemy-Token": authToken,
+  const response = await fetch(
+    "https://dashboard.alchemy.com/api/create-webhook",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Alchemy-Token": authToken,
+      },
+      body: JSON.stringify({
+        network: params.network,
+        webhook_type: "ADDRESS_ACTIVITY",
+        webhook_url: webhookUrl,
+        addresses: params.addresses,
+        name: params.name,
+      }),
     },
-    body: JSON.stringify({
-      network: params.network,
-      webhook_type: "ADDRESS_ACTIVITY",
-      webhook_url: webhookUrl,
-      addresses: params.addresses,
-      name: params.name,
-    }),
-  });
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Alchemy create webhook failed (${response.status}): ${errorText}`);
+    throw new Error(
+      `Alchemy create webhook failed (${response.status}): ${errorText}`,
+    );
   }
 
   return (await response.json()) as AlchemyCreateWebhookResponse;
 }
 
 async function main() {
-  const [solanaAddresses, ethereumAddresses, baseAddresses] = await Promise.all([
-    getActiveAddresses(Network.SOLANA),
-    getActiveAddresses(Network.ETHEREUM),
-    getActiveAddresses(Network.BASE),
-  ]);
+  const [solanaAddresses, ethereumAddresses, baseAddresses] = await Promise.all(
+    [
+      getActiveAddresses(Network.SOLANA),
+      getActiveAddresses(Network.ETHEREUM),
+      getActiveAddresses(Network.BASE),
+    ],
+  );
 
   const results: Record<string, unknown> = {};
 

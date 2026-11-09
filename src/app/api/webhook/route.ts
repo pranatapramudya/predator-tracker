@@ -23,17 +23,8 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function fetchHistoricalClosePrices(
   tokenAddress: string,
 ): Promise<number[]> {
-  try {
-    let mockPrices = [];
-    let basePrice = 100;
-    for (let i = 0; i < 50; i++) {
-      basePrice = basePrice + (Math.random() * 10 - 5);
-      mockPrices.push(basePrice);
-    }
-    return mockPrices;
-  } catch (error) {
-    return [];
-  }
+  // Hanya gunakan data harga on-chain/API asli; jangan gunakan data dummy
+  return [];
 }
 
 async function getTokenMarketInfo(tokenAddress: string) {
@@ -257,9 +248,10 @@ export async function GET(request: Request) {
               }
 
               // 🔥 🛑 SATPAM VIP KILL SWITCH (SOLANA) 🛑 🔥
-              if (usdAmount < 3000) {
+              const minFilterUsd = threshold || 20;
+              if (usdAmount < minFilterUsd) {
                 console.log(
-                  `[🛑 KILL SWITCH] Tx Solana dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${usdAmount.toFixed(2)} (< $3000)`,
+                  `[🛑 KILL SWITCH] Tx Solana dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${usdAmount.toFixed(2)} (< $${minFilterUsd})`,
                 );
                 continue;
               }
@@ -424,7 +416,9 @@ export async function GET(request: Request) {
                 where: { walletId: wallet.id },
                 _sum: { realizedPnlUsd: true },
               });
-              const totalRealizedPnl = Number(pnlAggregate._sum.realizedPnlUsd ?? 0);
+              const totalRealizedPnl = Number(
+                pnlAggregate._sum.realizedPnlUsd ?? 0,
+              );
               const winRateText =
                 wallet.totalTrades > 0
                   ? `${Number(wallet.winRate).toFixed(1)}%`
@@ -454,7 +448,9 @@ export async function GET(request: Request) {
                 aiConfluenceMsg;
 
               const targetAlpha =
-                (wallet as any).alphaChannelId || targetChatId || process.env.TELEGRAM_ALPHA_CHAT_ID;
+                (wallet as any).alphaChannelId ||
+                targetChatId ||
+                process.env.TELEGRAM_ALPHA_CHAT_ID;
 
               const isAlphaWorthy =
                 tokenAddress !== "solana" &&
@@ -518,9 +514,10 @@ export async function GET(request: Request) {
               }
 
               // 🔥 🛑 SATPAM VIP KILL SWITCH (EVM/BASE) 🛑 🔥
-              if (usdAmount < 3000) {
+              const minFilterUsd = threshold || 20;
+              if (usdAmount < minFilterUsd) {
                 console.log(
-                  `[🛑 KILL SWITCH] Tx EVM/BASE dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${usdAmount.toFixed(2)} (< $3000)`,
+                  `[🛑 KILL SWITCH] Tx EVM/BASE dari ${wallet.name || "Target"} diabaikan. Nilai cuma $${usdAmount.toFixed(2)} (< $${minFilterUsd})`,
                 );
                 continue;
               }
@@ -683,7 +680,9 @@ export async function GET(request: Request) {
                 where: { walletId: wallet.id },
                 _sum: { realizedPnlUsd: true },
               });
-              const totalRealizedPnl = Number(pnlAggregate._sum.realizedPnlUsd ?? 0);
+              const totalRealizedPnl = Number(
+                pnlAggregate._sum.realizedPnlUsd ?? 0,
+              );
 
               const winRateText =
                 wallet.totalTrades > 0
@@ -714,7 +713,9 @@ export async function GET(request: Request) {
                 aiConfluenceMsg;
 
               const targetAlpha =
-                (wallet as any).alphaChannelId || targetChatId || process.env.TELEGRAM_ALPHA_CHAT_ID;
+                (wallet as any).alphaChannelId ||
+                targetChatId ||
+                process.env.TELEGRAM_ALPHA_CHAT_ID;
 
               const isAlphaWorthy =
                 tokenSymbol !== "USDC" &&
@@ -825,9 +826,19 @@ export async function GET(request: Request) {
           }
         }
       } catch (innerError: any) {
-        console.error(`[WEBHOOK ERROR] Wallet ${wallet.address} failed:`, innerError?.message || innerError);
-        if (innerError?.status === 429 || innerError?.message?.includes('429') || innerError?.status === 500 || innerError?.message?.includes('500')) {
-          console.log("[WEBHOOK] Rate limit / Server Error detected, delaying for 3 seconds...");
+        console.error(
+          `[WEBHOOK ERROR] Wallet ${wallet.address} failed:`,
+          innerError?.message || innerError,
+        );
+        if (
+          innerError?.status === 429 ||
+          innerError?.message?.includes("429") ||
+          innerError?.status === 500 ||
+          innerError?.message?.includes("500")
+        ) {
+          console.log(
+            "[WEBHOOK] Rate limit / Server Error detected, delaying for 3 seconds...",
+          );
           await delay(3000);
         }
       }
@@ -844,7 +855,25 @@ export async function GET(request: Request) {
     console.error("[WEBHOOK FATAL ERROR]", error);
     // Kembalikan status 200 agar cron-job.org tidak mendisable webhook
     return NextResponse.json(
-      { success: false, error: "Sweep failed but survived", details: error?.message },
+      {
+        success: false,
+        error: "Sweep failed but survived",
+        details: error?.message,
+      },
+      { status: 200 },
+    );
+  }
+}
+
+// Fallback POST handler jika Helius atau webhook eksternal menembak /api/webhook
+export async function POST(request: Request) {
+  try {
+    const { POST: heliusPost } = await import("./helius/route");
+    return await heliusPost(request);
+  } catch (error: any) {
+    console.error("[WEBHOOK POST PROXY ERROR]", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
       { status: 200 },
     );
   }
