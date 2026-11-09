@@ -1,8 +1,11 @@
 name: Predator Tracker - Smart Money Radar
 
 on:
+  # Berjalan setiap kali Anda push commit ke branch main
+  push:
+    branches: [ main ]
+  # Berjalan otomatis setiap 10 menit di cloud GitHub
   schedule:
-    # Berjalan otomatis setiap 10 menit di cloud GitHub
     - cron: '*/10 * * * *'
   # Tombol pemicu manual dari web GitHub
   workflow_dispatch:
@@ -45,3 +48,4 @@ jobs:
           git add -f data/processed_txs.json data/signals.json config/watchlist.json || true
           git diff --staged --quiet || git commit -m "chore(radar): update processed txs and signals [skip ci]"
           git push || true
+
