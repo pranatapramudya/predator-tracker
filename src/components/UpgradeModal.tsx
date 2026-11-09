@@ -7,12 +7,15 @@ const MOONPAY_LINKS = {
   APEX: "69f2f3603efa8db4c0c6510d",
 };
 
-export default function UpgradeModal() {
+export default function UpgradeModal({
+  userId = "admin_owner",
+  currentTier = "FREE",
+}: {
+  userId?: string;
+  currentTier?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<any>(null);
-
-  // Operator Master ID (Standalone / Single Operator)
-  const userId = "admin_owner";
 
   const tiers = [
     { id: "SCOUT", name: "SCOUT", price: 29, wallets: 3 },
@@ -42,7 +45,7 @@ export default function UpgradeModal() {
     // Ambil ID MoonPay sesuai tier yang di-klik
     const linkId = MOONPAY_LINKS[selectedTier.id as keyof typeof MOONPAY_LINKS];
 
-    // Bikin URL lengkap dengan nempelin userId Clerk ke parameter clientReferenceId
+    // Bikin URL lengkap dengan parameter clientReferenceId
     const checkoutUrl = `https://moonpay.hel.io/pay/${linkId}?clientReferenceId=${userId}`;
 
     // Buka halaman kasir MoonPay di tab baru
@@ -54,9 +57,10 @@ export default function UpgradeModal() {
       {/* TOMBOL UPGRADE UTAMA */}
       <button
         onClick={() => setIsOpen(true)}
-        className="ml-4 px-4 py-2 bg-emerald-500/10 border border-emerald-500 text-emerald-400 rounded-lg text-xs font-bold uppercase hover:bg-emerald-500 hover:text-black transition-all"
+        className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/40 hover:border-emerald-400 text-emerald-400 rounded-2xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-500 hover:text-black transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] group"
       >
-        ⚡ Upgrade Radar
+        <span className="text-amber-400">⚡</span>
+        <span>Upgrade Radar</span>
       </button>
 
       {/* MODAL POP-UP */}

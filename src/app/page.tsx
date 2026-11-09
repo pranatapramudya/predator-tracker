@@ -768,6 +768,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
             </span>
           </div>
 
+          <UpgradeModal userId={userId} currentTier={dbUser.tier} />
+
           <form action={logoutAction}>
             <button
               type="submit"
