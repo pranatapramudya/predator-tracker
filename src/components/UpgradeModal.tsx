@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Zap,
@@ -39,6 +40,7 @@ export default function UpgradeModal({
   currentTier?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [selectedTier, setSelectedTier] = useState<TierConfig | null>(null);
   const [copied, setCopied] = useState(false);
   const [activePaymentMethod, setActivePaymentMethod] = useState<
@@ -47,6 +49,10 @@ export default function UpgradeModal({
   const [directCopied, setDirectCopied] = useState(false);
 
   const directWalletSol = "EdaXoG9n8Wp62c2vK3k4qTz8y2Q5u1bK9z4r8y7W2abc";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const tiers: TierConfig[] = [
     {
@@ -96,7 +102,7 @@ export default function UpgradeModal({
     },
   ];
 
-  // Close on Escape key press
+  // Close on Escape key press & body scroll locking
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -105,7 +111,6 @@ export default function UpgradeModal({
     };
     if (isOpen) {
       window.addEventListener("keydown", handleKeyDown);
-      // Cegah scrolling di background body saat modal buka
       document.body.style.overflow = "hidden";
     }
     return () => {
@@ -156,6 +161,7 @@ export default function UpgradeModal({
     <>
       {/* TOMBOL UPGRADE UTAMA (NAVBAR / COMMAND MENU) */}
       <button
+        type="button"
         onClick={() => setIsOpen(true)}
         className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-emerald-500/15 border border-emerald-500/40 hover:border-emerald-400 text-emerald-400 hover:text-white rounded-xl sm:rounded-2xl text-xs font-black uppercase tracking-wider hover:bg-emerald-500 transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] group shrink-0 cursor-pointer"
         title="Upgrade Kapasitas Radar"
@@ -165,287 +171,299 @@ export default function UpgradeModal({
         <span className="inline sm:hidden">UPGRADE</span>
       </button>
 
-      {/* MODAL OVERLAY: SCROLLABLE CONTAINER DENGAN my-auto ANTI CLIPPING */}
-      {isOpen && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleClose();
-          }}
-          className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-black/85 backdrop-blur-md p-3 sm:p-6 flex justify-center items-start sm:items-center animate-in fade-in duration-150"
-        >
-          <div className="relative w-full max-w-4xl my-auto bg-[#121316] border border-white/20 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-[0_0_50px_rgba(16,185,129,0.2)]">
-            {/* CLOSE BUTTON BULLETPROOF TOP-RIGHT */}
-            <button
-              onClick={handleClose}
-              className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-emerald-400 transition-all cursor-pointer z-20 flex items-center justify-center shadow-lg"
-              aria-label="Tutup Modal"
-            >
-              <X className="w-5 h-5 text-white" />
-            </button>
+      {/* PORTAL TELEPORT LANGSUNG KE DOCUMENT.BODY AGAR BEBAS DARI STACKING CONTEXT HEADER */}
+      {isOpen &&
+        mounted &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleClose();
+            }}
+            className="fixed inset-0 z-[999999] overflow-y-auto overflow-x-hidden bg-black/90 backdrop-blur-md p-3 sm:p-6 flex justify-center items-start sm:items-center animate-in fade-in duration-150"
+          >
+            <div className="relative w-full max-w-4xl my-auto bg-[#121316] border border-white/20 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-[0_0_60px_rgba(16,185,129,0.3)] z-10">
+              {/* CLOSE BUTTON BULLETPROOF TOP-RIGHT */}
+              <button
+                type="button"
+                onClick={handleClose}
+                className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-emerald-400 transition-all cursor-pointer z-20 flex items-center justify-center shadow-lg"
+                aria-label="Tutup Modal"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
 
-            {/* HEADER AREA */}
-            <div className="text-center mb-5 sm:mb-7 pr-10 sm:pr-0">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-2.5">
-                <Sparkles className="w-3 h-3 text-emerald-400" />
-                <span>PREDATOR CLEARANCE UPGRADE</span>
+              {/* HEADER AREA */}
+              <div className="text-center mb-5 sm:mb-7 pr-10 sm:pr-0">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-2.5">
+                  <Sparkles className="w-3 h-3 text-emerald-400" />
+                  <span>PREDATOR CLEARANCE UPGRADE</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tight">
+                  UNLOCK <span className="text-emerald-400">SMART MONEY</span>{" "}
+                  RADAR
+                </h2>
+                <p className="text-white font-bold text-xs sm:text-sm mt-1.5 max-w-lg mx-auto">
+                  Tingkatkan kapasitas pelacakan paus on-chain, notifikasi
+                  instan Telegram 0-delay, dan sinyal konfluensi multi-chain.
+                </p>
+
+                {/* CURRENT CLEARANCE BADGE */}
+                <div className="mt-2.5 inline-flex items-center gap-2 px-3.5 py-1 bg-black/50 border border-white/15 rounded-xl font-mono text-[10px] sm:text-[11px] text-white">
+                  <span className="text-white font-bold">STATUS OPERATOR:</span>
+                  <span className="text-emerald-400 font-black">
+                    {isOwner
+                      ? "MASTER PREDATOR (OWNER // UNLIMITED ACCESS)"
+                      : `${currentTier} TIER`}
+                  </span>
+                </div>
               </div>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tight">
-                UNLOCK <span className="text-emerald-400">SMART MONEY</span>{" "}
-                RADAR
-              </h2>
-              <p className="text-white font-bold text-xs sm:text-sm mt-1.5 max-w-lg mx-auto">
-                Tingkatkan kapasitas pelacakan paus on-chain, notifikasi instan
-                Telegram 0-delay, dan sinyal konfluensi multi-chain.
-              </p>
 
-              {/* CURRENT CLEARANCE BADGE */}
-              <div className="mt-2.5 inline-flex items-center gap-2 px-3.5 py-1 bg-black/50 border border-white/15 rounded-xl font-mono text-[10px] sm:text-[11px] text-white">
-                <span className="text-white font-bold">STATUS OPERATOR:</span>
-                <span className="text-emerald-400 font-black">
-                  {isOwner
-                    ? "MASTER PREDATOR (OWNER // UNLIMITED ACCESS)"
-                    : `${currentTier} TIER`}
-                </span>
-              </div>
-            </div>
-
-            {!selectedTier ? (
-              // ================= TAHAP 1: PILIH TIER =================
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
-                {tiers.map((t) => (
-                  <div
-                    key={t.id}
-                    onClick={() => setSelectedTier(t)}
-                    className={`relative p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between group hover:-translate-y-1 ${
-                      t.popular
-                        ? "border-emerald-500/80 bg-gradient-to-b from-emerald-500/15 via-[#181a20] to-[#121316] shadow-[0_0_30px_rgba(16,185,129,0.25)]"
-                        : "border-white/15 hover:border-emerald-500/40 bg-[#18191e] hover:bg-[#1e2026]"
-                    }`}
-                  >
-                    {t.popular && (
-                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-black text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md shadow-emerald-500/30 flex items-center gap-1 z-10">
-                        <Zap className="w-2.5 h-2.5 fill-black" />
-                        RECOMMENDED
-                      </div>
-                    )}
-
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider group-hover:text-emerald-400 transition-colors">
-                          {t.name}
-                        </h3>
-                        <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-white/10 text-white border border-white/15">
-                          {t.wallets} WHALES
-                        </span>
-                      </div>
-                      <p className="text-white text-[11px] font-bold mt-0.5">
-                        {t.tagline}
-                      </p>
-
-                      <div className="mt-3 flex items-baseline gap-1">
-                        <span className="text-2xl sm:text-3xl font-black text-white">
-                          ${t.price}
-                        </span>
-                        <span className="text-xs font-mono font-bold text-white">
-                          / bulan
-                        </span>
-                      </div>
-
-                      {/* FEATURE LIST */}
-                      <ul className="mt-3.5 space-y-1.5 sm:space-y-2 pt-3 border-t border-white/10">
-                        {t.features.map((feat, idx) => (
-                          <li
-                            key={idx}
-                            className="flex items-start gap-1.5 text-xs text-white font-bold"
-                          >
-                            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                            <span>{feat}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <button
-                      type="button"
-                      className={`mt-5 w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              {!selectedTier ? (
+                // ================= TAHAP 1: PILIH TIER =================
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
+                  {tiers.map((t) => (
+                    <div
+                      key={t.id}
+                      onClick={() => setSelectedTier(t)}
+                      className={`relative p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between group hover:-translate-y-1 ${
                         t.popular
-                          ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-                          : "bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-emerald-500/50"
+                          ? "border-emerald-500/80 bg-gradient-to-b from-emerald-500/15 via-[#181a20] to-[#121316] shadow-[0_0_30px_rgba(16,185,129,0.25)]"
+                          : "border-white/15 hover:border-emerald-500/40 bg-[#18191e] hover:bg-[#1e2026]"
                       }`}
                     >
-                      <span>Pilih {t.name}</span>
-                      <Zap className="w-3.5 h-3.5" />
+                      {t.popular && (
+                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-black text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md shadow-emerald-500/30 flex items-center gap-1 z-10">
+                          <Zap className="w-2.5 h-2.5 fill-black" />
+                          RECOMMENDED
+                        </div>
+                      )}
+
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider group-hover:text-emerald-400 transition-colors">
+                            {t.name}
+                          </h3>
+                          <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-white/10 text-white border border-white/15">
+                            {t.wallets} WHALES
+                          </span>
+                        </div>
+                        <p className="text-white text-[11px] font-bold mt-0.5">
+                          {t.tagline}
+                        </p>
+
+                        <div className="mt-3 flex items-baseline gap-1">
+                          <span className="text-2xl sm:text-3xl font-black text-white">
+                            ${t.price}
+                          </span>
+                          <span className="text-xs font-mono font-bold text-white">
+                            / bulan
+                          </span>
+                        </div>
+
+                        {/* FEATURE LIST */}
+                        <ul className="mt-3.5 space-y-1.5 sm:space-y-2 pt-3 border-t border-white/10">
+                          {t.features.map((feat, idx) => (
+                            <li
+                              key={idx}
+                              className="flex items-start gap-1.5 text-xs text-white font-bold"
+                            >
+                              <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                              <span>{feat}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <button
+                        type="button"
+                        className={`mt-5 w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          t.popular
+                            ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                            : "bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-emerald-500/50"
+                        }`}
+                      >
+                        <span>PILIH {t.name}</span>
+                        <Zap className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                // ================= TAHAP 2: CHECKOUT & PAYMENT =================
+                <div className="max-w-xl mx-auto bg-[#18191e] rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-white/20 shadow-2xl space-y-5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTier(null)}
+                    className="inline-flex items-center gap-1.5 text-xs font-black uppercase text-white hover:text-emerald-400 transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Kembali ke Pilihan Tier</span>
+                  </button>
+
+                  {/* TIER SUMMARY */}
+                  <div className="p-3.5 sm:p-4 rounded-xl bg-black/40 border border-white/15 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-mono font-black uppercase text-emerald-400 tracking-wider">
+                        PAKET TERPILIH
+                      </span>
+                      <h3 className="text-lg sm:text-xl font-black text-white uppercase">
+                        {selectedTier.name}
+                      </h3>
+                      <p className="text-xs text-white font-bold">
+                        Kapasitas pelacakan: {selectedTier.wallets} Target
+                        Whales
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl sm:text-3xl font-black text-emerald-400">
+                        ${selectedTier.price}
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-white">
+                        USD / BULAN
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* PAYMENT METHOD TABS */}
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-black/40 border border-white/15 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setActivePaymentMethod("gateway")}
+                      className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                        activePaymentMethod === "gateway"
+                          ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20"
+                          : "text-white hover:bg-white/5"
+                      }`}
+                    >
+                      ⚡ Instant Gateway
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivePaymentMethod("direct")}
+                      className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                        activePaymentMethod === "direct"
+                          ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20"
+                          : "text-white hover:bg-white/5"
+                      }`}
+                    >
+                      💎 Transfer Kripto
                     </button>
                   </div>
-                ))}
-              </div>
-            ) : (
-              // ================= TAHAP 2: CHECKOUT & PAYMENT =================
-              <div className="max-w-xl mx-auto bg-[#18191e] rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-white/20 shadow-2xl space-y-5">
-                <button
-                  onClick={() => setSelectedTier(null)}
-                  className="inline-flex items-center gap-1.5 text-xs font-black uppercase text-white hover:text-emerald-400 transition-colors cursor-pointer"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Kembali ke Pilihan Tier</span>
-                </button>
 
-                {/* TIER SUMMARY */}
-                <div className="p-3.5 sm:p-4 rounded-xl bg-black/40 border border-white/15 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-mono font-black uppercase text-emerald-400 tracking-wider">
-                      PAKET TERPILIH
-                    </span>
-                    <h3 className="text-lg sm:text-xl font-black text-white uppercase">
-                      {selectedTier.name}
-                    </h3>
-                    <p className="text-xs text-white font-bold">
-                      Kapasitas pelacakan: {selectedTier.wallets} Target Whales
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl sm:text-3xl font-black text-emerald-400">
-                      ${selectedTier.price}
-                    </div>
-                    <span className="text-[10px] font-mono font-bold text-white">
-                      USD / BULAN
-                    </span>
-                  </div>
-                </div>
+                  {activePaymentMethod === "gateway" ? (
+                    // GATEWAY PAYMENT (HELIOPAY / MOONPAY)
+                    <div className="space-y-4">
+                      <p className="text-xs text-white font-bold leading-relaxed">
+                        Klik tombol di bawah untuk membuka gateway pembayaran
+                        aman (Mendukung Solana Pay, USDT, USDC, & Kartu Kredit).
+                        Akses di-unlock otomatis setelah konfirmasi blockchain.
+                      </p>
 
-                {/* PAYMENT METHOD TABS */}
-                <div className="grid grid-cols-2 gap-2 p-1 bg-black/40 border border-white/15 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => setActivePaymentMethod("gateway")}
-                    className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                      activePaymentMethod === "gateway"
-                        ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20"
-                        : "text-white hover:bg-white/5"
-                    }`}
-                  >
-                    ⚡ Instant Gateway
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActivePaymentMethod("direct")}
-                    className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                      activePaymentMethod === "direct"
-                        ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20"
-                        : "text-white hover:bg-white/5"
-                    }`}
-                  >
-                    💎 Transfer Kripto
-                  </button>
-                </div>
-
-                {activePaymentMethod === "gateway" ? (
-                  // GATEWAY PAYMENT (HELIOPAY / MOONPAY)
-                  <div className="space-y-4">
-                    <p className="text-xs text-white font-bold leading-relaxed">
-                      Klik tombol di bawah untuk membuka gateway pembayaran aman
-                      (Mendukung Solana Pay, USDT, USDC, & Kartu Kredit). Akses
-                      di-unlock otomatis setelah konfirmasi blockchain.
-                    </p>
-
-                    <div className="space-y-2.5">
-                      <button
-                        onClick={() =>
-                          handleOpenGateway(getCheckoutUrl(selectedTier.id))
-                        }
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-500 text-black hover:bg-emerald-400 rounded-xl font-black uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(16,185,129,0.35)] cursor-pointer text-sm"
-                      >
-                        <Lock className="w-4 h-4" />
-                        <span>Buka Checkout Gateway</span>
-                        <ExternalLink className="w-4 h-4" />
-                      </button>
-
-                      {/* FALLBACK DIRECT LINK */}
-                      <div className="pt-2 flex items-center justify-between gap-2">
-                        <a
-                          href={getCheckoutUrl(selectedTier.id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[11px] font-bold text-emerald-400 hover:underline inline-flex items-center gap-1"
-                        >
-                          <span>Buka tautan langsung di tab baru</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
+                      <div className="space-y-2.5">
                         <button
+                          type="button"
                           onClick={() =>
-                            copyToClipboard(getCheckoutUrl(selectedTier.id))
+                            handleOpenGateway(getCheckoutUrl(selectedTier.id))
                           }
-                          className="text-[11px] font-mono font-bold text-white hover:text-emerald-400 inline-flex items-center gap-1 px-2.5 py-1 bg-white/5 border border-white/15 rounded-lg transition-colors cursor-pointer"
+                          className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-500 text-black hover:bg-emerald-400 rounded-xl font-black uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(16,185,129,0.35)] cursor-pointer text-sm"
                         >
-                          {copied ? (
-                            <>
-                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                              <span className="text-emerald-400">
-                                Tersalin!
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3 h-3" />
-                              <span>Salin Link</span>
-                            </>
-                          )}
+                          <Lock className="w-4 h-4" />
+                          <span>Buka Checkout Gateway</span>
+                          <ExternalLink className="w-4 h-4" />
                         </button>
+
+                        {/* FALLBACK DIRECT LINK */}
+                        <div className="pt-2 flex items-center justify-between gap-2">
+                          <a
+                            href={getCheckoutUrl(selectedTier.id)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-bold text-emerald-400 hover:underline inline-flex items-center gap-1"
+                          >
+                            <span>Buka tautan langsung di tab baru</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyToClipboard(getCheckoutUrl(selectedTier.id))
+                            }
+                            className="text-[11px] font-mono font-bold text-white hover:text-emerald-400 inline-flex items-center gap-1 px-2.5 py-1 bg-white/5 border border-white/15 rounded-lg transition-colors cursor-pointer"
+                          >
+                            {copied ? (
+                              <>
+                                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                <span className="text-emerald-400">
+                                  Tersalin!
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>Salin Link</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  // DIRECT CRYPTO TRANSFER
-                  <div className="space-y-4">
-                    <p className="text-xs text-white font-bold leading-relaxed">
-                      Transfer senilai{" "}
-                      <strong>${selectedTier.price} USD</strong> dalam bentuk{" "}
-                      <strong>SOL</strong> atau{" "}
-                      <strong>USDT (SPL Solana)</strong> ke alamat resmi radar
-                      di bawah ini:
-                    </p>
+                  ) : (
+                    // DIRECT CRYPTO TRANSFER
+                    <div className="space-y-4">
+                      <p className="text-xs text-white font-bold leading-relaxed">
+                        Transfer senilai{" "}
+                        <strong>${selectedTier.price} USD</strong> dalam bentuk{" "}
+                        <strong>SOL</strong> atau{" "}
+                        <strong>USDT (SPL Solana)</strong> ke alamat resmi radar
+                        di bawah ini:
+                      </p>
 
-                    <div className="p-3 bg-black/60 border border-white/15 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-mono text-white">
-                        <span className="font-bold">JARINGAN:</span>
-                        <span className="text-emerald-400 font-black">
-                          SOLANA MAINNET (SPL)
-                        </span>
+                      <div className="p-3 bg-black/60 border border-white/15 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between text-[11px] font-mono text-white">
+                          <span className="font-bold">JARINGAN:</span>
+                          <span className="text-emerald-400 font-black">
+                            SOLANA MAINNET (SPL)
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 p-2 bg-white/5 border border-white/10 rounded-lg">
+                          <span className="text-xs font-mono font-bold text-white truncate">
+                            {directWalletSol}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyToClipboard(directWalletSol, true)
+                            }
+                            className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black rounded-lg transition-all shrink-0 cursor-pointer flex items-center gap-1"
+                          >
+                            {directCopied ? (
+                              <>
+                                <Check className="w-3 h-3" />
+                                <span>Tersalin!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>Salin</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between gap-2 p-2 bg-white/5 border border-white/10 rounded-lg">
-                        <span className="text-xs font-mono font-bold text-white truncate">
-                          {directWalletSol}
-                        </span>
-                        <button
-                          onClick={() => copyToClipboard(directWalletSol, true)}
-                          className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black rounded-lg transition-all shrink-0 cursor-pointer flex items-center gap-1"
-                        >
-                          {directCopied ? (
-                            <>
-                              <Check className="w-3 h-3" />
-                              <span>Tersalin!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3 h-3" />
-                              <span>Salin</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
+
+                      <p className="text-[11px] text-white font-bold">
+                        💡 Setelah transfer, kirimkan bukti transaksi (Tx Hash)
+                        ke admin Telegram bot untuk clearance instan akun Anda.
+                      </p>
                     </div>
-
-                    <p className="text-[11px] text-white font-bold">
-                      💡 Setelah transfer, kirimkan bukti transaksi (Tx Hash) ke
-                      admin Telegram bot untuk clearance instan akun Anda.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+                  )}
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
