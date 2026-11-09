@@ -1,7 +1,7 @@
 // src/components/DashboardShell.tsx
 "use client";
 
-import React, { useState, useTransition, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import UpgradeModal from "@/components/UpgradeModal";
@@ -14,9 +14,6 @@ import {
   Activity,
   ChevronRight,
   ChevronLeft,
-  CheckCircle2,
-  AlertCircle,
-  AlertTriangle,
   Trash2,
   Send,
   ExternalLink,
@@ -25,19 +22,13 @@ import {
   BrainCircuit,
   TrendingUp,
   Lock,
-  LogOut,
   Search,
   PlusCircle,
-  Sliders,
   Terminal,
   Zap,
-  Layers,
   Copy,
   Check,
   Cpu,
-  RefreshCw,
-  Bell,
-  Sparkles,
 } from "lucide-react";
 
 const NETWORK_OPTIONS = [
@@ -94,16 +85,17 @@ function getWhaleTag(winRate: number, totalTrades: number) {
     return {
       text: "THE ORACLE",
       style:
-        "bg-amber-500/10 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(251,191,36,0.2)]",
+        "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_10px_rgba(251,191,36,0.3)]",
     };
   if (winRate >= 40)
     return {
       text: "THE GRINDER",
-      style: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
+      style:
+        "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.3)]",
     };
   return {
     text: "EXIT LIQUIDITY",
-    style: "bg-rose-500/10 text-rose-400 border-rose-500/30",
+    style: "bg-rose-500/20 text-rose-300 border-rose-500/40",
   };
 }
 
@@ -111,7 +103,7 @@ function getTradeStyleBadge(transactions: any[]) {
   if (!transactions || transactions.length < 2) {
     return {
       label: "Unknown",
-      color: "bg-white/10 text-white/50 border border-white/5",
+      color: "bg-white/20 text-white font-bold border border-white/20",
       icon: "❓",
     };
   }
@@ -149,7 +141,7 @@ function getTradeStyleBadge(transactions: any[]) {
   if (pairCount === 0) {
     return {
       label: "Diamond Hands",
-      color: "bg-blue-600/20 text-blue-400 border border-blue-500/30",
+      color: "bg-blue-600/30 text-blue-300 border border-blue-500/50",
       icon: "💎",
     };
   }
@@ -159,19 +151,19 @@ function getTradeStyleBadge(transactions: any[]) {
   if (avgHoldTime < 24) {
     return {
       label: "Scalper",
-      color: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
+      color: "bg-yellow-500/30 text-yellow-300 border border-yellow-500/50",
       icon: "⚡",
     };
   } else if (avgHoldTime >= 24 && avgHoldTime <= 168) {
     return {
       label: "Swing Trader",
-      color: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
+      color: "bg-emerald-500/30 text-emerald-300 border border-emerald-500/50",
       icon: "🏄‍♂️",
     };
   } else {
     return {
       label: "Diamond Hands",
-      color: "bg-blue-600/20 text-blue-400 border border-blue-500/30",
+      color: "bg-blue-600/30 text-blue-300 border border-blue-500/50",
       icon: "💎",
     };
   }
@@ -275,10 +267,10 @@ export default function DashboardShell({
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => handleTabChange("watchlist")}
-              className="text-left group flex items-center gap-2.5 transition-transform hover:opacity-90"
+              className="text-left group flex items-center gap-2.5 transition-transform hover:opacity-90 cursor-pointer"
             >
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.9)]" />
-              <h1 className="text-base sm:text-lg font-black tracking-tight uppercase leading-none">
+              <h1 className="text-base sm:text-lg font-black tracking-tight uppercase leading-none text-white">
                 PREDATOR <span className="text-emerald-400">TRACKER</span>
               </h1>
             </button>
@@ -289,21 +281,21 @@ export default function DashboardShell({
           </div>
 
           {/* ZONE 2: NAVIGATION CENTER (MIDDLE) */}
-          <nav className="hidden md:flex items-center bg-zinc-900/80 border border-white/10 rounded-2xl p-1 gap-1 shadow-inner">
+          <nav className="hidden md:flex items-center bg-zinc-900/90 border border-white/10 rounded-2xl p-1 gap-1 shadow-inner">
             <button
               onClick={() => handleTabChange("watchlist")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all cursor-pointer ${
                 activeTab === "watchlist"
                   ? "bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
+                  : "text-white hover:bg-white/10"
               }`}
             >
               <span>Watchlist</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
                   activeTab === "watchlist"
-                    ? "bg-black/30 text-white"
-                    : "bg-white/10 text-white/50"
+                    ? "bg-black/40 text-white font-bold"
+                    : "bg-white/20 text-white font-bold"
                 }`}
               >
                 {totalWallets}
@@ -312,10 +304,10 @@ export default function DashboardShell({
 
             <button
               onClick={() => handleTabChange("feed")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all cursor-pointer ${
                 activeTab === "feed"
                   ? "bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
+                  : "text-white hover:bg-white/10"
               }`}
             >
               <Radio className="w-3.5 h-3.5" />
@@ -325,10 +317,10 @@ export default function DashboardShell({
 
             <button
               onClick={() => handleTabChange("add")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all cursor-pointer ${
                 activeTab === "add"
                   ? "bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
+                  : "text-white hover:bg-white/10"
               }`}
             >
               <PlusCircle className="w-3.5 h-3.5" />
@@ -337,10 +329,10 @@ export default function DashboardShell({
 
             <button
               onClick={() => handleTabChange("menu")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wider uppercase transition-all cursor-pointer ${
                 activeTab === "menu"
                   ? "bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
+                  : "text-white hover:bg-white/10"
               }`}
             >
               <Terminal className="w-3.5 h-3.5" />
@@ -352,9 +344,11 @@ export default function DashboardShell({
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 font-mono text-[11px] font-bold">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="truncate max-w-[110px]">{dbUser.name}</span>
-              <span className="text-white/30">//</span>
-              <span className="text-white/60">{dbUser.role}</span>
+              <span className="truncate max-w-[110px] text-white font-bold">
+                {dbUser.name}
+              </span>
+              <span className="text-white/40">//</span>
+              <span className="text-emerald-300 font-bold">{dbUser.role}</span>
             </div>
 
             <UpgradeModal userId={dbUser.id} currentTier={dbUser.tier} />
@@ -362,7 +356,7 @@ export default function DashboardShell({
             <form action={logoutAction}>
               <button
                 type="submit"
-                className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-mono font-bold transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer"
                 title="Lock Terminal"
               >
                 <Lock className="w-3.5 h-3.5" />
@@ -381,19 +375,21 @@ export default function DashboardShell({
           >
             <feedback.icon className="w-6 h-6 shrink-0" />
             <div>
-              <h4 className="font-black text-sm uppercase tracking-tight">
+              <h4 className="font-black text-sm uppercase tracking-tight text-white">
                 {feedback.title}
               </h4>
-              <p className="text-sm opacity-90">{feedback.description}</p>
+              <p className="text-sm font-medium text-white">
+                {feedback.description}
+              </p>
             </div>
           </div>
         </div>
       )}
 
       {/* 📱 MOBILE QUICK LIVE RADAR (CLEAN, NO OVERCROWDING) */}
-      <div className="md:hidden flex items-center justify-between px-4 py-2 bg-zinc-950 border-b border-white/5 text-[10px] font-mono">
+      <div className="md:hidden flex items-center justify-between px-4 py-2 bg-zinc-950 border-b border-white/10 text-[11px] font-mono">
         <LiveRadarPoller intervalSec={15} />
-        <span className="text-white/40 font-bold uppercase tracking-widest">
+        <span className="text-white font-black uppercase tracking-widest">
           {totalWallets} TARGETS ON RADAR
         </span>
       </div>
@@ -406,13 +402,13 @@ export default function DashboardShell({
         {activeTab === "watchlist" && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Watchlist Sub-header & Controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/40 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/60 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-5">
               <div>
-                <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight flex items-center gap-2 text-white">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
                   Active Target Whales
                 </h2>
-                <p className="text-xs text-white/50 mt-0.5">
+                <p className="text-xs text-zinc-100 font-medium mt-0.5">
                   Menampilkan {filteredWallets.length} target aktif (Maks 3 per
                   halaman)
                 </p>
@@ -421,26 +417,26 @@ export default function DashboardShell({
               {/* Chain Filter & Search */}
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative flex-1 sm:flex-none min-w-[180px]">
-                  <Search className="w-3.5 h-3.5 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Search className="w-3.5 h-3.5 text-zinc-300 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     placeholder="Search whale or address..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-white/40 outline-none focus:border-emerald-500/50"
+                    className="w-full bg-black/60 border border-white/20 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-zinc-300 outline-none focus:border-emerald-500 font-medium"
                   />
                 </div>
 
-                <div className="flex items-center bg-black/50 border border-white/10 rounded-xl p-0.5 text-[10px] font-bold">
+                <div className="flex items-center bg-black/60 border border-white/10 rounded-xl p-0.5 text-[10px] font-bold">
                   {["ALL", "SOLANA", "BASE", "ETHEREUM", "BITCOIN"].map(
                     (chain) => (
                       <button
                         key={chain}
                         onClick={() => setSelectedChainFilter(chain)}
-                        className={`px-2.5 py-1 rounded-lg uppercase tracking-wider transition-all ${
+                        className={`px-2.5 py-1 rounded-lg uppercase tracking-wider transition-all cursor-pointer ${
                           selectedChainFilter === chain
                             ? "bg-emerald-500 text-black font-black"
-                            : "text-white/50 hover:text-white"
+                            : "text-zinc-200 hover:text-white"
                         }`}
                       >
                         {chain === "ALL" ? "ALL" : chain}
@@ -451,7 +447,7 @@ export default function DashboardShell({
 
                 <button
                   onClick={() => handleTabChange("add")}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500 text-black font-black text-xs uppercase tracking-wider rounded-xl hover:bg-emerald-400 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] ml-auto sm:ml-0"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500 text-black font-black text-xs uppercase tracking-wider rounded-xl hover:bg-emerald-400 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] ml-auto sm:ml-0 cursor-pointer"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>Lock Whale</span>
@@ -461,18 +457,18 @@ export default function DashboardShell({
 
             {/* Empty State */}
             {filteredWallets.length === 0 ? (
-              <div className="border border-dashed border-white/10 rounded-3xl p-12 sm:p-20 text-center bg-zinc-900/20">
+              <div className="border border-dashed border-white/20 rounded-3xl p-12 sm:p-20 text-center bg-zinc-900/30">
                 <Radio className="w-10 h-10 mx-auto mb-4 text-emerald-400 animate-pulse" />
                 <h3 className="text-base font-black uppercase tracking-wider text-white">
                   Tidak Ada Target Sesuai Filter
                 </h3>
-                <p className="text-xs text-white/40 max-w-sm mx-auto mt-2 mb-6">
+                <p className="text-xs text-zinc-200 max-w-sm mx-auto mt-2 mb-6 font-medium">
                   Belum ada whale yang terdaftar atau sesuai kriteria pencarian
                   Anda.
                 </p>
                 <button
                   onClick={() => handleTabChange("add")}
-                  className="px-6 py-3 bg-emerald-500 text-black font-black text-xs uppercase tracking-wider rounded-2xl hover:bg-emerald-400 transition-all"
+                  className="px-6 py-3 bg-emerald-500 text-black font-black text-xs uppercase tracking-wider rounded-2xl hover:bg-emerald-400 transition-all cursor-pointer"
                 >
                   + Tambah Target Whale Baru
                 </button>
@@ -502,25 +498,25 @@ export default function DashboardShell({
                   return (
                     <div
                       key={w.id || idx}
-                      className="group bg-[#18181b] border border-white/10 p-5 rounded-3xl hover:border-emerald-500/40 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between"
+                      className="group bg-[#18181b] border border-white/10 p-5 rounded-3xl hover:border-emerald-500/50 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between"
                     >
                       {/* Card Header */}
                       <div>
                         <div className="flex justify-between items-start mb-3 gap-2">
                           <div className="flex-1 min-w-0 pr-2">
                             <div className="flex items-center gap-2 mb-1.5">
-                              <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                              <span className="text-[10px] font-black text-zinc-100 uppercase tracking-widest">
                                 TARGET #{(page - 1) * 3 + idx + 1}
                               </span>
                               <span
-                                className={`text-[8px] px-2 py-0.5 rounded border tracking-widest ${whaleTag.style}`}
+                                className={`text-[8px] px-2 py-0.5 rounded border tracking-widest font-black ${whaleTag.style}`}
                               >
                                 {whaleTag.text}
                               </span>
                             </div>
 
                             <h3
-                              className="text-base sm:text-lg font-black group-hover:text-emerald-400 transition-colors uppercase truncate"
+                              className="text-base sm:text-lg font-black text-white group-hover:text-emerald-400 transition-colors uppercase truncate"
                               title={safeName}
                             >
                               {safeName}
@@ -545,7 +541,7 @@ export default function DashboardShell({
                                     : `Ξ ${Number(w.lastBalance).toFixed(4)}`}
                               </span>
                               <div
-                                className={`text-[8px] px-2 py-0.5 rounded uppercase font-bold tracking-wider flex items-center gap-1 ${tradeStyle.color}`}
+                                className={`text-[9px] px-2 py-0.5 rounded uppercase font-black tracking-wider flex items-center gap-1 ${tradeStyle.color}`}
                               >
                                 <span>{tradeStyle.icon}</span>{" "}
                                 {tradeStyle.label}
@@ -556,7 +552,7 @@ export default function DashboardShell({
                           {/* Network & Modern Delete Trigger */}
                           <div className="flex flex-col items-end gap-2 shrink-0">
                             <span
-                              className={`text-[8px] font-black px-2 py-1 rounded-full border border-white/10 bg-zinc-900/60 uppercase ${config?.color}`}
+                              className={`text-[9px] font-black px-2 py-1 rounded-full border border-white/20 bg-zinc-900 uppercase ${config?.color}`}
                             >
                               {w.network}
                             </span>
@@ -564,7 +560,7 @@ export default function DashboardShell({
                             {dbUser.tier === "FREE" &&
                             dbUser.role !== "OWNER" ? (
                               <span
-                                className="p-1 text-white/20 cursor-not-allowed"
+                                className="p-1 text-white/40 cursor-not-allowed"
                                 title="Slot Locked. Upgrade to change."
                               >
                                 🔒
@@ -579,10 +575,10 @@ export default function DashboardShell({
                                     address: w.address,
                                   })
                                 }
-                                className="p-1.5 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                                className="p-1.5 text-zinc-300 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                                 title="Eliminate Target"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             )}
                           </div>
@@ -590,12 +586,12 @@ export default function DashboardShell({
 
                         {/* Win Rate & Trades Metric Bar */}
                         <div className="grid grid-cols-2 gap-2 mt-3">
-                          <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-2 text-center">
-                            <p className="text-[8px] font-black text-white/60 uppercase tracking-widest">
+                          <div className="bg-zinc-900/80 border border-white/10 rounded-xl p-2.5 text-center">
+                            <p className="text-[9px] font-black text-zinc-100 uppercase tracking-widest">
                               Win Rate
                             </p>
                             <p
-                              className={`text-sm font-black mt-0.5 ${
+                              className={`text-base font-black mt-0.5 ${
                                 w.winRate >= 70
                                   ? "text-amber-400"
                                   : w.winRate >= 40
@@ -606,15 +602,15 @@ export default function DashboardShell({
                               {Number(w.winRate).toFixed(1)}%
                             </p>
                           </div>
-                          <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-2 text-center">
-                            <p className="text-[8px] font-black text-white/60 uppercase tracking-widest">
+                          <div className="bg-zinc-900/80 border border-white/10 rounded-xl p-2.5 text-center">
+                            <p className="text-[9px] font-black text-zinc-100 uppercase tracking-widest">
                               Total Trades
                             </p>
-                            <p className="text-sm font-black mt-0.5 text-white font-mono">
+                            <p className="text-base font-black mt-0.5 text-white font-mono">
                               <span className="text-emerald-400">
                                 {w.successTrades || 0}
                               </span>
-                              <span className="text-white/30 mx-1">/</span>
+                              <span className="text-white mx-1">/</span>
                               <span>{w.totalTrades || 0}</span>
                             </p>
                           </div>
@@ -622,7 +618,7 @@ export default function DashboardShell({
 
                         {/* 🌟 GLOWING MICRO SPARKLINE PNL CHART */}
                         <div className="mt-3.5">
-                          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1.5">
+                          <p className="text-[9px] font-black text-zinc-100 uppercase tracking-widest mb-1.5">
                             PnL Performance
                           </p>
                           <PnLChart
@@ -638,25 +634,25 @@ export default function DashboardShell({
                         <div
                           className={`mt-3 p-3 border rounded-xl flex justify-between items-center relative overflow-hidden ${
                             isFomoPositive
-                              ? "bg-emerald-500/10 border-emerald-500/30"
-                              : "bg-rose-500/10 border-rose-500/30"
+                              ? "bg-emerald-500/10 border-emerald-500/40"
+                              : "bg-rose-500/10 border-rose-500/40"
                           }`}
                         >
                           <div>
                             <p
-                              className={`text-[9px] font-black uppercase tracking-widest mb-0.5 flex items-center gap-1 ${
+                              className={`text-[10px] font-black uppercase tracking-widest mb-0.5 flex items-center gap-1 ${
                                 isFomoPositive
                                   ? "text-emerald-400"
                                   : "text-rose-400"
                               }`}
                             >
-                              <Ghost className="w-3 h-3" /> Shadow Mode ($100
-                              Base)
+                              <Ghost className="w-3.5 h-3.5" /> Shadow Mode
+                              ($100 Base)
                             </p>
-                            <p className="text-xs font-bold text-white/80">
+                            <p className="text-xs font-bold text-white">
                               If copied:{" "}
                               <span
-                                className={`font-black ${
+                                className={`font-black text-sm ${
                                   isFomoPositive
                                     ? "text-emerald-400"
                                     : "text-rose-400"
@@ -667,11 +663,11 @@ export default function DashboardShell({
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-[8px] font-bold text-white/50 uppercase tracking-widest">
+                            <p className="text-[9px] font-black text-zinc-100 uppercase tracking-widest">
                               Est. Profit
                             </p>
                             <p
-                              className={`text-xs font-black ${
+                              className={`text-sm font-black ${
                                 isFomoPositive
                                   ? "text-emerald-400"
                                   : "text-rose-400"
@@ -684,8 +680,8 @@ export default function DashboardShell({
                         </div>
 
                         {/* Recent Activity Tokens */}
-                        <div className="mt-3 pt-2.5 border-t border-white/5">
-                          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1.5">
+                        <div className="mt-3 pt-2.5 border-t border-white/10">
+                          <p className="text-[9px] font-black text-zinc-100 uppercase tracking-widest mb-1.5">
                             Recent Trades
                           </p>
                           <div className="flex flex-wrap gap-1.5">
@@ -698,10 +694,10 @@ export default function DashboardShell({
                                     href={tx.explorerUrl}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold border transition-all ${
+                                    className={`text-[10px] px-2 py-0.5 rounded font-mono font-black border transition-all ${
                                       tx.type === "BUY"
-                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
-                                        : "bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20"
+                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30"
+                                        : "bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30"
                                     }`}
                                   >
                                     {tx.type === "BUY" ? "🟢" : "🔴"}{" "}
@@ -709,7 +705,7 @@ export default function DashboardShell({
                                   </a>
                                 ))
                             ) : (
-                              <span className="text-[9px] text-white/30 italic">
+                              <span className="text-[10px] text-zinc-300 font-medium italic">
                                 No recent trades recorded
                               </span>
                             )}
@@ -718,24 +714,24 @@ export default function DashboardShell({
                       </div>
 
                       {/* Card Footer: Address & Live Status */}
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5 text-[9px] font-mono">
-                        <div className="flex items-center gap-1.5 text-white/50">
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10 text-[10px] font-mono">
+                        <div className="flex items-center gap-1.5 text-white font-bold">
                           <span>{formatAddress(w.address)}</span>
                           <button
                             onClick={() => handleCopy(w.address)}
-                            className="text-white/40 hover:text-white transition-colors"
+                            className="text-zinc-300 hover:text-white transition-colors cursor-pointer"
                             title="Copy Address"
                           >
                             {copiedAddress === w.address ? (
-                              <Check className="w-3 h-3 text-emerald-400" />
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
                             ) : (
-                              <Copy className="w-3 h-3" />
+                              <Copy className="w-3.5 h-3.5" />
                             )}
                           </button>
                         </div>
-                        <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-black">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          <span className="tracking-widest uppercase text-[8px]">
+                          <span className="tracking-widest uppercase text-[9px]">
                             LIVE
                           </span>
                         </div>
@@ -749,7 +745,7 @@ export default function DashboardShell({
             {/* 🌟 ENHANCED NAVIGATION NEXT/PREV CONTROLS */}
             {totalPages > 1 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 pb-4 border-t border-white/10">
-                <span className="text-xs font-mono text-white/50">
+                <span className="text-xs font-mono text-white font-bold">
                   Showing targets {(page - 1) * 3 + 1} -{" "}
                   {Math.min(page * 3, totalWallets)} of {totalWallets}
                 </span>
@@ -758,32 +754,32 @@ export default function DashboardShell({
                   {page > 1 ? (
                     <Link
                       href={`/?page=${page - 1}&tab=watchlist`}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition-colors"
+                      className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-white/20 rounded-xl text-xs font-black uppercase tracking-wider text-white transition-colors"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       <span>Prev</span>
                     </Link>
                   ) : (
-                    <div className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900/40 border border-white/5 rounded-xl text-xs font-bold uppercase tracking-wider text-white/30 cursor-not-allowed">
+                    <div className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900/40 border border-white/10 rounded-xl text-xs font-black uppercase tracking-wider text-white/30 cursor-not-allowed">
                       <ChevronLeft className="w-4 h-4" />
                       <span>Prev</span>
                     </div>
                   )}
 
-                  <span className="px-3 py-1.5 bg-black/60 border border-white/10 rounded-xl text-xs font-mono font-bold text-emerald-400">
+                  <span className="px-3 py-1.5 bg-black/80 border border-white/20 rounded-xl text-xs font-mono font-black text-emerald-400">
                     {page} / {totalPages}
                   </span>
 
                   {page < totalPages ? (
                     <Link
                       href={`/?page=${page + 1}&tab=watchlist`}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition-colors"
+                      className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-white/20 rounded-xl text-xs font-black uppercase tracking-wider text-white transition-colors"
                     >
                       <span>Next</span>
                       <ChevronRight className="w-4 h-4" />
                     </Link>
                   ) : (
-                    <div className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900/40 border border-white/5 rounded-xl text-xs font-bold uppercase tracking-wider text-white/30 cursor-not-allowed">
+                    <div className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900/40 border border-white/10 rounded-xl text-xs font-black uppercase tracking-wider text-white/30 cursor-not-allowed">
                       <span>Next</span>
                       <ChevronRight className="w-4 h-4" />
                     </div>
@@ -806,44 +802,44 @@ export default function DashboardShell({
                       <Radio className="w-4 h-4 animate-pulse" />
                     </div>
                     <div>
-                      <h2 className="text-base sm:text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                      <h2 className="text-base sm:text-lg font-black uppercase tracking-tight flex items-center gap-2 text-white">
                         Live Alpha Signals Feed
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                       </h2>
-                      <p className="text-[10px] text-white/40 uppercase font-mono">
+                      <p className="text-[10px] text-zinc-200 uppercase font-mono font-bold">
                         Direct on-chain execution stream
                       </p>
                     </div>
                   </div>
 
                   {/* Buy / Sell Toggles */}
-                  <div className="flex items-center bg-black/60 border border-white/10 rounded-xl p-0.5 text-[10px] font-bold">
+                  <div className="flex items-center bg-black/80 border border-white/10 rounded-xl p-0.5 text-[10px] font-bold">
                     <button
                       onClick={() => setSignalTypeFilter("ALL")}
-                      className={`px-2.5 py-1 rounded-lg transition-all ${
+                      className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                         signalTypeFilter === "ALL"
                           ? "bg-white text-black font-black"
-                          : "text-white/40 hover:text-white"
+                          : "text-zinc-200 hover:text-white"
                       }`}
                     >
                       ALL
                     </button>
                     <button
                       onClick={() => setSignalTypeFilter("BUY")}
-                      className={`px-2.5 py-1 rounded-lg transition-all ${
+                      className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                         signalTypeFilter === "BUY"
                           ? "bg-emerald-500 text-black font-black"
-                          : "text-white/40 hover:text-white"
+                          : "text-zinc-200 hover:text-white"
                       }`}
                     >
                       BUYS
                     </button>
                     <button
                       onClick={() => setSignalTypeFilter("SELL")}
-                      className={`px-2.5 py-1 rounded-lg transition-all ${
+                      className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                         signalTypeFilter === "SELL"
                           ? "bg-rose-500 text-white font-black"
-                          : "text-white/40 hover:text-white"
+                          : "text-zinc-200 hover:text-white"
                       }`}
                     >
                       SELLS
@@ -856,13 +852,13 @@ export default function DashboardShell({
                   {filteredSignals.map((log: any, idx: number) => (
                     <div
                       key={log.id || idx}
-                      className="group p-4 bg-zinc-900/40 border border-white/5 rounded-2xl hover:border-emerald-500/30 transition-all flex flex-col gap-2.5"
+                      className="group p-4 bg-zinc-900/60 border border-white/10 rounded-2xl hover:border-emerald-500/40 transition-all flex flex-col gap-2.5"
                     >
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-black text-white/80 group-hover:text-emerald-400 transition-colors uppercase">
+                        <span className="font-black text-white group-hover:text-emerald-400 transition-colors uppercase">
                           {log.wallet?.name || "Smart Money Alpha"}
                         </span>
-                        <span className="text-[10px] text-white/40 font-mono">
+                        <span className="text-[11px] text-zinc-200 font-mono font-bold">
                           {new Date(log.createdAt).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -876,17 +872,17 @@ export default function DashboardShell({
                           <span
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
                               log.type === "BUY"
-                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                                : "bg-rose-500/20 text-rose-400 border border-rose-500/40"
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/50"
+                                : "bg-rose-500/20 text-rose-300 border border-rose-500/50"
                             }`}
                           >
                             {log.type}
                           </span>
                           <div>
-                            <p className="text-sm font-black text-white leading-tight">
+                            <p className="text-base font-black text-white leading-tight">
                               ${log.tokenSymbol || "TOKEN"}
                             </p>
-                            <p className="text-[10px] font-bold text-white/50 font-mono">
+                            <p className="text-xs font-black text-emerald-400 font-mono">
                               ${Number(log.usdValue || 0).toLocaleString()} USD
                             </p>
                           </div>
@@ -894,7 +890,7 @@ export default function DashboardShell({
 
                         <div className="flex items-center gap-2">
                           {log.rsi14AtTx && (
-                            <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40 font-bold">
                               RSI: {Number(log.rsi14AtTx).toFixed(1)}
                             </span>
                           )}
@@ -902,10 +898,10 @@ export default function DashboardShell({
                             href={log.explorerUrl || "https://solscan.io"}
                             target="_blank"
                             rel="noreferrer"
-                            className="p-2 bg-white/5 rounded-xl text-white/40 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                            className="p-2 bg-white/10 rounded-xl text-white hover:text-emerald-400 hover:bg-emerald-500/20 transition-all"
                             title="View on Explorer"
                           >
-                            <ExternalLink className="w-3.5 h-3.5" />
+                            <ExternalLink className="w-4 h-4" />
                           </a>
                         </div>
                       </div>
@@ -913,7 +909,7 @@ export default function DashboardShell({
                   ))}
 
                   {filteredSignals.length === 0 && (
-                    <div className="text-center py-12 text-white/30 text-xs font-mono uppercase">
+                    <div className="text-center py-12 text-zinc-300 text-xs font-mono uppercase font-bold">
                       No signals matching current filter
                     </div>
                   )}
@@ -930,7 +926,7 @@ export default function DashboardShell({
                   <h3 className="text-sm font-black text-orange-400 tracking-widest flex items-center gap-2 uppercase">
                     <Flame className="w-4 h-4" /> AI Smart Trends
                   </h3>
-                  <span className="text-[9px] text-orange-400/60 uppercase tracking-widest font-bold border border-orange-500/20 px-2 py-1 rounded bg-orange-500/10">
+                  <span className="text-[9px] text-orange-300 uppercase tracking-widest font-black border border-orange-500/30 px-2 py-1 rounded bg-orange-500/20">
                     Live Mindshare
                   </span>
                 </div>
@@ -939,39 +935,38 @@ export default function DashboardShell({
                   {smartMoneyTrends.map((trend, i) => (
                     <div
                       key={trend.address || i}
-                      className="p-3 bg-zinc-900/60 border border-white/5 rounded-2xl flex flex-col gap-2 hover:border-orange-500/30 transition-all"
+                      className="p-3 bg-zinc-900/80 border border-white/10 rounded-2xl flex flex-col gap-2 hover:border-orange-500/40 transition-all"
                     >
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-white/40">
+                          <span className="text-xs font-black text-zinc-300">
                             #{i + 1}
                           </span>
                           <span className="text-sm font-black text-white">
                             ${trend.symbol}
                           </span>
                         </div>
-                        <div className="text-[10px] font-bold text-white/60 flex items-center gap-1 font-mono">
-                          <TrendingUp className="w-3 h-3 text-emerald-400" />
+                        <div className="text-xs font-black text-emerald-400 flex items-center gap-1 font-mono">
+                          <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
                           <span>{trend.buyCount} Whales In</span>
                         </div>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                        <span className="text-[8px] font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase flex items-center gap-1">
-                          <BrainCircuit className="w-2.5 h-2.5" />{" "}
-                          {trend.narrative}
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 uppercase flex items-center gap-1">
+                          <BrainCircuit className="w-3 h-3" /> {trend.narrative}
                         </span>
                         <span
-                          className={`text-[8px] font-bold px-2 py-0.5 rounded uppercase border ${
+                          className={`text-[9px] font-black px-2 py-0.5 rounded uppercase border ${
                             trend.mindshare?.includes("Hype")
-                              ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
-                              : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                              ? "bg-rose-500/30 text-rose-200 border-rose-500/40"
+                              : "bg-amber-500/30 text-amber-200 border-amber-500/40"
                           }`}
                         >
                           {trend.mindshare}
                         </span>
                         {trend.confluence === "SUPER_ALPHA" && (
-                          <span className="text-[8px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase">
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 uppercase">
                             ⚡ Super Alpha
                           </span>
                         )}
@@ -980,7 +975,7 @@ export default function DashboardShell({
                   ))}
 
                   {smartMoneyTrends.length === 0 && (
-                    <p className="text-[10px] text-white/30 text-center py-6 font-mono uppercase">
+                    <p className="text-xs text-zinc-300 text-center py-6 font-mono uppercase font-bold">
                       Gathering AI Trends Data...
                     </p>
                   )}
@@ -995,34 +990,34 @@ export default function DashboardShell({
                     Telegram Routing Architecture
                   </h4>
                 </div>
-                <p className="text-xs text-white/60 mb-4">
+                <p className="text-xs text-zinc-100 font-medium mb-4">
                   Sinyal real-time otomatis disaring berdasarkan nominal
                   transaksi:
                 </p>
                 <div className="space-y-2 text-xs font-mono">
-                  <div className="p-3 bg-black/40 border border-white/5 rounded-xl flex justify-between items-center">
+                  <div className="p-3 bg-black/60 border border-white/10 rounded-xl flex justify-between items-center">
                     <div>
-                      <p className="font-bold text-white">
+                      <p className="font-black text-white">
                         Private Bot DM (@skom_tracker_bot)
                       </p>
-                      <p className="text-[10px] text-white/40">
+                      <p className="text-[11px] text-zinc-300 font-medium">
                         Chat ID: {savedChatId}
                       </p>
                     </div>
-                    <span className="text-emerald-400 font-black">
+                    <span className="text-emerald-400 font-black text-sm">
                       &gt; $100 USD
                     </span>
                   </div>
-                  <div className="p-3 bg-black/40 border border-amber-500/20 rounded-xl flex justify-between items-center">
+                  <div className="p-3 bg-black/60 border border-amber-500/30 rounded-xl flex justify-between items-center">
                     <div>
-                      <p className="font-bold text-amber-400">
+                      <p className="font-black text-amber-400">
                         Predator Alpha Channel
                       </p>
-                      <p className="text-[10px] text-white/40">
+                      <p className="text-[11px] text-zinc-300 font-medium">
                         Channel ID: {savedAlphaId}
                       </p>
                     </div>
-                    <span className="text-amber-400 font-black">
+                    <span className="text-amber-400 font-black text-sm">
                       &gt; $1,000 USD
                     </span>
                   </div>
@@ -1041,10 +1036,10 @@ export default function DashboardShell({
                   <Shield className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black uppercase tracking-tight">
+                  <h2 className="text-xl font-black uppercase tracking-tight text-white">
                     Lock Target Whale
                   </h2>
-                  <p className="text-xs text-white/50">
+                  <p className="text-xs text-zinc-100 font-medium">
                     Masukkan address dompet whale untuk diawasi radar secara
                     24/7
                   </p>
@@ -1054,20 +1049,20 @@ export default function DashboardShell({
               <form action={createWalletAction} className="space-y-5">
                 {/* Wallet Address */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
+                  <label className="text-[11px] font-black text-white uppercase tracking-widest ml-1">
                     Wallet Address
                   </label>
                   <input
                     name="address"
                     required
                     placeholder="Contoh: HjxaED... atau 0x71C... atau bc1q..."
-                    className="w-full bg-zinc-900/80 border border-white/10 rounded-2xl px-5 py-3.5 font-bold outline-none font-mono text-sm focus:border-emerald-500 text-white placeholder-white/30"
+                    className="w-full bg-zinc-900/90 border border-white/20 rounded-2xl px-5 py-3.5 font-bold outline-none font-mono text-sm focus:border-emerald-500 text-white placeholder-zinc-300"
                   />
                 </div>
 
                 {/* 🌟 MODERN BLOCKCHAIN NETWORK SELECTOR */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
+                  <label className="text-[11px] font-black text-white uppercase tracking-widest ml-1">
                     Blockchain Network
                   </label>
                   <input type="hidden" name="network" value={selectedNetwork} />
@@ -1081,10 +1076,10 @@ export default function DashboardShell({
                           onClick={() =>
                             setSelectedNetwork(n.value as WalletNetwork)
                           }
-                          className={`flex items-center gap-2.5 p-3 rounded-2xl border transition-all text-left ${
+                          className={`flex items-center gap-2.5 p-3 rounded-2xl border transition-all text-left cursor-pointer ${
                             isSelected
-                              ? "bg-zinc-800 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500"
-                              : "bg-zinc-900/60 border-white/10 hover:border-white/20 hover:bg-zinc-800/50"
+                              ? "bg-zinc-800 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)] ring-1 ring-emerald-500"
+                              : "bg-zinc-900/80 border-white/10 hover:border-white/30 hover:bg-zinc-800/60"
                           }`}
                         >
                           <img
@@ -1095,12 +1090,12 @@ export default function DashboardShell({
                           <div className="min-w-0">
                             <p
                               className={`text-xs font-black uppercase ${
-                                isSelected ? n.color : "text-white/80"
+                                isSelected ? n.color : "text-white"
                               }`}
                             >
                               {n.label}
                             </p>
-                            <p className="text-[8px] text-white/40 uppercase font-mono">
+                            <p className="text-[9px] text-zinc-200 uppercase font-mono font-bold">
                               {isSelected ? "● SELECTED" : "SELECT"}
                             </p>
                           </div>
@@ -1112,23 +1107,23 @@ export default function DashboardShell({
 
                 {/* Alias Name */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
+                  <label className="text-[11px] font-black text-white uppercase tracking-widest ml-1">
                     Alias / Nama Target
                   </label>
                   <input
                     name="name"
                     required
                     placeholder="Contoh: Smart Money Alpha #3"
-                    className="w-full bg-zinc-900/80 border border-white/10 rounded-2xl px-5 py-3.5 font-bold outline-none text-sm focus:border-emerald-500 text-white placeholder-white/30"
+                    className="w-full bg-zinc-900/90 border border-white/20 rounded-2xl px-5 py-3.5 font-bold outline-none text-sm focus:border-emerald-500 text-white placeholder-zinc-300"
                   />
                 </div>
 
                 {/* Telegram Personal Chat ID */}
                 <div className="space-y-2 pt-2">
-                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1 flex items-center justify-between">
+                  <label className="text-[11px] font-black text-white uppercase tracking-widest ml-1 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
-                      <Send className="w-3 h-3 text-cyan-400" /> Telegram Chat
-                      ID (Personal DM)
+                      <Send className="w-3.5 h-3.5 text-cyan-400" /> Telegram
+                      Chat ID (Personal DM)
                     </span>
                     <span className="text-emerald-400 font-bold">
                       🔒 Auto-Synced
@@ -1140,11 +1135,11 @@ export default function DashboardShell({
                     readOnly={!!savedChatId}
                     className={`w-full rounded-2xl px-5 py-3.5 font-bold outline-none text-sm ${
                       savedChatId
-                        ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-not-allowed"
-                        : "bg-zinc-900/80 border border-white/10 text-white"
+                        ? "bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 cursor-not-allowed font-mono"
+                        : "bg-zinc-900/90 border border-white/20 text-white font-mono"
                     }`}
                   />
-                  <p className="text-[9px] text-white/40 ml-1">
+                  <p className="text-[10px] text-zinc-100 font-medium ml-1">
                     Menerima notifikasi langsung dari @skom_tracker_bot untuk
                     transaksi &gt; $100.
                   </p>
@@ -1152,7 +1147,7 @@ export default function DashboardShell({
 
                 {/* Telegram Alpha Channel ID */}
                 <div className="space-y-2 pt-2">
-                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1 flex items-center justify-between">
+                  <label className="text-[11px] font-black text-white uppercase tracking-widest ml-1 flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-amber-400">
                       👑 Predator Alpha Channel ID (Grup/Channel)
                     </span>
@@ -1166,11 +1161,11 @@ export default function DashboardShell({
                     readOnly={!!savedAlphaId}
                     className={`w-full rounded-2xl px-5 py-3.5 font-bold outline-none text-sm ${
                       savedAlphaId
-                        ? "bg-amber-500/10 border border-amber-500/30 text-amber-400 cursor-not-allowed"
-                        : "bg-zinc-900/80 border border-white/10 text-white"
+                        ? "bg-amber-500/10 border border-amber-500/40 text-amber-400 cursor-not-allowed font-mono"
+                        : "bg-zinc-900/90 border border-white/20 text-white font-mono"
                     }`}
                   />
-                  <p className="text-[9px] text-white/40 ml-1">
+                  <p className="text-[10px] text-zinc-100 font-medium ml-1">
                     Menerima sinyal transaksi paus besar &gt; $1,000 di channel
                     Predator Alpha Feed.
                   </p>
@@ -1178,7 +1173,7 @@ export default function DashboardShell({
 
                 <button
                   type="submit"
-                  className="w-full py-4 mt-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-2xl transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                  className="w-full py-4 mt-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-2xl transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)] cursor-pointer"
                 >
                   <Shield className="w-4 h-4" />
                   <span>START RADAR SURVEILLANCE</span>
@@ -1196,13 +1191,13 @@ export default function DashboardShell({
             <div className="bg-gradient-to-r from-emerald-500/10 via-zinc-900 to-cyan-500/10 border border-white/10 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono font-bold mb-2">
-                  <Terminal className="w-3 h-3" />
+                  <Terminal className="w-3.5 h-3.5" />
                   <span>PREDATOR SYSTEM COMMAND</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">
                   Terminal & Security Menu
                 </h2>
-                <p className="text-xs sm:text-sm text-white/60 mt-1">
+                <p className="text-xs sm:text-sm text-zinc-100 font-medium mt-1">
                   Pusat kendali parameter, routing Telegram, clearance operator,
                   dan diagnostik radar.
                 </p>
@@ -1222,41 +1217,51 @@ export default function DashboardShell({
                     <Shield className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black uppercase tracking-wider">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-white">
                       Operator Clearance
                     </h3>
-                    <p className="text-[10px] text-white/40 uppercase font-mono">
+                    <p className="text-[10px] text-zinc-200 uppercase font-mono font-bold">
                       Multi-Tenant Encrypted Session
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-3 text-xs font-mono">
-                  <div className="flex justify-between p-2.5 bg-black/40 rounded-xl">
-                    <span className="text-white/50">Operator Name:</span>
-                    <span className="font-bold text-white">{dbUser.name}</span>
+                  <div className="flex justify-between p-3 bg-black/60 rounded-xl">
+                    <span className="text-zinc-200 font-medium">
+                      Operator Name:
+                    </span>
+                    <span className="font-black text-white">{dbUser.name}</span>
                   </div>
-                  <div className="flex justify-between p-2.5 bg-black/40 rounded-xl">
-                    <span className="text-white/50">Operator Email:</span>
-                    <span className="font-bold text-white">{dbUser.email}</span>
+                  <div className="flex justify-between p-3 bg-black/60 rounded-xl">
+                    <span className="text-zinc-200 font-medium">
+                      Operator Email:
+                    </span>
+                    <span className="font-black text-white">
+                      {dbUser.email}
+                    </span>
                   </div>
-                  <div className="flex justify-between p-2.5 bg-black/40 rounded-xl">
-                    <span className="text-white/50">Clearance Role:</span>
-                    <span className="font-bold text-emerald-400">
+                  <div className="flex justify-between p-3 bg-black/60 rounded-xl">
+                    <span className="text-zinc-200 font-medium">
+                      Clearance Role:
+                    </span>
+                    <span className="font-black text-emerald-400">
                       {dbUser.role}
                     </span>
                   </div>
-                  <div className="flex justify-between p-2.5 bg-black/40 rounded-xl">
-                    <span className="text-white/50">Current Tier:</span>
-                    <span className="font-bold text-amber-400">
+                  <div className="flex justify-between p-3 bg-black/60 rounded-xl">
+                    <span className="text-zinc-200 font-medium">
+                      Current Tier:
+                    </span>
+                    <span className="font-black text-amber-400">
                       {dbUser.tier}
                     </span>
                   </div>
-                  <div className="flex justify-between p-2.5 bg-black/40 rounded-xl">
-                    <span className="text-white/50">
+                  <div className="flex justify-between p-3 bg-black/60 rounded-xl">
+                    <span className="text-zinc-200 font-medium">
                       Radar Target Capacity:
                     </span>
-                    <span className="font-bold text-cyan-400">
+                    <span className="font-black text-cyan-400">
                       {totalWallets} Whales Monitored
                     </span>
                   </div>
@@ -1270,55 +1275,57 @@ export default function DashboardShell({
                     <Send className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black uppercase tracking-wider">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-white">
                       Telegram Intelligence Hub
                     </h3>
-                    <p className="text-[10px] text-white/40 uppercase font-mono">
+                    <p className="text-[10px] text-zinc-200 uppercase font-mono font-bold">
                       24/7 Automated Notification Pipes
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-3 text-xs font-mono">
-                  <div className="p-3 bg-black/40 rounded-xl space-y-1">
+                  <div className="p-3 bg-black/60 rounded-xl space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-white/50">Bot Handle:</span>
-                      <span className="font-bold text-cyan-400">
+                      <span className="text-zinc-200 font-medium">
+                        Bot Handle:
+                      </span>
+                      <span className="font-black text-cyan-400">
                         @skom_tracker_bot
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-white/50">Status:</span>
-                      <span className="font-bold text-emerald-400">
+                      <span className="text-zinc-200 font-medium">Status:</span>
+                      <span className="font-black text-emerald-400">
                         ● LIVE & SINKRON
                       </span>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-black/40 rounded-xl space-y-1">
+                  <div className="p-3 bg-black/60 rounded-xl space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-white/50">
+                      <span className="text-zinc-200 font-medium">
                         Personal DM (Chat ID):
                       </span>
-                      <span className="font-bold text-white">
+                      <span className="font-black text-white">
                         {savedChatId}
                       </span>
                     </div>
-                    <p className="text-[10px] text-white/40">
+                    <p className="text-[10px] text-zinc-200 font-medium">
                       ⚡ Menerima transaksi copy-trade whale di atas $100 USD.
                     </p>
                   </div>
 
-                  <div className="p-3 bg-black/40 rounded-xl space-y-1">
+                  <div className="p-3 bg-black/60 rounded-xl space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-white/50">
+                      <span className="text-zinc-200 font-medium">
                         Alpha Feed (Channel ID):
                       </span>
-                      <span className="font-bold text-amber-400">
+                      <span className="font-black text-amber-400">
                         {savedAlphaId}
                       </span>
                     </div>
-                    <p className="text-[10px] text-white/40">
+                    <p className="text-[10px] text-zinc-200 font-medium">
                       👑 Menerima transaksi mega-whale di atas $1,000 USD.
                     </p>
                   </div>
@@ -1332,41 +1339,47 @@ export default function DashboardShell({
                     <Cpu className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black uppercase tracking-wider">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-white">
                       Radar Engine Telemetry
                     </h3>
-                    <p className="text-[10px] text-white/40 uppercase font-mono">
+                    <p className="text-[10px] text-zinc-200 uppercase font-mono font-bold">
                       Real-Time Microservices Health
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-3 text-xs font-mono">
-                  <div className="flex justify-between items-center p-2.5 bg-black/40 rounded-xl">
-                    <span className="text-white/60">
+                  <div className="flex justify-between items-center p-3 bg-black/60 rounded-xl">
+                    <span className="text-zinc-200 font-medium">
                       Worker Daemon (Local):
                     </span>
-                    <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                    <span className="text-emerald-400 font-black flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       ONLINE (RUNNER)
                     </span>
                   </div>
-                  <div className="flex justify-between items-center p-2.5 bg-black/40 rounded-xl">
-                    <span className="text-white/60">GitHub Actions Cron:</span>
-                    <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                  <div className="flex justify-between items-center p-3 bg-black/60 rounded-xl">
+                    <span className="text-zinc-200 font-medium">
+                      GitHub Actions Cron:
+                    </span>
+                    <span className="text-emerald-400 font-black flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-400" />
                       EVERY 10 MIN
                     </span>
                   </div>
-                  <div className="flex justify-between items-center p-2.5 bg-black/40 rounded-xl">
-                    <span className="text-white/60">Anti-Rugpull Guard:</span>
-                    <span className="text-cyan-400 font-bold">
+                  <div className="flex justify-between items-center p-3 bg-black/60 rounded-xl">
+                    <span className="text-zinc-200 font-medium">
+                      Anti-Rugpull Guard:
+                    </span>
+                    <span className="text-cyan-400 font-black">
                       ACTIVE (RUGCHECK)
                     </span>
                   </div>
-                  <div className="flex justify-between items-center p-2.5 bg-black/40 rounded-xl">
-                    <span className="text-white/60">Confluence Detector:</span>
-                    <span className="text-amber-400 font-bold">
+                  <div className="flex justify-between items-center p-3 bg-black/60 rounded-xl">
+                    <span className="text-zinc-200 font-medium">
+                      Confluence Detector:
+                    </span>
+                    <span className="text-amber-400 font-black">
                       MULTI-WALLET ACTIVE
                     </span>
                   </div>
@@ -1381,10 +1394,10 @@ export default function DashboardShell({
                       <Zap className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-wider">
+                      <h3 className="text-sm font-black uppercase tracking-wider text-white">
                         Security & Terminal Controls
                       </h3>
-                      <p className="text-[10px] text-white/40 uppercase font-mono">
+                      <p className="text-[10px] text-zinc-200 uppercase font-mono font-bold">
                         Session & Keypad PIN Management
                       </p>
                     </div>
@@ -1393,24 +1406,28 @@ export default function DashboardShell({
                   <div className="space-y-3 mt-4">
                     <Link
                       href="/login"
-                      className="w-full flex items-center justify-between p-3 bg-black/40 hover:bg-white/5 border border-white/10 rounded-xl text-xs font-mono font-bold transition-all"
+                      className="w-full flex items-center justify-between p-3 bg-black/60 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-mono font-bold transition-all text-white"
                     >
                       <span className="flex items-center gap-2">
                         <Lock className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Ganti / Reset PIN Keamanan</span>
+                        <span className="text-white font-bold">
+                          Ganti / Reset PIN Keamanan
+                        </span>
                       </span>
-                      <ChevronRight className="w-4 h-4 text-white/40" />
+                      <ChevronRight className="w-4 h-4 text-white" />
                     </Link>
 
                     <button
                       onClick={() => handleTabChange("add")}
-                      className="w-full flex items-center justify-between p-3 bg-black/40 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 rounded-xl text-xs font-mono font-bold transition-all text-white hover:text-emerald-400"
+                      className="w-full flex items-center justify-between p-3 bg-black/60 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 rounded-xl text-xs font-mono font-bold transition-all text-white hover:text-emerald-400 cursor-pointer"
                     >
                       <span className="flex items-center gap-2">
                         <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Tambah Target Whale Baru</span>
+                        <span className="font-bold">
+                          Tambah Target Whale Baru
+                        </span>
                       </span>
-                      <ChevronRight className="w-4 h-4 text-white/40" />
+                      <ChevronRight className="w-4 h-4 text-white" />
                     </button>
                   </div>
                 </div>
@@ -1421,7 +1438,7 @@ export default function DashboardShell({
                 >
                   <button
                     type="submit"
-                    className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500 text-red-400 rounded-xl text-xs font-mono font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500 text-red-400 rounded-xl text-xs font-mono font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Lock className="w-3.5 h-3.5" />
                     <span>Kunci Terminal / Logout Sesi</span>
@@ -1453,7 +1470,7 @@ export default function DashboardShell({
               </div>
             </div>
 
-            <p className="text-xs text-white/70 leading-relaxed mb-4">
+            <p className="text-xs text-white leading-relaxed mb-4 font-medium">
               Apakah Anda yakin ingin menghapus pemantauan target{" "}
               <span className="text-white font-black">
                 "{whaleToDelete.name}"
@@ -1462,18 +1479,16 @@ export default function DashboardShell({
               dinonaktifkan.
             </p>
 
-            <div className="p-3 bg-black/50 border border-white/5 rounded-xl font-mono text-[11px] text-white/60 mb-6 truncate">
+            <div className="p-3 bg-black/60 border border-white/10 rounded-xl font-mono text-[11px] text-white mb-6 truncate font-bold">
               Address:{" "}
-              <span className="text-emerald-400 font-bold">
-                {whaleToDelete.address}
-              </span>
+              <span className="text-emerald-400">{whaleToDelete.address}</span>
             </div>
 
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setWhaleToDelete(null)}
-                className="flex-1 py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition-all cursor-pointer"
+                className="flex-1 py-3 px-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-black uppercase tracking-wider text-white transition-all cursor-pointer"
               >
                 Batal
               </button>
@@ -1499,10 +1514,10 @@ export default function DashboardShell({
         {/* Watchlist Tab */}
         <button
           onClick={() => handleTabChange("watchlist")}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all relative ${
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all relative cursor-pointer ${
             activeTab === "watchlist"
               ? "text-emerald-400 scale-105"
-              : "text-white/40 hover:text-white"
+              : "text-white hover:text-emerald-300"
           }`}
         >
           <Activity className="w-5 h-5" />
@@ -1517,10 +1532,10 @@ export default function DashboardShell({
         {/* Alpha Feed Tab */}
         <button
           onClick={() => handleTabChange("feed")}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all relative ${
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all relative cursor-pointer ${
             activeTab === "feed"
               ? "text-emerald-400 scale-105"
-              : "text-white/40 hover:text-white"
+              : "text-white hover:text-emerald-300"
           }`}
         >
           <Radio className="w-5 h-5" />
@@ -1533,17 +1548,17 @@ export default function DashboardShell({
         {/* Add Target Tab (High Accent) */}
         <button
           onClick={() => handleTabChange("add")}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
             activeTab === "add"
               ? "text-emerald-400 scale-105"
-              : "text-white/40 hover:text-white"
+              : "text-white hover:text-emerald-300"
           }`}
         >
           <div
             className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
               activeTab === "add"
                 ? "bg-emerald-500 text-black shadow-[0_0_12px_rgba(16,185,129,0.5)]"
-                : "bg-white/10 text-white"
+                : "bg-white/20 text-white"
             }`}
           >
             <PlusCircle className="w-4 h-4" />
@@ -1556,10 +1571,10 @@ export default function DashboardShell({
         {/* Command Menu Tab */}
         <button
           onClick={() => handleTabChange("menu")}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
             activeTab === "menu"
               ? "text-emerald-400 scale-105"
-              : "text-white/40 hover:text-white"
+              : "text-white hover:text-emerald-300"
           }`}
         >
           <Terminal className="w-5 h-5" />

@@ -96,8 +96,8 @@ export default function PnLChart({
 
   if (chartData.length <= 1 && netPnl === 0) {
     return (
-      <div className="h-20 w-full flex items-center justify-center border border-white/5 bg-white/[0.02] rounded-xl mt-2">
-        <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold">
+      <div className="h-20 w-full flex items-center justify-center border border-white/10 bg-white/[0.03] rounded-xl mt-2">
+        <p className="text-[10px] text-white uppercase tracking-widest font-black">
           No Activity Yet
         </p>
       </div>
@@ -108,12 +108,12 @@ export default function PnLChart({
   const strokeColor = isPositive ? "#10b981" : "#f43f5e";
 
   return (
-    <div className="mt-2 bg-zinc-950/60 border border-white/5 rounded-xl p-2.5 relative overflow-hidden group">
+    <div className="mt-2 bg-zinc-950/80 border border-white/10 rounded-xl p-2.5 relative overflow-hidden group">
       {/* Top Micro-Header */}
-      <div className="flex items-center justify-between text-[10px] mb-1 font-mono">
-        <span className="text-white/60 font-bold tracking-wider flex items-center gap-1">
+      <div className="flex items-center justify-between text-[11px] mb-1 font-mono">
+        <span className="text-white font-black tracking-wider flex items-center gap-1.5">
           <span
-            className={`w-1.5 h-1.5 rounded-full ${isPositive ? "bg-emerald-400" : "bg-rose-400"}`}
+            className={`w-2 h-2 rounded-full ${isPositive ? "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]"}`}
           />
           ${primaryToken}
         </span>

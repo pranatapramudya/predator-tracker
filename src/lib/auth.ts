@@ -7,10 +7,11 @@
 import { cookies } from "next/headers";
 import fs from "fs";
 import path from "path";
+import { ENV } from "@/config/env";
 
 export const SESSION_COOKIE_NAME = "predator_session";
 const SECRET = (
-  process.env.WEBHOOK_SHARED_SECRET || "predator_tracker_salt_2026"
+  ENV.WEBHOOK_SHARED_SECRET || "predator_tracker_salt_2026"
 ).trim();
 const USERS_FILE_PATH = path.resolve(process.cwd(), "data/users.json");
 
@@ -68,7 +69,7 @@ export async function getOrCreateMasterUser(): Promise<UserRecord> {
   let master = users.find((u) => u.role === "OWNER" || u.id === "admin_owner");
 
   if (!master) {
-    const masterPin = (process.env.ADMIN_PIN || "2026").trim();
+    const masterPin = (ENV.ADMIN_PIN || "2026").trim();
     const hash = await hashValue(masterPin);
     master = {
       id: "admin_owner",
@@ -102,7 +103,7 @@ export async function loginUser(
     return { success: false, error: "Security access key is required." };
   }
 
-  const masterPin = (process.env.ADMIN_PIN || "2026").trim();
+  const masterPin = (ENV.ADMIN_PIN || "2026").trim();
 
   // 1. Direct master key authentication bypass
   if (cleanKey === masterPin) {

@@ -1,4 +1,5 @@
 // src/lib/crypto.ts
+import { ENV } from "@/config/env";
 
 const HEADERS = {
   "User-Agent":
@@ -6,7 +7,7 @@ const HEADERS = {
 };
 
 export async function getSolanaBalance(address: string): Promise<number> {
-  const apiKey = process.env.HELIUS_API_KEY;
+  const apiKey = ENV.HELIUS_API_KEY;
   const res = await fetch(
     `https://mainnet.helius-rpc.com/?api-key=${apiKey}&t=${Date.now()}`,
     {
@@ -107,7 +108,7 @@ export async function getBTCBalance(address: string): Promise<number> {
 }
 
 export async function getSolanaLatestSwap(address: string) {
-  const apiKey = process.env.HELIUS_API_KEY;
+  const apiKey = ENV.HELIUS_API_KEY;
   if (!apiKey) return null;
 
   try {
@@ -180,9 +181,7 @@ export async function getEVMLatestTokenTx(
   network: "ETHEREUM" | "BASE",
 ) {
   const apiKey =
-    network === "ETHEREUM"
-      ? process.env.ETHERSCAN_API_KEY
-      : process.env.BASESCAN_API_KEY;
+    network === "ETHEREUM" ? ENV.ETHERSCAN_API_KEY : ENV.BASESCAN_API_KEY;
   const baseUrl =
     network === "ETHEREUM"
       ? "https://api.etherscan.io/api"

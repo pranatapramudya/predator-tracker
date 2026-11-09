@@ -1,4 +1,5 @@
 // src/lib/telegram.ts
+import { ENV } from "@/config/env";
 import { getRequiredEnv } from "./env";
 import { RugAuditResult } from "./rugcheck";
 
@@ -205,8 +206,9 @@ export async function sendTelegramNotification(params: {
   text: string;
   replyMarkup?: any;
 }): Promise<void> {
-  const token = getRequiredEnv("TELEGRAM_BOT_TOKEN");
-  const chatId = params.chatId || getRequiredEnv("TELEGRAM_CHAT_ID");
+  const token = ENV.TELEGRAM_BOT_TOKEN || getRequiredEnv("TELEGRAM_BOT_TOKEN");
+  const chatId =
+    params.chatId || ENV.TELEGRAM_CHAT_ID || getRequiredEnv("TELEGRAM_CHAT_ID");
 
   const response = await fetch(
     `https://api.telegram.org/bot${token}/sendMessage`,

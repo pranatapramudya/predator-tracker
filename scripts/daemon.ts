@@ -11,6 +11,7 @@ dotenv.config({ path: ".env.local" });
 
 import fs from "fs";
 import path from "path";
+import { ENV } from "../src/config/env";
 import {
   buildPredatorAlertMessage,
   buildInlineKeyboard,
@@ -62,10 +63,10 @@ const PROCESSED_PATH = path.resolve(process.cwd(), "data/processed_txs.json");
 const CONFLUENCE_PATH = path.resolve(process.cwd(), "data/confluence.json");
 const SIGNALS_PATH = path.resolve(process.cwd(), "data/signals.json");
 
-const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS || 25000); // 25 detik
+const POLL_INTERVAL_MS = ENV.POLL_INTERVAL_MS; // default 25 detik
 const CONFLUENCE_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 jam window
-const ASISTEN_MIN_USD = Number(process.env.ASISTEN_MIN_USD || 100); // Asisten Crypto threshold (> $100)
-const ALPHA_FEED_MIN_USD = Number(process.env.ALPHA_FEED_MIN_USD || 1000); // Predator Alpha Feed threshold (> $1000)
+const ASISTEN_MIN_USD = ENV.ASISTEN_MIN_USD; // Asisten Crypto threshold (> $100)
+const ALPHA_FEED_MIN_USD = ENV.ALPHA_FEED_MIN_USD; // Predator Alpha Feed threshold (> $1000)
 
 // Helper sleep
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -561,10 +562,12 @@ async function main() {
   console.log("👑 PREDATOR TRACKER - STANDALONE WORKER DAEMON 👑");
   console.log("==================================================");
   console.log(`[DAEMON] Poll Interval: ${POLL_INTERVAL_MS / 1000}s`);
-  console.log(`[DAEMON] Telegram Bot Token: Configured`);
-  console.log(`[DAEMON] Telegram Chat ID: ${process.env.TELEGRAM_CHAT_ID}`);
   console.log(
-    `[DAEMON] Helius RPC: ${process.env.HELIUS_API_KEY ? "Configured" : "MISSING"}`,
+    `[DAEMON] Telegram Bot Token: ${ENV.TELEGRAM_BOT_TOKEN ? "Configured" : "MISSING"}`,
+  );
+  console.log(`[DAEMON] Telegram Chat ID: ${ENV.TELEGRAM_CHAT_ID}`);
+  console.log(
+    `[DAEMON] Helius RPC: ${ENV.HELIUS_API_KEY ? "Configured" : "MISSING"}`,
   );
   console.log(`[DAEMON] Watchlist File: ${CONFIG_PATH}`);
   console.log(
@@ -581,9 +584,9 @@ async function main() {
   const processed = loadProcessed();
   const confluenceMap = loadConfluence();
 
-  // If we already have seen signatures persisted, this is NOT a fresh cold start.
-  // We should NOT skip alerts for genuinely new transactions!
   let isInitialRun = processed.seenSignatures.length === 0;
+  let consecutiveErrors = 0;
+  let watchdogHeartbeat = Date.now();
 
   if (maxDurationSec > 0) {
     console.log(
@@ -613,13 +616,29 @@ async function main() {
           );
         }
 
+        // 🛡️ PILAR 2: Try-Catch ISOLATION di DALAM loop iterasi Solana
         for (const w of solanaWallets) {
-          await checkSolanaWallet(w, processed, confluenceMap, isInitialRun);
+          try {
+            await checkSolanaWallet(w, processed, confluenceMap, isInitialRun);
+          } catch (solErr: any) {
+            console.error(
+              `🛡️ [ISOLATION GUARD] Error scanning Solana whale ${w.name} (${w.address}):`,
+              solErr.message,
+            );
+          }
           await sleep(1000);
         }
 
+        // 🛡️ PILAR 2: Try-Catch ISOLATION di DALAM loop iterasi Base
         for (const w of baseWallets) {
-          await checkBaseWallet(w, processed, confluenceMap, isInitialRun);
+          try {
+            await checkBaseWallet(w, processed, confluenceMap, isInitialRun);
+          } catch (baseErr: any) {
+            console.error(
+              `🛡️ [ISOLATION GUARD] Error scanning Base whale ${w.name} (${w.address}):`,
+              baseErr.message,
+            );
+          }
           await sleep(1000);
         }
 
@@ -633,9 +652,25 @@ async function main() {
         processed.lastRun = new Date().toISOString();
         saveProcessed(processed);
         saveConfluence(confluenceMap);
+
+        // Reset watchdog & consecutive error counter on successful cycle
+        watchdogHeartbeat = Date.now();
+        consecutiveErrors = 0;
       }
     } catch (loopErr: any) {
-      console.error("[DAEMON LOOP ERROR]", loopErr.message);
+      consecutiveErrors++;
+      console.error(
+        `[DAEMON LOOP ERROR] (${consecutiveErrors} consecutive errors):`,
+        loopErr.message,
+      );
+
+      // 🛡️ PILAR 4: Watchdog Exponential Backoff jika terjadi 5+ error beruntun
+      if (consecutiveErrors >= 5) {
+        console.warn(
+          `🛡️ [WATCHDOG BACKOFF] 5+ consecutive errors encountered. Backing off for 45s to avoid rate-limiting or zombie stall...`,
+        );
+        await sleep(45000);
+      }
     }
 
     if (runOnce) {

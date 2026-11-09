@@ -4,6 +4,7 @@ import { getOrFetchTokenIntel } from "@/lib/gemini";
 import { prisma } from "@/lib/prisma";
 import { logoutAction } from "@/app/actions/auth";
 import { getCurrentUser } from "@/lib/auth";
+import { ENV } from "@/config/env";
 import DashboardShell from "@/components/DashboardShell";
 import fs from "fs";
 import path from "path";
@@ -315,10 +316,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         totalTrades: walletSignals.length || dbMatch?.totalTrades || 0,
         successTrades: profitablePositions.length,
         chatId:
-          w.chatId ||
-          dbMatch?.chatId ||
-          process.env.TELEGRAM_CHAT_ID ||
-          "2079693450",
+          w.chatId || dbMatch?.chatId || ENV.TELEGRAM_CHAT_ID || "2079693450",
         alphaChannelId: w.alphaChannelId || dbMatch?.alphaChannelId || "",
         isActive: w.isActive ?? dbMatch?.isActive ?? true,
         transactions:
@@ -381,11 +379,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
   const savedChatId =
     wallets.find((w: any) => w.chatId)?.chatId ||
-    process.env.TELEGRAM_CHAT_ID ||
+    ENV.TELEGRAM_CHAT_ID ||
     "2079693450";
   const savedAlphaId =
     wallets.find((w: any) => w.alphaChannelId)?.alphaChannelId ||
-    process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
+    ENV.TELEGRAM_ALPHA_CHANNEL_ID ||
     "-1003737826938";
 
   const walletStats = wallets.map((w: any) => {

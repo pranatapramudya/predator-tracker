@@ -138,7 +138,7 @@ export default function LoginPage() {
             PREDATOR <span className="text-emerald-400">TRACKER</span>
           </h1>
 
-          <p className="text-neutral-400 text-sm font-medium flex items-center justify-center gap-2">
+          <p className="text-zinc-200 text-sm font-semibold flex items-center justify-center gap-2">
             <Lock className="w-4 h-4 text-emerald-400" />
             <span>
               {mode === "LOGIN" && "Enter Security PIN to unlock radar control"}
@@ -442,12 +442,12 @@ export default function LoginPage() {
           </div>
 
           {/* Footer Security Badges */}
-          <div className="pt-2 border-t border-neutral-800/50 flex items-center justify-between text-[11px] text-neutral-500">
+          <div className="pt-2 border-t border-neutral-800/50 flex items-center justify-between text-[11px] text-zinc-200 font-medium">
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               Tenant Data Isolation
             </span>
-            <span className="font-mono text-[10px] text-neutral-600">
+            <span className="font-mono text-[10px] text-zinc-300 font-bold">
               SHA-256 Encrypted
             </span>
           </div>

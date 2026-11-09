@@ -1,6 +1,7 @@
 // src/lib/gemini.ts
 
 import { prisma } from "@/lib/prisma";
+import { ENV } from "@/config/env";
 import {
   GoogleGenerativeAI,
   HarmCategory,
@@ -8,7 +9,7 @@ import {
 } from "@google/generative-ai";
 import { ConfluenceSignal } from "@prisma/client";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const genAI = new GoogleGenerativeAI(ENV.GEMINI_API_KEY || "");
 
 export async function getOrFetchTokenIntel(
   tokenAddress: string,

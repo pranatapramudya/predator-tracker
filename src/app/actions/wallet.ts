@@ -9,6 +9,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { ENV } from "@/config/env";
 import fs from "fs";
 import path from "path";
 
@@ -82,8 +83,8 @@ function syncWatchlistFile(
 }
 
 const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || "",
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
+  url: ENV.UPSTASH_REDIS_REST_URL || "",
+  token: ENV.UPSTASH_REDIS_REST_TOKEN || "",
 });
 
 const ratelimit = new Ratelimit({
@@ -105,7 +106,7 @@ export async function createWalletAction(formData: FormData) {
   const userId = sessionUser?.id || "admin_owner";
 
   try {
-    if (process.env.UPSTASH_REDIS_REST_URL) {
+    if (ENV.UPSTASH_REDIS_REST_URL) {
       const { success } = await ratelimit.limit(userId);
       if (!success) {
         redirect("/?feedback=too_fast&tab=add");
@@ -134,13 +135,13 @@ export async function createWalletAction(formData: FormData) {
     if (!chatId) {
       chatId =
         existingUserWallets.find((w) => w.chatId)?.chatId ||
-        process.env.TELEGRAM_CHAT_ID ||
+        ENV.TELEGRAM_CHAT_ID ||
         "";
     }
     if (!alphaChannelId) {
       alphaChannelId =
         existingUserWallets.find((w) => w.alphaChannelId)?.alphaChannelId ||
-        process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
+        ENV.TELEGRAM_ALPHA_CHANNEL_ID ||
         "-1003737826938";
     }
   }
@@ -218,12 +219,12 @@ export async function createWalletAction(formData: FormData) {
       );
     }
 
-    if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
+    if (chatId && ENV.TELEGRAM_BOT_TOKEN) {
       try {
         const welcomeMsg = `🎯 *NEW TARGET LOCKED!*\n\nYou've successfully added a new whale to the Predator Radar:\n\n👤 *Alias:* ${name}\n🌐 *Network:* ${network}\n📍 *Address:* \`${normalized}\`\n\nThe system is now monitoring this wallet 24/7. Standby for alpha signals! 🚀🐋`;
 
         await fetch(
-          `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+          `https://api.telegram.org/bot${ENV.TELEGRAM_BOT_TOKEN}/sendMessage`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

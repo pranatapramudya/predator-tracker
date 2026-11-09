@@ -1,6 +1,6 @@
 // src/lib/scanner.ts
-import { prisma } from "@/lib/prisma"; //
-// 🔥 Import fitur baru lu
+import { prisma } from "@/lib/prisma";
+import { ENV } from "@/config/env";
 import { getSecurityData } from "./rugcheck";
 import { getAIScore } from "./aiScoring";
 
@@ -9,19 +9,18 @@ export async function auditHistoricalWinRate(
   address: string,
   network: string,
 ) {
-  console.log(`[SCANNER] Memulai audit REAL DATA & PnL dompet: ${address}`); //[cite: 1]
+  console.log(`[SCANNER] Memulai audit REAL DATA & PnL dompet: ${address}`);
 
   try {
-    let totalTrades = 0; //[cite: 1]
-    let successTrades = 0; //[cite: 1]
-    const positionsToInsert: any[] = []; //[cite: 1]
+    let totalTrades = 0;
+    let successTrades = 0;
+    const positionsToInsert: any[] = [];
 
     // ==========================================
     // 🟠 LOGIKA SOLANA (Helius Parsed API)
     // ==========================================
     if (network === "SOLANA") {
-      //[cite: 1]
-      const heliusKey = process.env.HELIUS_API_KEY; //[cite: 1]
+      const heliusKey = ENV.HELIUS_API_KEY;
       if (!heliusKey) {
         //[cite: 1]
         console.error("[SCANNER] HELIUS_API_KEY belum dipasang!"); //[cite: 1]
