@@ -1,38 +1,13 @@
 // src/app/page.tsx
-import UpgradeModal from "@/components/UpgradeModal";
-import LiveRadarPoller from "@/components/LiveRadarPoller";
 import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
 import { getOrFetchTokenIntel } from "@/lib/gemini";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { logoutAction } from "@/app/actions/auth";
 import { getCurrentUser } from "@/lib/auth";
-import PnLChart from "@/components/PnLChart";
-import { auditHistoricalWinRate } from "@/lib/scanner";
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import DashboardShell from "@/components/DashboardShell";
 import fs from "fs";
 import path from "path";
-
-import {
-  Shield,
-  Radio,
-  Activity,
-  ChevronRight,
-  ChevronLeft,
-  CheckCircle2,
-  AlertCircle,
-  Trash2,
-  Send,
-  ExternalLink,
-  Ghost,
-  Flame,
-  BrainCircuit,
-  TrendingUp,
-  Lock,
-  LogOut,
-} from "lucide-react";
+import { CheckCircle2, Trash2, AlertCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -64,60 +39,6 @@ function loadSignalsFromFile(): any[] {
     console.error("Failed to read data/signals.json:", err);
   }
   return [];
-}
-
-function syncWatchlistFile(
-  action: "add" | "delete",
-  wallet: {
-    address: string;
-    name?: string;
-    network?: string;
-    userId?: string;
-    chatId?: string;
-  },
-) {
-  try {
-    const list = loadWatchlistFromFile();
-    if (action === "add") {
-      const idx = list.findIndex(
-        (w: any) => w.address?.toLowerCase() === wallet.address?.toLowerCase(),
-      );
-      const item = {
-        name: wallet.name || "Target Whale",
-        address: wallet.address,
-        network: wallet.network || "SOLANA",
-        chain: (wallet.network || "SOLANA").toLowerCase(),
-        userId: wallet.userId || "admin_owner",
-        chatId: wallet.chatId || process.env.TELEGRAM_CHAT_ID || "",
-        isActive: true,
-        minAlertUsd: 100,
-      };
-      if (idx >= 0) {
-        list[idx] = { ...list[idx], ...item };
-      } else {
-        list.push(item);
-      }
-    } else if (action === "delete") {
-      const filtered = list.filter(
-        (w: any) =>
-          w.address?.toLowerCase() !== wallet.address?.toLowerCase() &&
-          w.name?.toLowerCase() !== wallet.address?.toLowerCase(),
-      );
-      fs.writeFileSync(
-        CONFIG_WATCHLIST_PATH,
-        JSON.stringify(filtered, null, 2),
-        "utf-8",
-      );
-      return;
-    }
-    fs.writeFileSync(
-      CONFIG_WATCHLIST_PATH,
-      JSON.stringify(list, null, 2),
-      "utf-8",
-    );
-  } catch (err) {
-    console.error("Failed to sync config/watchlist.json:", err);
-  }
 }
 
 function derivePositionsFromSignals(signals: any[]) {
@@ -171,23 +92,23 @@ function derivePositionsFromSignals(signals: any[]) {
   });
 }
 
-// [PHASE 3] Cache dihapus karena bentrokan dengan Clerk Auth
-// Menggunakan fungsi async biasa.
 const getTrendingData = async () => {
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const trendingBuys = await prisma.transaction.groupBy({
-    by: ["tokenAddress", "tokenSymbol"],
-    where: {
-      type: "BUY",
-      createdAt: { gte: twentyFourHoursAgo },
-      tokenAddress: {
-        notIn: ["solana", "eth", "btc", "USDC", "USDT", "WETH", "DAI"],
+  const trendingBuys = await prisma.transaction
+    .groupBy({
+      by: ["tokenAddress", "tokenSymbol"],
+      where: {
+        type: "BUY",
+        createdAt: { gte: twentyFourHoursAgo },
+        tokenAddress: {
+          notIn: ["solana", "eth", "btc", "USDC", "USDT", "WETH", "DAI"],
+        },
       },
-    },
-    _count: { walletId: true },
-    orderBy: { _count: { walletId: "desc" } },
-    take: 3,
-  });
+      _count: { walletId: true },
+      orderBy: { _count: { walletId: "desc" } },
+      take: 3,
+    })
+    .catch(() => []);
 
   const smartMoneyTrends = await Promise.all(
     trendingBuys.map(async (t) => {
@@ -214,52 +135,25 @@ const getTrendingData = async () => {
   return smartMoneyTrends;
 };
 
-const NETWORK_OPTIONS = [
-  { value: "BITCOIN", label: "Bitcoin", color: "text-orange-500" },
-  { value: "SOLANA", label: "Solana", color: "text-emerald-400" },
-  { value: "ETHEREUM", label: "Ethereum", color: "text-cyan-400" },
-  { value: "BASE", label: "Base", color: "text-indigo-400" },
-] as const;
-
-type WalletNetwork = (typeof NETWORK_OPTIONS)[number]["value"];
-
-const NETWORK_LOGOS: Record<WalletNetwork, string> = {
-  BITCOIN: "https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=035",
-  SOLANA: "https://cryptologos.cc/logos/solana-sol-logo.svg?v=035",
-  ETHEREUM: "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=035",
-  BASE: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png",
-};
-
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || "",
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
-});
-
-const ratelimit = new Ratelimit({
-  redis: redis,
-  limiter: Ratelimit.slidingWindow(5, "1 m"),
-  analytics: true,
-});
-
 const FEEDBACK_COPY: Record<
   string,
   { title: string; description: string; icon: any; color: string }
 > = {
   created: {
     title: "TARGET LOCKED",
-    description: "Whale successfully added to radar.",
+    description: "Whale successfully added to radar surveillance.",
     icon: CheckCircle2,
     color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
   },
   deleted: {
     title: "TARGET ELIMINATED",
-    description: "Target has been removed.",
+    description: "Target has been removed from radar.",
     icon: Trash2,
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
   invalid: {
     title: "INVALID COORDS",
-    description: "Please check the wallet address or network.",
+    description: "Please check the wallet address or network format.",
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
@@ -270,323 +164,29 @@ const FEEDBACK_COPY: Record<
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
   limit_reached: {
-    title: "UPGRADE REQUIRED (LIMIT REACHED)",
-    description: "Radar capacity full! Upgrade your tier to track more whales.",
+    title: "UPGRADE REQUIRED",
+    description: "Radar capacity full! Upgrade tier to track more whales.",
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
   locked: {
     title: "TARGET LOCKED",
     description:
-      "FREE accounts can only lock 1 permanent target. Upgrade tier to swap or add more whales.",
+      "FREE accounts can only lock 1 target. Upgrade tier to swap or add more whales.",
     icon: AlertCircle,
     color: "text-amber-400 border-amber-500/30 bg-amber-500/10",
   },
   too_fast: {
     title: "SLOW DOWN!",
-    description:
-      "Anti-DDoS system triggered. You are submitting too fast. Wait a minute.",
+    description: "Anti-DDoS triggered. Submitting too fast. Wait a moment.",
     icon: AlertCircle,
     color: "text-rose-400 border-rose-500/30 bg-rose-500/10",
   },
 };
 
-export function getTradeStyleBadge(transactions: any[]) {
-  if (!transactions || transactions.length < 2) {
-    return {
-      label: "Unknown",
-      color: "bg-white/10 text-white/50 border border-white/5",
-      icon: "❓",
-    };
-  }
-
-  let totalHoldTimeHours = 0;
-  let pairCount = 0;
-
-  const tokenGroups: Record<string, any[]> = {};
-  transactions.forEach((tx) => {
-    if (!tx.tokenAddress || tx.tokenAddress === "solana") return;
-    if (!tokenGroups[tx.tokenAddress]) tokenGroups[tx.tokenAddress] = [];
-    tokenGroups[tx.tokenAddress].push(tx);
-  });
-
-  for (const token in tokenGroups) {
-    const txs = tokenGroups[token].sort(
-      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-    );
-
-    let firstBuyTime = null;
-    for (const tx of txs) {
-      if (tx.type === "BUY" && !firstBuyTime) {
-        firstBuyTime = tx.createdAt.getTime();
-      } else if (tx.type === "SELL" && firstBuyTime) {
-        const sellTime = tx.createdAt.getTime();
-        const diffInHours = (sellTime - firstBuyTime) / (1000 * 60 * 60);
-        totalHoldTimeHours += diffInHours;
-        pairCount++;
-        firstBuyTime = null;
-      }
-    }
-  }
-
-  if (pairCount === 0) {
-    return {
-      label: "Diamond Hands",
-      color: "bg-blue-600/20 text-blue-400 border border-blue-500/30",
-      icon: "💎",
-    };
-  }
-
-  const avgHoldTime = totalHoldTimeHours / pairCount;
-
-  if (avgHoldTime < 24) {
-    return {
-      label: "Scalper",
-      color: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
-      icon: "⚡",
-    };
-  } else if (avgHoldTime >= 24 && avgHoldTime <= 168) {
-    return {
-      label: "Swing Trader",
-      color: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
-      icon: "🏄‍♂️",
-    };
-  } else {
-    return {
-      label: "Diamond Hands",
-      color: "bg-blue-600/20 text-blue-400 border border-blue-500/30",
-      icon: "💎",
-    };
-  }
-}
-
-function isValidAddress(address: string, network: WalletNetwork): boolean {
-  if (network === "BITCOIN")
-    return /^(1|3|bc1)[a-zA-Z0-9]{25,62}$/.test(address);
-  if (network === "SOLANA")
-    return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
-  return /^0x[a-fA-F0-9]{40}$/.test(address);
-}
-
-function formatAddress(address: string): string {
-  return address.length <= 12
-    ? address
-    : `${address.slice(0, 6)}...${address.slice(-6)}`;
-}
-
-function getWhaleTag(winRate: number, totalTrades: number) {
-  if (totalTrades < 3)
-    return {
-      text: "UNRANKED",
-      style:
-        "bg-white text-black font-black border-none shadow-[0_0_12px_rgba(255,255,255,0.4)]",
-    };
-  if (winRate >= 70)
-    return {
-      text: "THE ORACLE",
-      style:
-        "bg-amber-500/10 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(251,191,36,0.2)]",
-    };
-  if (winRate >= 40)
-    return {
-      text: "THE GRINDER",
-      style: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
-    };
-  return {
-    text: "EXIT LIQUIDITY",
-    style: "bg-rose-500/10 text-rose-400 border-rose-500/30",
-  };
-}
-
-async function createWalletAction(formData: FormData) {
-  "use server";
-  const sessionUser = await getCurrentUser();
-  const userId = sessionUser?.id || "admin_owner";
-
-  try {
-    if (process.env.UPSTASH_REDIS_REST_URL) {
-      const { success } = await ratelimit.limit(userId);
-      if (!success) {
-        redirect("/?feedback=too_fast");
-      }
-    }
-  } catch (error) {
-    if (error instanceof Error && error.message === "NEXT_REDIRECT")
-      throw error;
-  }
-
-  let feedback = "failed";
-  const address = String(formData.get("address") ?? "").trim();
-  const name = String(formData.get("name") ?? "").trim();
-  let chatId = String(formData.get("chatId") ?? "").trim();
-  let alphaChannelId = String(formData.get("alphaChannelId") ?? "").trim();
-  const network = String(
-    formData.get("network") ?? "",
-  ).toUpperCase() as WalletNetwork;
-
-  if (!chatId || !alphaChannelId) {
-    const existingUserWallets = await prisma.wallet
-      .findMany({
-        where: { userId: userId },
-        select: { chatId: true, alphaChannelId: true },
-      })
-      .catch(() => []);
-
-    if (!chatId) {
-      chatId =
-        existingUserWallets.find((w) => w.chatId)?.chatId ||
-        process.env.TELEGRAM_CHAT_ID ||
-        "";
-    }
-    if (!alphaChannelId) {
-      alphaChannelId =
-        existingUserWallets.find((w) => w.alphaChannelId)?.alphaChannelId ||
-        process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
-        "-1003737826938";
-    }
-  }
-
-  if (!address || !name || !network || !isValidAddress(address, network)) {
-    redirect("/?feedback=invalid");
-  }
-
-  try {
-    const normalized =
-      network === "SOLANA" || network === "BITCOIN"
-        ? address
-        : address.toLowerCase();
-
-    // 1. Sync immediately to config/watchlist.json with multi-tenant tagging
-    syncWatchlistFile("add", {
-      address: normalized,
-      name,
-      network,
-      userId,
-      chatId,
-    });
-
-    let balance = 0;
-    try {
-      if (network === "BITCOIN") balance = await getBTCBalance(normalized);
-      else if (network === "SOLANA")
-        balance = await getSolanaBalance(normalized);
-      else balance = await getEVMBalance(normalized, network);
-    } catch {
-      balance = 0;
-    }
-
-    try {
-      const savedWallet = await prisma.wallet.upsert({
-        where: {
-          address_network_userId: {
-            address: normalized,
-            network,
-            userId,
-          },
-        },
-        update: {
-          name,
-          chatId,
-          alphaChannelId,
-          lastBalance: balance,
-          isActive: true,
-        },
-        create: {
-          address: normalized,
-          name,
-          network,
-          chatId,
-          alphaChannelId,
-          lastBalance: balance,
-          isActive: true,
-          userId,
-        },
-      });
-
-      auditHistoricalWinRate(
-        savedWallet.id,
-        savedWallet.address,
-        savedWallet.network,
-      );
-    } catch (dbErr) {
-      console.warn(
-        "Prisma save skipped or failed, watchlist.json updated:",
-        dbErr,
-      );
-    }
-
-    if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
-      try {
-        const welcomeMsg = `🎯 *NEW TARGET LOCKED!*\n\nYou've successfully added a new whale to the Predator Radar:\n\n👤 *Alias:* ${name}\n🌐 *Network:* ${network}\n📍 *Address:* \`${normalized}\`\n\nThe system is now monitoring this wallet 24/7. Standby for alpha signals! 🚀🐋`;
-
-        await fetch(
-          `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: chatId,
-              text: welcomeMsg,
-              parse_mode: "Markdown",
-            }),
-          },
-        );
-      } catch (error) {
-        console.error("Failed to send add wallet notification:", error);
-      }
-    }
-
-    revalidatePath("/");
-    feedback = "created";
-  } catch (e) {
-    console.error(e);
-  }
-  redirect(`/?feedback=${feedback}`);
-}
-
-async function deleteWalletAction(formData: FormData) {
-  "use server";
-  const sessionUser = await getCurrentUser();
-  const userId = sessionUser?.id || "admin_owner";
-  const isOwner = sessionUser?.role === "OWNER" || userId === "admin_owner";
-
-  let feedback = "failed";
-  try {
-    const id = String(formData.get("id"));
-
-    // Sync deletion to config/watchlist.json
-    try {
-      const targetWallet = await prisma.wallet
-        .findFirst({ where: { id } })
-        .catch(() => null);
-      if (targetWallet) {
-        syncWatchlistFile("delete", { address: targetWallet.address });
-      } else {
-        syncWatchlistFile("delete", { address: id });
-      }
-      if (isOwner) {
-        await prisma.wallet.deleteMany({ where: { id } }).catch(() => {});
-      } else {
-        await prisma.wallet
-          .deleteMany({ where: { id, userId } })
-          .catch(() => {});
-      }
-    } catch {
-      syncWatchlistFile("delete", { address: id });
-    }
-
-    revalidatePath("/");
-    feedback = "deleted";
-  } catch (e) {
-    if (e instanceof Error && e.message === "NEXT_REDIRECT") {
-      throw e;
-    }
-    console.error(e);
-  }
-  redirect(`/?feedback=${feedback}`);
-}
-
 export default async function Page({ searchParams }: { searchParams: any }) {
+  const resolvedParams =
+    searchParams instanceof Promise ? await searchParams : searchParams || {};
   const sessionUser = await getCurrentUser();
   const userId = sessionUser?.id || "admin_owner";
   const userEmail = sessionUser?.email || "owner@predator.tracker";
@@ -598,60 +198,78 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     email: userEmail,
     name: userName,
     role: sessionUser?.role || "OWNER",
-    tier: sessionUser?.tier || "APEX",
-    maxWallets: 1000,
+    tier: "PRO_RADAR",
     shadowBalance: 100,
   };
 
   try {
-    const upserted = await prisma.user.upsert({
+    const userInDb = await prisma.user.findUnique({
       where: { id: userId },
-      update: { role: dbUser.role as any, tier: "APEX", maxWallets: 1000 },
-      create: {
-        id: userId,
-        email: userEmail,
-        name: userName,
-        role: dbUser.role as any,
-        tier: "APEX",
-        maxWallets: 1000,
-        shadowBalance: 100,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        tier: true,
+        shadowBalance: true,
       },
     });
-    if (upserted) dbUser = upserted as any;
-  } catch {
-    // Non-blocking fallback if DB credentials masked or offline
+    if (userInDb) {
+      dbUser = {
+        id: userInDb.id,
+        email: userInDb.email,
+        name: userInDb.name || userName,
+        role: userInDb.role,
+        tier: userInDb.tier || "PRO_RADAR",
+        shadowBalance: Number(userInDb.shadowBalance) || 100,
+      };
+    }
+  } catch (err) {
+    console.warn("DB user query fallback:", err);
   }
 
-  const params = await searchParams;
-  const feedback = params.feedback
-    ? FEEDBACK_COPY[params.feedback as string]
-    : null;
-
-  const page = parseInt(params?.page as string) || 1;
-  const limit = 4;
+  const page = Math.max(1, Number(resolvedParams?.page) || 1);
+  const limit = 12;
   const skip = (page - 1) * limit;
 
-  let [wallets, totalWallets, privateAlphaLogs] = await Promise.all([
+  const feedbackParam =
+    typeof resolvedParams?.feedback === "string"
+      ? resolvedParams.feedback
+      : null;
+  const feedback =
+    feedbackParam && FEEDBACK_COPY[feedbackParam]
+      ? FEEDBACK_COPY[feedbackParam]
+      : null;
+  const initialTab =
+    typeof resolvedParams?.tab === "string" ? resolvedParams.tab : "watchlist";
+
+  const rawFileWatchlist = loadWatchlistFromFile();
+  const fileWatchlist = isOwner
+    ? rawFileWatchlist
+    : rawFileWatchlist.filter((w: any) => w.userId === userId);
+  const rawSignals = loadSignalsFromFile();
+
+  let [totalWallets, wallets, privateAlphaLogs] = await Promise.all([
+    prisma.wallet
+      .count(isOwner ? undefined : { where: { userId } })
+      .catch(() => fileWatchlist.length),
     prisma.wallet
       .findMany({
-        where: isOwner ? {} : { userId: userId },
+        where: isOwner ? {} : { userId },
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          transactions: { orderBy: { createdAt: "desc" }, take: 50 },
+          transactions: { orderBy: { createdAt: "desc" }, take: 20 },
           positions: true,
         },
       })
       .catch(() => []),
-    prisma.wallet
-      .count(isOwner ? undefined : { where: { userId: userId } })
-      .catch(() => 0),
     prisma.transaction
       .findMany({
         where: {
           usdValue: { gte: 1000 },
-          ...(isOwner ? {} : { wallet: { userId: userId } }),
+          ...(isOwner ? {} : { wallet: { userId } }),
         },
         include: { wallet: true },
         orderBy: { createdAt: "desc" },
@@ -660,14 +278,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       .catch(() => []),
   ]);
 
-  // Master Watchlist from config/watchlist.json (Single source of truth used by Telegram Bot & Daemon)
-  const rawFileWatchlist = loadWatchlistFromFile();
-  const fileWatchlist = isOwner
-    ? rawFileWatchlist
-    : rawFileWatchlist.filter((w: any) => w.userId === userId);
-  const rawSignals = loadSignalsFromFile();
-
-  // If config/watchlist.json has wallets, use it as the authoritative active radar list
+  // Merge authoritative watchlist from config/watchlist.json
   if (fileWatchlist.length > 0) {
     totalWallets = fileWatchlist.length;
     const paginatedFile = fileWatchlist.slice(skip, skip + limit);
@@ -702,6 +313,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         lastBalance: dbMatch?.lastBalance || 0,
         winRate: dbMatch?.winRate || computedWinRate,
         totalTrades: walletSignals.length || dbMatch?.totalTrades || 0,
+        successTrades: profitablePositions.length,
         chatId:
           w.chatId ||
           dbMatch?.chatId ||
@@ -735,7 +347,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
   // Prioritize live signals from data/signals.json for Alpha Feed so UI perfectly mirrors Telegram
   if (rawSignals.length > 0) {
-    privateAlphaLogs = rawSignals.slice(0, 15).map((s: any, idx: number) => ({
+    privateAlphaLogs = rawSignals.slice(0, 30).map((s: any, idx: number) => ({
       id: s.txUrl || `sig_${idx}`,
       wallet: { name: s.whaleName || "Smart Money" },
       createdAt: new Date(s.timestamp || Date.now()),
@@ -764,28 +376,25 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     }),
   );
 
-  // [PHASE 3] Gunakan getTrendingData yang sudah di-cache di module scope.
   const smartMoneyTrends = await getTrendingData();
-
   const totalPages = Math.max(1, Math.ceil(totalWallets / limit));
 
   const savedChatId =
-    wallets.find((w) => w.chatId)?.chatId ||
+    wallets.find((w: any) => w.chatId)?.chatId ||
     process.env.TELEGRAM_CHAT_ID ||
     "2079693450";
   const savedAlphaId =
-    wallets.find((w) => w.alphaChannelId)?.alphaChannelId ||
+    wallets.find((w: any) => w.alphaChannelId)?.alphaChannelId ||
     process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
     "-1003737826938";
 
-  // [PHASE 2] Pindahkan reduce() dari JSX ke server-side.
-  const walletStats = wallets.map((w) => {
+  const walletStats = wallets.map((w: any) => {
     const totalInvested = (w.positions || []).reduce(
-      (sum, p) => sum + Number(p.totalInvestedUsd),
+      (sum: number, p: any) => sum + Number(p.totalInvestedUsd || 0),
       0,
     );
     const totalPnl = (w.positions || []).reduce(
-      (sum, p) => sum + Number(p.realizedPnlUsd),
+      (sum: number, p: any) => sum + Number(p.realizedPnlUsd || 0),
       0,
     );
     const roiPercent = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
@@ -793,814 +402,20 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   });
 
   return (
-    <main className="min-h-screen p-3 sm:p-5 md:p-8 lg:p-10 max-w-[1600px] mx-auto space-y-6 md:space-y-8 bg-[#09090b] text-white overflow-x-hidden selection:bg-emerald-500 selection:text-black">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 pb-6 md:pb-8 border-b border-white/10">
-        <div>
-          <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-3">
-            <LiveRadarPoller intervalSec={15} />
-            <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[11px] sm:text-xs font-bold tracking-wide">
-              <Send className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              <span className="truncate max-w-[140px] sm:max-w-none">
-                @skom_tracker_bot
-              </span>
-              <span className="text-emerald-400 font-bold ml-1">● SINKRON</span>
-            </div>
-          </div>
-          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight uppercase leading-none">
-            Predator <span className="text-emerald-400">Tracker</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-neutral-400 mt-1.5">
-            Targeting Intelligence System // Memantau Transaksi Smart Money &
-            Paus Kripto
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-3 md:gap-4 pt-2 md:pt-0 border-t border-white/5 md:border-0">
-          <div className="px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl text-left md:text-right">
-            <p className="text-[9px] sm:text-[10px] text-white/60 uppercase tracking-widest font-bold">
-              Your Whales
-            </p>
-            <p className="text-base sm:text-xl font-black leading-none mt-0.5">
-              {totalWallets}{" "}
-              <span className="text-[10px] sm:text-xs font-normal text-white/40 italic">
-                TARGETS
-              </span>
-            </p>
-          </div>
-
-          <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl sm:rounded-2xl text-emerald-400 font-mono text-[11px] font-bold">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>{userName.toUpperCase()}</span>
-            <span className="text-white/30">//</span>
-            <span className="text-white/70">
-              {sessionUser?.role || "OPERATOR"}
-            </span>
-          </div>
-
-          <UpgradeModal userId={userId} currentTier={dbUser.tier} />
-
-          <form action={logoutAction}>
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/60 text-red-400 rounded-xl sm:rounded-2xl text-xs font-mono font-bold tracking-wider transition-all"
-              title="Lock Predator Terminal"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">LOCK</span>
-            </button>
-          </form>
-        </div>
-      </header>
-
-      {feedback && (
-        <div
-          className={`flex items-start gap-4 p-4 rounded-2xl border bg-transparent animate-in fade-in slide-in-from-top-4 ${feedback.color}`}
-        >
-          <feedback.icon className="w-6 h-6 shrink-0" />
-          <div>
-            <h4 className="font-black text-sm uppercase tracking-tight">
-              {feedback.title}
-            </h4>
-            <p className="text-sm opacity-90">{feedback.description}</p>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 xl:grid-cols-12 gap-6 relative">
-        <section className="order-2 lg:order-1 lg:col-span-4 xl:col-span-3 h-fit lg:sticky lg:top-10">
-          <div className="bg-[#18181b] border border-white/10 rounded-2xl sm:rounded-[32px] p-4 sm:p-6 shadow-2xl transition-colors">
-            <h2 className="text-lg font-black uppercase mb-6 flex items-center gap-3">
-              <Shield className="text-emerald-400 w-5 h-5" /> Acquisition
-            </h2>
-            <form
-              action={createWalletAction}
-              className="space-y-5"
-              autoComplete="off"
-            >
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
-                  Wallet Address
-                </label>
-                <input
-                  name="address"
-                  required
-                  autoComplete="new-password"
-                  placeholder="BTC, SOL, or EVM..."
-                  className="w-full bg-zinc-900/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none font-mono text-sm focus:border-emerald-500/50 transition-all text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
-                  Network
-                </label>
-                <select
-                  name="network"
-                  className="w-full bg-zinc-900/60 border border-white/10 rounded-2xl px-4 py-4 font-bold outline-none cursor-pointer text-sm text-white"
-                >
-                  {NETWORK_OPTIONS.map((n) => (
-                    <option
-                      key={n.value}
-                      value={n.value}
-                      className="bg-zinc-900"
-                    >
-                      {n.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
-                  Alias Name
-                </label>
-                <input
-                  name="name"
-                  required
-                  autoComplete="off"
-                  placeholder="Whale #1"
-                  className="w-full bg-zinc-900/60 border border-white/10 rounded-2xl px-5 py-4 font-bold outline-none text-sm focus:border-emerald-500/50 transition-all text-white"
-                />
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between ml-1">
-                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
-                    <Send className="w-3 h-3 text-cyan-400" /> Telegram ID
-                  </label>
-                  {!savedChatId && (
-                    <a
-                      href="https://t.me/userinfobot"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[9px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors uppercase tracking-widest bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/20 flex items-center gap-1"
-                    >
-                      🔍 Auto Find
-                    </a>
-                  )}
-                </div>
-                <input
-                  name="chatId"
-                  required={!savedChatId}
-                  defaultValue={savedChatId}
-                  readOnly={!!savedChatId}
-                  placeholder="Example: 12345678"
-                  className={`w-full rounded-2xl px-5 py-4 font-bold outline-none text-sm transition-all ${
-                    savedChatId
-                      ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-not-allowed"
-                      : "bg-zinc-900/60 border border-white/10 text-white focus:border-cyan-500/50"
-                  }`}
-                />
-                {savedChatId && (
-                  <p className="text-[8px] text-emerald-400/80 uppercase tracking-widest mt-2 ml-1 italic font-bold">
-                    🔒 ID Locked (Auto-Sync)
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between ml-1">
-                  <label className="text-[10px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
-                    👑 Alpha Group ID (Optional)
-                  </label>
-                  {!savedAlphaId && (
-                    <details className="group relative">
-                      <summary className="text-[9px] font-bold text-amber-400 hover:text-amber-300 transition-colors uppercase tracking-widest bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 flex items-center gap-1 cursor-pointer list-none outline-none [&::-webkit-details-marker]:hidden">
-                        ❓ How to get ID
-                      </summary>
-                      <div className="absolute z-50 top-full right-0 mt-2 w-[280px] bg-[#18181b] border border-amber-500/30 rounded-2xl p-4 shadow-2xl text-xs text-white/80 normal-case hidden group-open:block">
-                        <p className="font-black text-amber-400 mb-2 uppercase tracking-widest text-[10px]">
-                          Tutorial:
-                        </p>
-                        <ol className="list-decimal pl-4 space-y-1.5 text-[10px] font-medium">
-                          <li>Create a new Telegram Group/Channel.</li>
-                          <li>
-                            Add{" "}
-                            <span className="text-amber-400 font-bold">
-                              @RawDataBot
-                            </span>{" "}
-                            to the group.
-                          </li>
-                          <li>
-                            The bot will send your Group ID (starts with{" "}
-                            <code className="bg-black/50 px-1 py-0.5 rounded text-white">
-                              -100...
-                            </code>
-                            ).
-                          </li>
-                          <li>Copy and paste it here.</li>
-                          <li>
-                            Don't forget to invite your Predator Tracker bot to
-                            that group too!
-                          </li>
-                        </ol>
-                      </div>
-                    </details>
-                  )}
-                </div>
-                <input
-                  name="alphaChannelId"
-                  defaultValue={savedAlphaId}
-                  readOnly={!!savedAlphaId}
-                  placeholder="Example: -100xxxxxx"
-                  className={`w-full rounded-2xl px-5 py-4 font-bold outline-none text-sm transition-all ${
-                    savedAlphaId
-                      ? "bg-amber-500/10 border border-amber-500/30 text-amber-400 cursor-not-allowed"
-                      : "bg-zinc-900/60 border border-white/10 text-white focus:border-amber-500/50"
-                  }`}
-                />
-                {savedAlphaId ? (
-                  <p className="text-[8px] text-amber-400/80 uppercase tracking-widest mt-2 ml-1 italic font-bold">
-                    🔒 ID Locked (Auto-Sync)
-                  </p>
-                ) : (
-                  <p className="text-[8px] text-white/40 uppercase tracking-widest mt-2 ml-1 italic font-bold">
-                    *Leave blank to receive Alpha alerts in the standard chat
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-4 mt-2 bg-white text-black font-black rounded-2xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 uppercase tracking-tighter"
-              >
-                START RADAR <ChevronRight className="w-4 h-4" />
-              </button>
-            </form>
-          </div>
-        </section>
-
-        <section className="order-3 block xl:hidden lg:col-span-8 w-full mt-2">
-          {/* 🔥 TRENDING MOBILE/TABLET VIEW 🔥 */}
-          <div className="bg-[#18181b] border border-orange-500/30 rounded-[24px] p-5 shadow-2xl mb-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-[40px] rounded-full"></div>
-            <div className="flex items-center justify-between mb-4 relative z-10">
-              <h2 className="text-xs font-black text-orange-400 tracking-widest flex items-center gap-2 uppercase">
-                <Flame className="w-4 h-4" /> Smart Trends
-              </h2>
-              <span className="text-[8px] text-orange-400/50 uppercase tracking-widest font-bold border border-orange-500/20 px-2 py-1 rounded bg-orange-500/10">
-                AI Mindshare
-              </span>
-            </div>
-            <div className="space-y-2 relative z-10">
-              {smartMoneyTrends.map((trend, i) => (
-                <div
-                  key={trend.address}
-                  className="p-3 bg-zinc-900/40 border border-white/5 rounded-2xl flex flex-col gap-2"
-                >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-white/40">
-                        #{i + 1}
-                      </span>
-                      <span className="text-sm font-black text-white">
-                        {trend.symbol}
-                      </span>
-                    </div>
-                    <div className="text-[9px] font-bold text-white/50 flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3 text-emerald-400" />{" "}
-                      {trend.buyCount} Whales
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <span className="text-[8px] font-bold px-2 py-1 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase flex items-center gap-1">
-                      <BrainCircuit className="w-3 h-3" /> {trend.narrative}
-                    </span>
-                    <span
-                      className={`text-[8px] font-bold px-2 py-1 rounded uppercase border ${trend.mindshare.includes("Hype") ? "bg-rose-500/20 text-rose-400 border-rose-500/30" : "bg-amber-500/20 text-amber-400 border-amber-500/30"}`}
-                    >
-                      {trend.mindshare}
-                    </span>
-                    {trend.confluence === "SUPER_ALPHA" && (
-                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase">
-                        ⚡ Super Alpha
-                      </span>
-                    )}
-                    {trend.confluence === "HIGH_RISK" && (
-                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 uppercase">
-                        ⚠️ High Risk
-                      </span>
-                    )}
-                    {trend.confluence === "NEUTRAL" && (
-                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-gray-500/20 text-gray-400 border border-gray-500/30 uppercase">
-                        ⚖️ Neutral
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {smartMoneyTrends.length === 0 && (
-                <p className="text-[9px] text-white/30 text-center py-2 font-bold uppercase">
-                  Gathering Data...
-                </p>
-              )}
-            </div>
-          </div>
-
-          <details className="group">
-            <summary className="list-none cursor-pointer bg-[#18181b] border border-emerald-500/30 p-5 rounded-[24px] flex items-center justify-between font-black text-emerald-400 uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-400 transition-all outline-none">
-              <div className="flex items-center gap-3">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                </span>
-                <span>📱 Open Alpha Feed</span>
-              </div>
-              <ChevronRight className="w-5 h-5 group-open:rotate-90 transition-transform duration-300" />
-            </summary>
-
-            <div className="mt-4 bg-[#18181b] border border-white/10 rounded-[24px] p-5 shadow-2xl animate-in fade-in slide-in-from-top-4">
-              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                {privateAlphaLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="group p-4 bg-zinc-900/40 border border-white/5 rounded-2xl hover:border-emerald-500/30 transition-all"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <p className="text-xs font-bold text-white/80 group-hover:text-emerald-400 transition-colors uppercase truncate pr-2">
-                        {log.wallet.name}
-                      </p>
-                      <span
-                        suppressHydrationWarning
-                        className="text-[9px] text-white/40 font-mono"
-                      >
-                        {new Date(log.createdAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`px-2 py-1 border rounded-md text-[9px] font-black tracking-widest ${log.type === "BUY" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-rose-500/10 border-rose-500/20 text-rose-500"}`}
-                      >
-                        {log.type === "BUY" ? "BUY" : "SELL"}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-black text-white leading-none mb-1">
-                          {log.tokenSymbol}
-                        </span>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-bold text-white/50 font-mono">
-                            ${Number(log.usdValue).toLocaleString()}
-                          </span>
-                          {/* 🔥 INJEK UI RAW DATA TEKNIKAL MOBILE 🔥 */}
-                          {log.rsi14AtTx && (
-                            <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 whitespace-nowrap">
-                              RSI: {Number(log.rsi14AtTx).toFixed(1)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <a
-                        href={log.explorerUrl}
-                        target="_blank"
-                        className="ml-auto p-2 bg-white/5 rounded-xl opacity-50 hover:opacity-100 transition-opacity hover:bg-emerald-500/20 text-emerald-400"
-                      >
-                        <ExternalLink size={14} />
-                      </a>
-                    </div>
-                  </div>
-                ))}
-
-                {privateAlphaLogs.length === 0 && (
-                  <div className="text-center py-6">
-                    <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold">
-                      No private signals yet...
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </details>
-        </section>
-
-        <section className="order-1 lg:order-2 lg:col-span-8 xl:col-span-6 space-y-4 sm:space-y-6">
-          <h3 className="flex items-center gap-2 text-sm font-black text-white/60 uppercase tracking-[0.2em] px-2">
-            <Activity className="text-cyan-400 w-4 h-4" /> Your Watchlist
-          </h3>
-          {wallets.length === 0 ? (
-            <div className="border-2 border-dashed border-white/5 rounded-[32px] p-20 text-center text-white/40 italic uppercase tracking-widest text-xs">
-              <Radio className="mx-auto mb-4 animate-pulse will-change-opacity" />
-              Scanning Targets...
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-1">
-                {wallets.map((w) => {
-                  const config = NETWORK_OPTIONS.find(
-                    (n) => n.value === w.network,
-                  );
-                  const whaleTag = getWhaleTag(w.winRate, w.totalTrades);
-                  const safeName = w.name || "Target";
-                  const tradeStyle = getTradeStyleBadge(w.transactions);
-
-                  // [PHASE 2] Ambil dari walletStats yang sudah dihitung di server block.
-                  const stats = walletStats.find((s) => s.id === w.id)!;
-                  const { totalInvested, totalPnl, roiPercent } = stats;
-
-                  const baseShadow = dbUser.shadowBalance || 100;
-                  const shadowProfit = (baseShadow * roiPercent) / 100;
-                  const shadowTotal = baseShadow + shadowProfit;
-                  const isFomoPositive = shadowProfit >= 0;
-
-                  return (
-                    <div
-                      key={w.id}
-                      className="group bg-[#18181b] border border-white/5 p-5 rounded-3xl hover:border-white/20 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between transform-gpu will-change-transform contain-content"
-                    >
-                      <div>
-                        <div className="flex justify-between items-start mb-4 relative z-10 gap-2">
-                          <div className="flex-1 min-w-0 pr-2">
-                            <div className="flex items-center gap-2 mb-2">
-                              <p className="text-[9px] font-black text-white/40 uppercase tracking-widest whitespace-nowrap">
-                                Target Whale
-                              </p>
-                              <span
-                                className={`text-[8px] px-2 py-0.5 rounded border tracking-widest whitespace-nowrap ${whaleTag.style}`}
-                              >
-                                {whaleTag.text}
-                              </span>
-                            </div>
-                            <h4
-                              className="text-lg font-black group-hover:text-emerald-400 transition-colors uppercase truncate block"
-                              title={safeName}
-                            >
-                              {safeName}
-                            </h4>
-
-                            <div className="flex flex-col gap-2 mt-2">
-                              <div className="flex items-center gap-2">
-                                <img
-                                  src={
-                                    NETWORK_LOGOS[w.network as WalletNetwork]
-                                  }
-                                  alt=""
-                                  className="w-5 h-5 rounded-full bg-white p-0.5 shrink-0 shadow-sm"
-                                />
-                                <span
-                                  className={`text-base font-black tracking-tight truncate ${config?.color}`}
-                                >
-                                  {w.network === "BITCOIN"
-                                    ? `₿ ${Number(w.lastBalance).toFixed(8)}`
-                                    : w.network === "SOLANA"
-                                      ? `◎ ${Number(w.lastBalance).toFixed(2)}`
-                                      : `Ξ ${Number(w.lastBalance).toFixed(4)}`}
-                                </span>
-                              </div>
-                              <div
-                                className={`text-[9px] px-2 py-1 rounded w-fit uppercase font-bold tracking-widest flex items-center gap-1.5 shadow-sm ${tradeStyle.color}`}
-                              >
-                                <span>{tradeStyle.icon}</span>{" "}
-                                {tradeStyle.label}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-2 shrink-0">
-                            <span
-                              className={`text-[8px] font-black px-2 py-1 rounded-full border border-white/10 bg-zinc-900/60 tracking-tighter uppercase ${config?.color}`}
-                            >
-                              {w.network}
-                            </span>
-
-                            {dbUser.tier === "FREE" &&
-                            dbUser.role !== "OWNER" ? (
-                              <button
-                                type="button"
-                                disabled
-                                className="p-1.5 text-white/20 cursor-not-allowed transition-colors"
-                                title="Slot locked! Upgrade your radar to SCOUT/PREDATOR to change targets."
-                              >
-                                🔒
-                              </button>
-                            ) : (
-                              <form action={deleteWalletAction}>
-                                <input type="hidden" name="id" value={w.id} />
-                                <button
-                                  type="submit"
-                                  className="p-1.5 text-white/20 hover:text-rose-500 cursor-pointer transition-colors"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </form>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-4 relative z-10">
-                          <div className="flex-1 bg-zinc-900/40 border border-white/5 rounded-xl p-2.5 text-center">
-                            <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mb-1">
-                              Win Rate
-                            </p>
-                            <p
-                              className={`text-sm font-black tracking-tight ${w.winRate >= 70 ? "text-amber-400" : w.winRate >= 40 ? "text-cyan-400" : w.winRate > 0 ? "text-rose-400" : "text-white"}`}
-                            >
-                              {Number(w.winRate).toFixed(1)}%
-                            </p>
-                          </div>
-                          <div className="flex-1 bg-zinc-900/40 border border-white/5 rounded-xl p-2.5 text-center">
-                            <p className="text-[8px] font-black text-white/70 uppercase tracking-widest mb-1">
-                              Trades
-                            </p>
-                            <p className="text-sm font-black tracking-tight text-white">
-                              <span
-                                className={
-                                  w.successTrades > 0
-                                    ? "text-emerald-400"
-                                    : "text-white"
-                                }
-                              >
-                                {w.successTrades}
-                              </span>
-                              <span className="text-white/40 mx-1">/</span>
-                              <span>{w.totalTrades}</span>
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="mt-4">
-                          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">
-                            PnL Performance
-                          </p>
-                          <PnLChart
-                            data={(w.positions || []).map((p: any) => ({
-                              tokenSymbol: p.tokenSymbol || "TOKEN",
-                              pnl: Number(p.realizedPnlUsd) || 0,
-                            }))}
-                            transactions={w.transactions}
-                          />
-                        </div>
-
-                        <div
-                          className={`mt-4 p-3 border rounded-xl flex justify-between items-center relative overflow-hidden transition-all ${isFomoPositive ? "bg-emerald-500/10 border-emerald-500/30" : "bg-rose-500/10 border-rose-500/30"}`}
-                        >
-                          <div
-                            className={`absolute -right-4 -top-4 w-16 h-16 blur-xl rounded-full ${isFomoPositive ? "bg-emerald-500/20" : "bg-rose-500/20"}`}
-                          />
-                          <div className="relative z-10">
-                            <p
-                              className={`text-[9px] font-black uppercase tracking-widest mb-1 flex items-center gap-1.5 ${isFomoPositive ? "text-emerald-400" : "text-rose-400"}`}
-                            >
-                              <Ghost className="w-3 h-3" /> Shadow Mode (Base: $
-                              {baseShadow})
-                            </p>
-                            <p className="text-xs font-bold text-white/80">
-                              If copied:{" "}
-                              <span
-                                className={`font-black text-sm ${isFomoPositive ? "text-emerald-400" : "text-rose-400"}`}
-                              >
-                                ${shadowTotal.toFixed(2)}
-                              </span>
-                            </p>
-                          </div>
-                          <div className="text-right relative z-10">
-                            <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest">
-                              Est. Profit
-                            </p>
-                            <p
-                              className={`text-sm font-black ${isFomoPositive ? "text-emerald-400" : "text-rose-400"}`}
-                            >
-                              {isFomoPositive ? "+" : ""}
-                              {shadowProfit.toFixed(2)} USD
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t border-white/5">
-                          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-2">
-                            Recent Activity
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {w.transactions.length > 0 ? (
-                              w.transactions.slice(0, 10).map((tx, idx) => (
-                                <div
-                                  key={tx.id}
-                                  className="flex items-center gap-1"
-                                >
-                                  <a
-                                    href={tx.explorerUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    title={`${tx.type} ${tx.tokenSymbol}`}
-                                    className={`relative text-[9px] px-1.5 py-0.5 rounded uppercase font-bold border transition-all hover:brightness-110 
-                                  ${tx.type === "BUY" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border-rose-500/30"}
-                                  ${idx === 0 ? "ring-1 ring-white shadow-[0_0_8px_rgba(255,255,255,0.4)] opacity-100" : "opacity-60"}`}
-                                  >
-                                    {tx.type === "BUY" ? "🟢" : "🔴"}{" "}
-                                    {tx.tokenSymbol.slice(0, 5)}
-                                  </a>
-                                </div>
-                              ))
-                            ) : (
-                              <span className="text-[9px] text-white/20 italic">
-                                No recent trades
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5 relative z-10">
-                        <code className="text-[9px] text-white/60 font-mono tracking-tighter truncate max-w-[120px]">
-                          {formatAddress(w.address)}
-                        </code>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse will-change-opacity transform-gpu" />
-                          <span className="text-[8px] font-bold text-white/60 uppercase tracking-widest">
-                            Live
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-6 pt-8 pb-4 transform-gpu">
-                  {page > 1 ? (
-                    <a
-                      href={`/?page=${page - 1}`}
-                      className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors"
-                    >
-                      <ChevronLeft className="w-5 h-5 text-white" />
-                    </a>
-                  ) : (
-                    <div className="p-3 bg-white/5 opacity-30 rounded-xl border border-white/10 cursor-not-allowed">
-                      <ChevronLeft className="w-5 h-5 text-white/30" />
-                    </div>
-                  )}
-                  <span className="text-sm font-bold text-white/80 uppercase tracking-widest">
-                    Page {page} <span className="text-white/30 mx-1">/</span>{" "}
-                    {totalPages}
-                  </span>
-                  {page < totalPages ? (
-                    <a
-                      href={`/?page=${page + 1}`}
-                      className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors"
-                    >
-                      <ChevronRight className="w-5 h-5 text-white" />
-                    </a>
-                  ) : (
-                    <div className="p-3 bg-white/5 opacity-30 rounded-xl border border-white/10 cursor-not-allowed">
-                      <ChevronRight className="w-5 h-5 text-white/30" />
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </section>
-
-        <section className="hidden xl:block xl:col-span-3 h-fit sticky top-10">
-          {/* 🔥 TRENDING DESKTOP VIEW 🔥 */}
-          <div className="bg-[#18181b] border border-orange-500/30 rounded-[32px] p-6 shadow-2xl mb-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-[40px] rounded-full"></div>
-            <div className="flex items-center justify-between mb-6 relative z-10">
-              <h2 className="text-sm font-black text-orange-400 tracking-widest flex items-center gap-2 uppercase">
-                <Flame className="w-4 h-4" /> Smart Trends
-              </h2>
-              <span className="text-[9px] text-orange-400/50 uppercase tracking-widest font-bold border border-orange-500/20 px-2 py-1 rounded bg-orange-500/10">
-                AI Mindshare
-              </span>
-            </div>
-
-            <div className="space-y-3 relative z-10">
-              {smartMoneyTrends.map((trend, i) => (
-                <div
-                  key={trend.address}
-                  className="p-3 bg-zinc-900/40 border border-white/5 rounded-2xl hover:border-orange-500/30 transition-all flex flex-col gap-2"
-                >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-white/40">
-                        #{i + 1}
-                      </span>
-                      <span className="text-sm font-black text-white">
-                        {trend.symbol}
-                      </span>
-                    </div>
-                    <div className="text-[9px] font-bold text-white/50 flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3 text-emerald-400" />{" "}
-                      {trend.buyCount} Whales
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <span className="text-[8px] font-bold px-2 py-1 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase flex items-center gap-1">
-                      <BrainCircuit className="w-3 h-3" /> {trend.narrative}
-                    </span>
-                    <span
-                      className={`text-[8px] font-bold px-2 py-1 rounded uppercase border ${trend.mindshare.includes("Hype") ? "bg-rose-500/20 text-rose-400 border-rose-500/30" : "bg-amber-500/20 text-amber-400 border-amber-500/30"}`}
-                    >
-                      {trend.mindshare}
-                    </span>
-                    {trend.confluence === "SUPER_ALPHA" && (
-                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase">
-                        ⚡ Super Alpha
-                      </span>
-                    )}
-                    {trend.confluence === "HIGH_RISK" && (
-                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 uppercase">
-                        ⚠️ High Risk
-                      </span>
-                    )}
-                    {trend.confluence === "NEUTRAL" && (
-                      <span className="text-[8px] font-bold px-2 py-1 rounded bg-gray-500/20 text-gray-400 border border-gray-500/30 uppercase">
-                        ⚖️ Neutral
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {smartMoneyTrends.length === 0 && (
-                <p className="text-[10px] text-white/30 text-center py-4 font-bold uppercase">
-                  Accumulating Data...
-                </p>
-              )}
-            </div>
-          </div>
-
-          <aside className="w-full bg-[#18181b] border border-white/10 rounded-[32px] p-6 shadow-2xl backdrop-blur-md">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-sm font-black text-emerald-400 tracking-widest flex items-center gap-2 uppercase">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                Alpha Feed
-              </h2>
-              <span className="text-[9px] text-white/40 uppercase tracking-widest font-bold">
-                Live Sync
-              </span>
-            </div>
-
-            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-              {privateAlphaLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="group p-4 bg-zinc-900/40 border border-white/5 rounded-2xl hover:border-emerald-500/30 transition-all"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <p className="text-xs font-bold text-white/80 group-hover:text-emerald-400 transition-colors uppercase truncate pr-2">
-                      {log.wallet.name}
-                    </p>
-                    <span
-                      suppressHydrationWarning
-                      className="text-[9px] text-white/40 font-mono"
-                    >
-                      {new Date(log.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`px-2 py-1 border rounded-md text-[9px] font-black tracking-widest ${log.type === "BUY" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-rose-500/10 border-rose-500/20 text-rose-500"}`}
-                    >
-                      {log.type === "BUY" ? "BUY" : "SELL"}
-                    </div>
-
-                    <div className="flex flex-col">
-                      <span className="text-sm font-black text-white leading-none mb-1">
-                        {log.tokenSymbol}
-                      </span>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-bold text-white/50 font-mono">
-                          ${Number(log.usdValue).toLocaleString()}
-                        </span>
-                        {/* 🔥 INJEK UI RAW DATA TEKNIKAL DESKTOP 🔥 */}
-                        {log.rsi14AtTx && (
-                          <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 whitespace-nowrap">
-                            RSI: {Number(log.rsi14AtTx).toFixed(1)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <a
-                      href={log.explorerUrl}
-                      target="_blank"
-                      className="ml-auto p-2 bg-white/5 rounded-xl opacity-50 hover:opacity-100 transition-opacity hover:bg-emerald-500/20 text-emerald-400"
-                    >
-                      <ExternalLink size={14} />
-                    </a>
-                  </div>
-                </div>
-              ))}
-
-              {privateAlphaLogs.length === 0 && (
-                <div className="text-center py-10">
-                  <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold">
-                    No private signals yet...
-                  </p>
-                </div>
-              )}
-            </div>
-          </aside>
-        </section>
-      </div>
-    </main>
+    <DashboardShell
+      wallets={wallets}
+      smartMoneyTrends={smartMoneyTrends}
+      privateAlphaLogs={privateAlphaLogs}
+      walletStats={walletStats}
+      dbUser={dbUser}
+      totalWallets={totalWallets}
+      totalPages={totalPages}
+      page={page}
+      initialTab={initialTab}
+      feedback={feedback}
+      savedChatId={savedChatId}
+      savedAlphaId={savedAlphaId}
+      logoutAction={logoutAction}
+    />
   );
 }
