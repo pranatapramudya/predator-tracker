@@ -209,6 +209,19 @@ async function sendTelegramMessage(
 
 export async function GET(request: Request) {
   try {
+    // 🛡️ SECURITY GUARD: Lindungi CPU Vercel dari bot crawler / unauthorized ping
+    const authHeader = request.headers.get("authorization");
+    const secret = process.env.WEBHOOK_SHARED_SECRET?.trim();
+    if (secret && authHeader !== `Bearer ${secret}`) {
+      return NextResponse.json(
+        {
+          error:
+            "Unauthorized. Background scanning has been offloaded to local daemon / GitHub Actions.",
+        },
+        { status: 401 },
+      );
+    }
+
     const wallets = await prisma.wallet.findMany({ where: { isActive: true } });
     const globalAlphaChatId = process.env.TELEGRAM_ALPHA_CHAT_ID;
 
