@@ -2,7 +2,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { loginWithPinAction } from "@/app/actions/auth";
+import {
+  loginWithPinAction,
+  registerAction,
+  resetPinAction,
+} from "@/app/actions/auth";
 import {
   Lock,
   KeyRound,
@@ -12,13 +16,33 @@ import {
   Loader2,
   AlertCircle,
   ShieldCheck,
+  User,
+  Mail,
+  UserPlus,
+  Key,
+  CheckCircle2,
+  LogIn,
 } from "lucide-react";
 
+type AuthMode = "LOGIN" | "REGISTER" | "FORGOT";
+
 export default function LoginPage() {
+  const [mode, setMode] = useState<AuthMode>("LOGIN");
+  const [identifier, setIdentifier] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  const switchMode = (newMode: AuthMode) => {
+    setMode(newMode);
+    setError("");
+    setSuccessMsg("");
+    setPin("");
+  };
 
   const handleKeyPress = (num: string) => {
     if (pin.length < 10) {
@@ -39,17 +63,58 @@ export default function LoginPage() {
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setError("");
+    setSuccessMsg("");
+
     if (!pin) {
-      setError("Please enter your Security PIN.");
+      setError("Silakan masukkan Security PIN Anda.");
       return;
     }
 
-    setError("");
     startTransition(async () => {
-      const res = await loginWithPinAction(pin);
-      if (res?.error) {
-        setError(res.error);
-        setPin("");
+      if (mode === "LOGIN") {
+        const res = await loginWithPinAction(pin, identifier);
+        if (res?.error) {
+          setError(res.error);
+          setPin("");
+        }
+      } else if (mode === "REGISTER") {
+        if (!name.trim()) {
+          setError("Silakan masukkan Nama Operator Anda.");
+          return;
+        }
+        if (!email.trim() || !email.includes("@")) {
+          setError("Silakan masukkan Email valid Anda.");
+          return;
+        }
+        if (pin.length < 4) {
+          setError("PIN Keamanan minimal 4 digit angka.");
+          return;
+        }
+        const res = await registerAction(name, email, pin);
+        if (res?.error) {
+          setError(res.error);
+        }
+      } else if (mode === "FORGOT") {
+        if (!email.trim() || !email.includes("@")) {
+          setError("Silakan masukkan Email akun terdaftar.");
+          return;
+        }
+        if (pin.length < 4) {
+          setError("PIN Baru minimal 4 digit angka.");
+          return;
+        }
+        const res = await resetPinAction(email, pin);
+        if (res?.error) {
+          setError(res.error);
+        } else if (res?.success) {
+          setSuccessMsg(
+            "PIN berhasil diperbarui! Silakan masuk dengan PIN baru Anda.",
+          );
+          setIdentifier(email);
+          setMode("LOGIN");
+          setPin("");
+        }
       }
     });
   };
@@ -66,7 +131,7 @@ export default function LoginPage() {
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-wider uppercase shadow-[0_0_20px_rgba(16,185,129,0.15)]">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            SECURE TERMINAL // OPERATOR CLEARANCE
+            SECURE TERMINAL // MULTI-TENANT CLEARANCE
           </div>
 
           <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-white">
@@ -75,19 +140,142 @@ export default function LoginPage() {
 
           <p className="text-neutral-400 text-sm font-medium flex items-center justify-center gap-2">
             <Lock className="w-4 h-4 text-emerald-400" />
-            <span>Enter Security PIN to unlock radar control</span>
+            <span>
+              {mode === "LOGIN" && "Enter Security PIN to unlock radar control"}
+              {mode === "REGISTER" &&
+                "Create isolated multi-tenant operator workspace"}
+              {mode === "FORGOT" && "Reset your operator security access PIN"}
+            </span>
           </p>
         </div>
 
         {/* Keypad Auth Card */}
         <div className="bg-[#121216] border border-neutral-800 rounded-3xl p-6 md:p-8 shadow-2xl relative backdrop-blur-xl space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* PIN Display / Input */}
-            <div className="space-y-2">
+          {/* Top Mode Tabs */}
+          <div className="grid grid-cols-3 gap-1 bg-[#18181e] p-1 rounded-2xl border border-neutral-800 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => switchMode("LOGIN")}
+              className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                mode === "LOGIN"
+                  ? "bg-emerald-500 text-black shadow-lg"
+                  : "text-neutral-400 hover:text-white"
+              }`}
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Masuk</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("REGISTER")}
+              className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                mode === "REGISTER"
+                  ? "bg-emerald-500 text-black shadow-lg"
+                  : "text-neutral-400 hover:text-white"
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Daftar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("FORGOT")}
+              className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                mode === "FORGOT"
+                  ? "bg-emerald-500 text-black shadow-lg"
+                  : "text-neutral-400 hover:text-white"
+              }`}
+            >
+              <Key className="w-3.5 h-3.5" />
+              <span>Lupa PIN</span>
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* REGISTER FIELDS */}
+            {mode === "REGISTER" && (
+              <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                <div>
+                  <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider flex items-center gap-2 mb-1.5">
+                    <User className="w-3.5 h-3.5 text-emerald-400" /> Nama
+                    Operator / Workspace
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Contoh: Whale Hunter Alpha"
+                    className="w-full bg-[#18181e] border border-neutral-700 focus:border-emerald-400 rounded-xl px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-neutral-600 focus:ring-1 focus:ring-emerald-400/20"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider flex items-center gap-2 mb-1.5">
+                    <Mail className="w-3.5 h-3.5 text-emerald-400" /> Email
+                    Operator
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="operator@crypto.com"
+                    className="w-full bg-[#18181e] border border-neutral-700 focus:border-emerald-400 rounded-xl px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-neutral-600 focus:ring-1 focus:ring-emerald-400/20"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* FORGOT PIN FIELDS */}
+            {mode === "FORGOT" && (
+              <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                <div>
+                  <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider flex items-center gap-2 mb-1.5">
+                    <Mail className="w-3.5 h-3.5 text-emerald-400" /> Email Akun
+                    Terdaftar
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="operator@crypto.com"
+                    className="w-full bg-[#18181e] border border-neutral-700 focus:border-emerald-400 rounded-xl px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-neutral-600 focus:ring-1 focus:ring-emerald-400/20"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* LOGIN IDENTIFIER FIELD */}
+            {mode === "LOGIN" && (
+              <div>
+                <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider flex items-center justify-between mb-1.5">
+                  <span className="flex items-center gap-2">
+                    <Mail className="w-3.5 h-3.5 text-emerald-400" /> Email /
+                    Operator ID
+                  </span>
+                  <span className="text-[10px] text-neutral-500 normal-case font-normal">
+                    (Opsional untuk Master Admin)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="Email akun atau kosongkan jika Master PIN"
+                  className="w-full bg-[#18181e] border border-neutral-700 focus:border-emerald-400 rounded-xl px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-neutral-600 focus:ring-1 focus:ring-emerald-400/20"
+                />
+              </div>
+            )}
+
+            {/* PIN DISPLAY & INPUT */}
+            <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-emerald-400" /> Security
-                  Access PIN
+                  <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
+                  {mode === "LOGIN" && "Security Access PIN"}
+                  {mode === "REGISTER" && "Buat 4-10 Digit PIN"}
+                  {mode === "FORGOT" && "Masukkan PIN Baru"}
                 </label>
                 <button
                   type="button"
@@ -107,7 +295,6 @@ export default function LoginPage() {
                 <input
                   type={showPin ? "text" : "password"}
                   inputMode="numeric"
-                  autoFocus
                   maxLength={12}
                   value={pin}
                   onChange={(e) => {
@@ -115,31 +302,42 @@ export default function LoginPage() {
                     setError("");
                   }}
                   placeholder="••••"
-                  className="w-full bg-[#18181e] border-2 border-neutral-700 focus:border-emerald-400 rounded-2xl px-6 py-4 text-center text-3xl font-mono tracking-[0.4em] font-black outline-none text-white transition-all placeholder:text-neutral-600 focus:ring-1 focus:ring-emerald-400/20"
+                  className="w-full bg-[#18181e] border-2 border-neutral-700 focus:border-emerald-400 rounded-2xl px-6 py-3.5 text-center text-3xl font-mono tracking-[0.4em] font-black outline-none text-white transition-all placeholder:text-neutral-600 focus:ring-1 focus:ring-emerald-400/20"
                 />
               </div>
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-300 text-sm font-medium flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-                <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-white">Authentication Notice</p>
-                  <p className="text-xs text-rose-300/90 mt-0.5">{error}</p>
+              <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-300 text-xs font-medium flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold text-white text-xs">Pemberitahuan</p>
+                  <p className="text-rose-300/90 mt-0.5">{error}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Success Message */}
+            {successMsg && (
+              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-300 text-xs font-medium flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold text-white text-xs">Berhasil</p>
+                  <p className="text-emerald-300/90 mt-0.5">{successMsg}</p>
                 </div>
               </div>
             )}
 
             {/* Numeric Keypad */}
-            <div className="grid grid-cols-3 gap-2.5 pt-1">
+            <div className="grid grid-cols-3 gap-2 pt-1">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
                 <button
                   key={num}
                   type="button"
                   onClick={() => handleKeyPress(num)}
                   disabled={isPending}
-                  className="h-14 bg-neutral-900/90 hover:bg-neutral-800 active:bg-emerald-500 active:text-black border border-neutral-700/80 rounded-2xl text-2xl font-bold transition-all flex items-center justify-center text-white"
+                  className="h-12 md:h-13 bg-neutral-900/90 hover:bg-neutral-800 active:bg-emerald-500 active:text-black border border-neutral-700/80 rounded-xl text-xl font-bold transition-all flex items-center justify-center text-white"
                 >
                   {num}
                 </button>
@@ -148,7 +346,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleClear}
                 disabled={isPending}
-                className="h-14 bg-neutral-900/50 hover:bg-neutral-800 border border-neutral-800 rounded-2xl text-xs font-bold text-neutral-400 hover:text-white transition-all uppercase"
+                className="h-12 md:h-13 bg-neutral-900/50 hover:bg-neutral-800 border border-neutral-800 rounded-xl text-xs font-bold text-neutral-400 hover:text-white transition-all uppercase"
               >
                 CLEAR
               </button>
@@ -156,7 +354,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => handleKeyPress("0")}
                 disabled={isPending}
-                className="h-14 bg-neutral-900/90 hover:bg-neutral-800 active:bg-emerald-500 active:text-black border border-neutral-700/80 rounded-2xl text-2xl font-bold transition-all flex items-center justify-center text-white"
+                className="h-12 md:h-13 bg-neutral-900/90 hover:bg-neutral-800 active:bg-emerald-500 active:text-black border border-neutral-700/80 rounded-xl text-xl font-bold transition-all flex items-center justify-center text-white"
               >
                 0
               </button>
@@ -164,40 +362,93 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleBackspace}
                 disabled={isPending}
-                className="h-14 bg-neutral-900/50 hover:bg-neutral-800 border border-neutral-800 rounded-2xl text-xl font-bold text-neutral-400 hover:text-white transition-all flex items-center justify-center"
+                className="h-12 md:h-13 bg-neutral-900/50 hover:bg-neutral-800 border border-neutral-800 rounded-xl text-lg font-bold text-neutral-400 hover:text-white transition-all flex items-center justify-center"
               >
                 ⌫
               </button>
             </div>
 
-            {/* Unlock Button */}
+            {/* Main Action Button */}
             <button
               type="submit"
               disabled={isPending}
-              className="w-full py-4 mt-2 bg-emerald-500 hover:bg-emerald-400 disabled:bg-neutral-800 disabled:text-neutral-500 text-black font-black uppercase tracking-wider rounded-2xl text-sm transition-all shadow-[0_0_25px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 group"
+              className="w-full py-3.5 mt-2 bg-emerald-500 hover:bg-emerald-400 disabled:bg-neutral-800 disabled:text-neutral-500 text-black font-black uppercase tracking-wider rounded-xl text-sm transition-all shadow-[0_0_25px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 group"
             >
               {isPending ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>VERIFYING PIN...</span>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>MEMPROSES...</span>
                 </>
               ) : (
                 <>
-                  <span>UNLOCK RADAR CONTROL</span>
-                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <span>
+                    {mode === "LOGIN" && "UNLOCK RADAR CONTROL"}
+                    {mode === "REGISTER" && "CREATE OPERATOR WORKSPACE"}
+                    {mode === "FORGOT" && "UPDATE & RESET PIN"}
+                  </span>
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </button>
           </form>
 
+          {/* Bottom Context Navigation */}
+          <div className="pt-2 flex flex-col items-center gap-2 text-xs text-neutral-400 border-t border-neutral-800/80">
+            {mode === "LOGIN" && (
+              <div className="flex items-center justify-between w-full">
+                <button
+                  type="button"
+                  onClick={() => switchMode("REGISTER")}
+                  className="hover:text-emerald-400 transition-colors font-medium"
+                >
+                  Belum punya akun?{" "}
+                  <span className="text-emerald-400 font-bold">Daftar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode("FORGOT")}
+                  className="hover:text-emerald-400 transition-colors text-neutral-500 hover:underline"
+                >
+                  Lupa PIN?
+                </button>
+              </div>
+            )}
+
+            {mode === "REGISTER" && (
+              <button
+                type="button"
+                onClick={() => switchMode("LOGIN")}
+                className="hover:text-emerald-400 transition-colors font-medium"
+              >
+                Sudah punya akun operator?{" "}
+                <span className="text-emerald-400 font-bold">
+                  Masuk di sini
+                </span>
+              </button>
+            )}
+
+            {mode === "FORGOT" && (
+              <button
+                type="button"
+                onClick={() => switchMode("LOGIN")}
+                className="hover:text-emerald-400 transition-colors font-medium"
+              >
+                Ingat PIN Anda?{" "}
+                <span className="text-emerald-400 font-bold">
+                  Kembali ke Login
+                </span>
+              </button>
+            )}
+          </div>
+
           {/* Footer Security Badges */}
-          <div className="pt-4 border-t border-neutral-800/80 flex items-center justify-between text-xs text-neutral-500">
+          <div className="pt-2 border-t border-neutral-800/50 flex items-center justify-between text-[11px] text-neutral-500">
             <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Encrypted
-              Session
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              Tenant Data Isolation
             </span>
-            <span className="font-mono text-[11px] text-neutral-600">
-              Restricted Access Only
+            <span className="font-mono text-[10px] text-neutral-600">
+              SHA-256 Encrypted
             </span>
           </div>
         </div>

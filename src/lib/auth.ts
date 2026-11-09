@@ -110,6 +110,15 @@ export async function loginUser(
     return { success: true, user: master };
   }
 
+  // If no identifier provided and key didn't match master PIN
+  if (!cleanId) {
+    return {
+      success: false,
+      error:
+        "PIN Akses salah. Jika Anda member terdaftar, masukkan email Anda.",
+    };
+  }
+
   const users = loadUsers();
   const targetHash = await hashValue(cleanKey);
 
@@ -127,7 +136,8 @@ export async function loginUser(
     }
     return {
       success: false,
-      error: "Invalid security access key for this operator.",
+      error:
+        "PIN Akses salah untuk akun ini. Silakan coba lagi atau gunakan menu 'Lupa PIN'.",
     };
   }
 
@@ -140,8 +150,44 @@ export async function loginUser(
   return {
     success: false,
     error:
-      "Operator not found. Please verify your credentials or create a workspace.",
+      "Akun tidak terdaftar. Silakan pilih tab 'Daftar' untuk membuat akun workspace baru.",
   };
+}
+
+/**
+ * Resets an operator's security PIN
+ */
+export async function resetUserPin(
+  email: string,
+  newPin: string,
+): Promise<{ success: boolean; error?: string }> {
+  const cleanEmail = String(email || "")
+    .trim()
+    .toLowerCase();
+  const cleanPin = String(newPin || "").trim();
+
+  if (!cleanEmail) {
+    return { success: false, error: "Email akun wajib diisi." };
+  }
+  if (!cleanPin || cleanPin.length < 4) {
+    return { success: false, error: "PIN Baru minimal 4 digit angka." };
+  }
+
+  const users = loadUsers();
+  const user = users.find((u) => u.email.toLowerCase() === cleanEmail);
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Akun dengan email tersebut tidak ditemukan. Silakan daftar baru.",
+    };
+  }
+
+  const newHash = await hashValue(cleanPin);
+  user.passwordHash = newHash;
+  saveUsers(users);
+
+  return { success: true };
 }
 
 /**

@@ -612,7 +612,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const rawFileWatchlist = loadWatchlistFromFile();
   const fileWatchlist = isOwner
     ? rawFileWatchlist
-    : rawFileWatchlist.filter((w: any) => !w.userId || w.userId === userId);
+    : rawFileWatchlist.filter((w: any) => w.userId === userId);
   const rawSignals = loadSignalsFromFile();
 
   // If config/watchlist.json has wallets, use it as the authoritative active radar list
