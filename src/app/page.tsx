@@ -606,49 +606,63 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       .catch(() => []),
   ]);
 
-  // Fallback to config/watchlist.json if DB has no wallets (keeps UI synced with 24/7 daemon)
+  // Master Watchlist from config/watchlist.json (Single source of truth used by Telegram Bot & Daemon)
   const rawFileWatchlist = loadWatchlistFromFile();
   const fileWatchlist = isOwner
     ? rawFileWatchlist
     : rawFileWatchlist.filter((w: any) => !w.userId || w.userId === userId);
   const rawSignals = loadSignalsFromFile();
 
-  if (wallets.length === 0 && fileWatchlist.length > 0) {
+  // If config/watchlist.json has wallets, use it as the authoritative active radar list
+  if (fileWatchlist.length > 0) {
     totalWallets = fileWatchlist.length;
     const paginatedFile = fileWatchlist.slice(skip, skip + limit);
+
     wallets = paginatedFile.map((w: any, idx: number) => {
+      const dbMatch = wallets.find(
+        (dw) => dw.address?.toLowerCase() === w.address?.toLowerCase(),
+      );
+
       const walletSignals = rawSignals.filter(
         (s: any) => s.walletAddress?.toLowerCase() === w.address?.toLowerCase(),
       );
+
       return {
-        id: w.address,
-        name: w.name || `Target Whale #${skip + idx + 1}`,
+        id: dbMatch?.id || w.address,
+        name: w.name || dbMatch?.name || `Target Whale #${skip + idx + 1}`,
         address: w.address,
         network: (w.network || w.chain || "SOLANA").toUpperCase(),
-        lastBalance: 0,
-        winRate: 0,
-        totalTrades: walletSignals.length,
-        chatId: process.env.TELEGRAM_CHAT_ID || "2079693450",
-        alphaChannelId: "",
-        isActive: w.isActive ?? true,
-        transactions: walletSignals.map((s: any) => ({
-          id: s.txUrl || Math.random().toString(),
-          type: s.action || "BUY",
-          usdValue: s.usdValue || 0,
-          tokenSymbol: s.tokenSymbol || "SOL",
-          tokenAddress: s.tokenAddress || "",
-          createdAt: new Date(s.timestamp || Date.now()),
-        })),
-        positions: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        userId: userId,
+        lastBalance: dbMatch?.lastBalance || 0,
+        winRate: dbMatch?.winRate || 0,
+        totalTrades: walletSignals.length || dbMatch?.totalTrades || 0,
+        chatId:
+          w.chatId ||
+          dbMatch?.chatId ||
+          process.env.TELEGRAM_CHAT_ID ||
+          "2079693450",
+        alphaChannelId: w.alphaChannelId || dbMatch?.alphaChannelId || "",
+        isActive: w.isActive ?? dbMatch?.isActive ?? true,
+        transactions:
+          dbMatch?.transactions && dbMatch.transactions.length > 0
+            ? dbMatch.transactions
+            : walletSignals.map((s: any) => ({
+                id: s.txUrl || Math.random().toString(),
+                type: s.action || "BUY",
+                usdValue: s.usdValue || 0,
+                tokenSymbol: s.tokenSymbol || "SOL",
+                tokenAddress: s.tokenAddress || "",
+                createdAt: new Date(s.timestamp || Date.now()),
+              })),
+        positions: dbMatch?.positions || [],
+        createdAt: dbMatch?.createdAt || new Date(),
+        updatedAt: dbMatch?.updatedAt || new Date(),
+        userId: w.userId || userId,
       };
     }) as any;
   }
 
-  // Fallback to data/signals.json for Alpha Feed if DB is empty
-  if (privateAlphaLogs.length === 0 && rawSignals.length > 0) {
+  // Prioritize live signals from data/signals.json for Alpha Feed so UI perfectly mirrors Telegram
+  if (rawSignals.length > 0) {
     privateAlphaLogs = rawSignals.slice(0, 15).map((s: any, idx: number) => ({
       id: s.txUrl || `sig_${idx}`,
       wallet: { name: s.whaleName || "Smart Money" },
