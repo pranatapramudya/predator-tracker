@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { logoutAction } from "@/app/actions/auth";
+import { getCurrentUser } from "@/lib/auth";
 import PnLChart from "@/components/PnLChart";
 import { auditHistoricalWinRate } from "@/lib/scanner";
 import { Ratelimit } from "@upstash/ratelimit";
@@ -66,7 +67,13 @@ function loadSignalsFromFile(): any[] {
 
 function syncWatchlistFile(
   action: "add" | "delete",
-  wallet: { address: string; name?: string; network?: string },
+  wallet: {
+    address: string;
+    name?: string;
+    network?: string;
+    userId?: string;
+    chatId?: string;
+  },
 ) {
   try {
     const list = loadWatchlistFromFile();
@@ -79,6 +86,8 @@ function syncWatchlistFile(
         address: wallet.address,
         network: wallet.network || "SOLANA",
         chain: (wallet.network || "SOLANA").toLowerCase(),
+        userId: wallet.userId || "admin_owner",
+        chatId: wallet.chatId || process.env.TELEGRAM_CHAT_ID || "",
         isActive: true,
         minAlertUsd: 15,
       };
@@ -339,7 +348,8 @@ function getWhaleTag(winRate: number, totalTrades: number) {
 
 async function createWalletAction(formData: FormData) {
   "use server";
-  const userId = "admin_owner";
+  const sessionUser = await getCurrentUser();
+  const userId = sessionUser?.id || "admin_owner";
 
   try {
     if (process.env.UPSTASH_REDIS_REST_URL) {
@@ -392,11 +402,13 @@ async function createWalletAction(formData: FormData) {
         ? address
         : address.toLowerCase();
 
-    // 1. Sync immediately to config/watchlist.json so 24/7 daemon & GitHub Actions track it
+    // 1. Sync immediately to config/watchlist.json with multi-tenant tagging
     syncWatchlistFile("add", {
       address: normalized,
       name,
       network,
+      userId,
+      chatId,
     });
 
     let balance = 0;
@@ -480,7 +492,10 @@ async function createWalletAction(formData: FormData) {
 
 async function deleteWalletAction(formData: FormData) {
   "use server";
-  const userId = "admin_owner";
+  const sessionUser = await getCurrentUser();
+  const userId = sessionUser?.id || "admin_owner";
+  const isOwner = sessionUser?.role === "OWNER" || userId === "admin_owner";
+
   let feedback = "failed";
   try {
     const id = String(formData.get("id"));
@@ -495,7 +510,13 @@ async function deleteWalletAction(formData: FormData) {
       } else {
         syncWatchlistFile("delete", { address: id });
       }
-      await prisma.wallet.deleteMany({ where: { id } }).catch(() => {});
+      if (isOwner) {
+        await prisma.wallet.deleteMany({ where: { id } }).catch(() => {});
+      } else {
+        await prisma.wallet
+          .deleteMany({ where: { id, userId } })
+          .catch(() => {});
+      }
     } catch {
       syncWatchlistFile("delete", { address: id });
     }
@@ -512,15 +533,18 @@ async function deleteWalletAction(formData: FormData) {
 }
 
 export default async function Page({ searchParams }: { searchParams: any }) {
-  const userId = "admin_owner";
-  const userEmail = "owner@predator.tracker";
+  const sessionUser = await getCurrentUser();
+  const userId = sessionUser?.id || "admin_owner";
+  const userEmail = sessionUser?.email || "owner@predator.tracker";
+  const userName = sessionUser?.name || "Master Operator";
+  const isOwner = sessionUser?.role === "OWNER" || userId === "admin_owner";
 
   let dbUser = {
     id: userId,
     email: userEmail,
-    name: "Master Predator",
-    role: "OWNER",
-    tier: "APEX",
+    name: userName,
+    role: sessionUser?.role || "OWNER",
+    tier: sessionUser?.tier || "APEX",
     maxWallets: 1000,
     shadowBalance: 100,
   };
@@ -528,12 +552,12 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   try {
     const upserted = await prisma.user.upsert({
       where: { id: userId },
-      update: { role: "OWNER", tier: "APEX", maxWallets: 1000 },
+      update: { role: dbUser.role as any, tier: "APEX", maxWallets: 1000 },
       create: {
         id: userId,
         email: userEmail,
-        name: "Master Predator",
-        role: "OWNER",
+        name: userName,
+        role: dbUser.role as any,
         tier: "APEX",
         maxWallets: 1000,
         shadowBalance: 100,
@@ -556,7 +580,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   let [wallets, totalWallets, privateAlphaLogs] = await Promise.all([
     prisma.wallet
       .findMany({
-        where: { userId: userId },
+        where: isOwner ? {} : { userId: userId },
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
@@ -566,12 +590,14 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         },
       })
       .catch(() => []),
-    prisma.wallet.count({ where: { userId: userId } }).catch(() => 0),
+    prisma.wallet
+      .count(isOwner ? undefined : { where: { userId: userId } })
+      .catch(() => 0),
     prisma.transaction
       .findMany({
         where: {
           usdValue: { gte: 1000 },
-          wallet: { userId: userId },
+          ...(isOwner ? {} : { wallet: { userId: userId } }),
         },
         include: { wallet: true },
         orderBy: { createdAt: "desc" },
@@ -581,7 +607,10 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   ]);
 
   // Fallback to config/watchlist.json if DB has no wallets (keeps UI synced with 24/7 daemon)
-  const fileWatchlist = loadWatchlistFromFile();
+  const rawFileWatchlist = loadWatchlistFromFile();
+  const fileWatchlist = isOwner
+    ? rawFileWatchlist
+    : rawFileWatchlist.filter((w: any) => !w.userId || w.userId === userId);
   const rawSignals = loadSignalsFromFile();
 
   if (wallets.length === 0 && fileWatchlist.length > 0) {
@@ -712,9 +741,13 @@ export default async function Page({ searchParams }: { searchParams: any }) {
             </p>
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 font-mono text-[11px] font-bold">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 font-mono text-[11px] font-bold">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            ARMED // MASTER
+            <span>{userName.toUpperCase()}</span>
+            <span className="text-white/30">//</span>
+            <span className="text-white/70">
+              {sessionUser?.role || "OPERATOR"}
+            </span>
           </div>
 
           <form action={logoutAction}>

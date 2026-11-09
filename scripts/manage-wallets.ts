@@ -13,6 +13,9 @@ interface WatchlistWallet {
   network: "SOLANA" | "BASE" | "ETHEREUM";
   isActive: boolean;
   minAlertUsd?: number;
+  userId?: string;
+  chatId?: string;
+  alphaChannelId?: string;
 }
 
 const CONFIG_PATH = path.resolve(process.cwd(), "config/watchlist.json");

@@ -2,42 +2,49 @@
 "use server";
 
 import {
+  loginUser,
+  registerUser,
   createSession,
   destroySession,
-  verifyPin,
-  setCustomPin,
 } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-export async function loginWithPinAction(pin: string) {
-  if (!pin || !pin.trim()) {
-    return { error: "Mohon masukkan PIN keamanan." };
+export async function loginAction(identifier: string, key: string) {
+  if (!identifier || !identifier.trim()) {
+    return { error: "Operator identity is required." };
+  }
+  if (!key || !key.trim()) {
+    return { error: "Security access key is required." };
   }
 
-  const isValid = await verifyPin(pin);
-  if (!isValid) {
+  const result = await loginUser(identifier.trim(), key.trim());
+  if (!result.success || !result.user) {
     return {
-      error:
-        "PIN SALAH! PIN default adalah 2026. Silakan coba lagi atau gunakan tombol PIN Cepat 2026.",
+      error: result.error || "Authentication failed. Invalid credentials.",
     };
   }
 
-  await createSession();
+  await createSession(result.user.id);
   redirect("/");
 }
 
-export async function updatePinAction(currentPin: string, newPin: string) {
-  if (!newPin || newPin.trim().length < 4) {
-    return { error: "PIN baru minimal 4 karakter/angka." };
+export async function registerAction(name: string, email: string, key: string) {
+  if (!name || !name.trim()) {
+    return { error: "Operator name is required." };
+  }
+  if (!email || !email.trim()) {
+    return { error: "Valid email address is required." };
+  }
+  if (!key || key.trim().length < 4) {
+    return { error: "Security access key must be at least 4 characters." };
   }
 
-  const isValid = await verifyPin(currentPin);
-  if (!isValid) {
-    return { error: "PIN lama salah. Gunakan PIN aktif (Default: 2026)." };
+  const result = await registerUser(name.trim(), email.trim(), key.trim());
+  if (!result.success || !result.user) {
+    return { error: result.error || "Failed to create operator account." };
   }
 
-  setCustomPin(newPin.trim());
-  await createSession();
+  await createSession(result.user.id);
   redirect("/");
 }
 

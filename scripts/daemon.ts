@@ -24,6 +24,9 @@ interface WatchlistWallet {
   network: "SOLANA" | "BASE" | "ETHEREUM";
   isActive: boolean;
   minAlertUsd?: number;
+  userId?: string;
+  chatId?: string;
+  alphaChannelId?: string;
 }
 
 interface ProcessedState {
@@ -318,10 +321,22 @@ async function checkSolanaWallet(
 
       const keyboard = buildInlineKeyboard("SOLANA", targetToken, txUrl);
 
+      // Multi-tenant alert routing: send to tenant's chatId, or fallback to global chatId
+      const targetChatId = wallet.chatId || process.env.TELEGRAM_CHAT_ID;
       await sendTelegramNotification({
+        chatId: targetChatId,
         text: alertText,
         replyMarkup: { inline_keyboard: keyboard },
       });
+
+      // Also forward to private Alpha Channel if tenant configured it
+      if (wallet.alphaChannelId && wallet.alphaChannelId !== targetChatId) {
+        await sendTelegramNotification({
+          chatId: wallet.alphaChannelId,
+          text: alertText,
+          replyMarkup: { inline_keyboard: keyboard },
+        }).catch(() => {});
+      }
 
       console.log(`✅ [TELEGRAM ALERT SENT] ${wallet.name} $${tokenSymbol}`);
 
@@ -423,10 +438,21 @@ async function checkBaseWallet(
 
       const keyboard = buildInlineKeyboard("BASE", tokenAddress, txUrl);
 
+      // Multi-tenant alert routing: send to tenant's chatId, or fallback to global chatId
+      const targetChatId = wallet.chatId || process.env.TELEGRAM_CHAT_ID;
       await sendTelegramNotification({
+        chatId: targetChatId,
         text: alertText,
         replyMarkup: { inline_keyboard: keyboard },
       });
+
+      if (wallet.alphaChannelId && wallet.alphaChannelId !== targetChatId) {
+        await sendTelegramNotification({
+          chatId: wallet.alphaChannelId,
+          text: alertText,
+          replyMarkup: { inline_keyboard: keyboard },
+        }).catch(() => {});
+      }
 
       console.log(`✅ [TELEGRAM ALERT SENT] ${wallet.name} $${tokenSymbol}`);
 

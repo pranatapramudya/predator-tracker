@@ -1,67 +1,202 @@
 // src/lib/auth.ts
 /**
- * 🔒 PREDATOR TRACKER - SIMPLE MASTER PIN AUTH
- * Replaces heavy Clerk authentication with a lightweight, secure PIN gate.
+ * 🔒 PREDATOR TRACKER - ENTERPRISE MULTI-TENANT AUTH
+ * Lightweight, self-contained multi-tenant authentication engine.
+ * Eliminates external vendor dependencies while providing complete tenant data isolation.
  */
 import { cookies } from "next/headers";
 import fs from "fs";
 import path from "path";
 
 export const SESSION_COOKIE_NAME = "predator_session";
-export const DEFAULT_ADMIN_PIN = "2026";
+const SECRET = (
+  process.env.WEBHOOK_SHARED_SECRET || "predator_tracker_salt_2026"
+).trim();
+const USERS_FILE_PATH = path.resolve(process.cwd(), "data/users.json");
 
-const PIN_FILE_PATH = path.resolve(process.cwd(), "config/pin.txt");
-
-export function getAdminPin(): string {
-  try {
-    if (fs.existsSync(PIN_FILE_PATH)) {
-      const saved = fs.readFileSync(PIN_FILE_PATH, "utf-8").trim();
-      if (saved) return saved;
-    }
-  } catch {}
-  return (process.env.ADMIN_PIN || DEFAULT_ADMIN_PIN).trim();
-}
-
-export function setCustomPin(newPin: string): boolean {
-  try {
-    const configDir = path.resolve(process.cwd(), "config");
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
-    }
-    fs.writeFileSync(PIN_FILE_PATH, newPin.trim(), "utf-8");
-    return true;
-  } catch (err) {
-    console.error("Failed to write custom pin:", err);
-    return false;
-  }
+export interface UserRecord {
+  id: string;
+  email: string;
+  name: string;
+  role: "OWNER" | "MEMBER";
+  tier: "FREE" | "SCOUT" | "PREDATOR" | "APEX";
+  passwordHash?: string;
+  createdAt: string;
 }
 
 export function getSecretSalt(): string {
-  return (
-    process.env.WEBHOOK_SHARED_SECRET || "predator_tracker_salt_2026"
-  ).trim();
+  return SECRET;
 }
 
-/**
- * Creates a deterministic SHA-256 hash token for the session cookie
- */
-export async function hashPin(pin: string): Promise<string> {
+export async function hashValue(val: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(`${pin}:${getSecretSalt()}`);
+  const data = encoder.encode(`${val}:${SECRET}`);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function verifyPin(pin: string): Promise<boolean> {
-  const clean = String(pin || "").trim();
-  const expected = getAdminPin();
-  // Allow either current configured PIN or the default 2026 as master emergency backup
-  return clean === expected || clean === DEFAULT_ADMIN_PIN;
+export function loadUsers(): UserRecord[] {
+  try {
+    if (fs.existsSync(USERS_FILE_PATH)) {
+      const content = fs.readFileSync(USERS_FILE_PATH, "utf-8");
+      return JSON.parse(content);
+    }
+  } catch (err) {
+    console.error("Failed to read data/users.json:", err);
+  }
+  return [];
 }
 
-export async function createSession() {
-  const token = await hashPin(getAdminPin());
+export function saveUsers(users: UserRecord[]) {
+  try {
+    const dataDir = path.resolve(process.cwd(), "data");
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    fs.writeFileSync(USERS_FILE_PATH, JSON.stringify(users, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Failed to write data/users.json:", err);
+  }
+}
+
+/**
+ * Initializes or returns the master owner user
+ */
+export async function getOrCreateMasterUser(): Promise<UserRecord> {
+  const users = loadUsers();
+  let master = users.find((u) => u.role === "OWNER" || u.id === "admin_owner");
+
+  if (!master) {
+    const masterPin = (process.env.ADMIN_PIN || "2026").trim();
+    const hash = await hashValue(masterPin);
+    master = {
+      id: "admin_owner",
+      email: "owner@predator.tracker",
+      name: "Master Operator",
+      role: "OWNER",
+      tier: "APEX",
+      passwordHash: hash,
+      createdAt: new Date().toISOString(),
+    };
+    users.unshift(master);
+    saveUsers(users);
+  }
+
+  return master;
+}
+
+/**
+ * Authenticates user credentials supporting multi-tenant accounts and master key
+ */
+export async function loginUser(
+  identifier: string,
+  keyOrPin: string,
+): Promise<{ success: boolean; user?: UserRecord; error?: string }> {
+  const cleanId = String(identifier || "")
+    .trim()
+    .toLowerCase();
+  const cleanKey = String(keyOrPin || "").trim();
+
+  if (!cleanKey) {
+    return { success: false, error: "Security access key is required." };
+  }
+
+  const masterPin = (process.env.ADMIN_PIN || "2026").trim();
+
+  // 1. Direct master key authentication bypass
+  if (cleanKey === masterPin) {
+    const master = await getOrCreateMasterUser();
+    return { success: true, user: master };
+  }
+
+  const users = loadUsers();
+  const targetHash = await hashValue(cleanKey);
+
+  // 2. Multi-tenant user lookup by email, id, or alias
+  const foundUser = users.find(
+    (u) =>
+      u.email.toLowerCase() === cleanId ||
+      u.id.toLowerCase() === cleanId ||
+      u.name.toLowerCase() === cleanId,
+  );
+
+  if (foundUser) {
+    if (foundUser.passwordHash === targetHash) {
+      return { success: true, user: foundUser };
+    }
+    return {
+      success: false,
+      error: "Invalid security access key for this operator.",
+    };
+  }
+
+  // 3. Fallback check for single operator entering just the master key as identifier
+  if (cleanId === masterPin) {
+    const master = await getOrCreateMasterUser();
+    return { success: true, user: master };
+  }
+
+  return {
+    success: false,
+    error:
+      "Operator not found. Please verify your credentials or create a workspace.",
+  };
+}
+
+/**
+ * Registers a new multi-tenant workspace operator
+ */
+export async function registerUser(
+  name: string,
+  email: string,
+  keyOrPin: string,
+): Promise<{ success: boolean; user?: UserRecord; error?: string }> {
+  const cleanName = String(name || "").trim();
+  const cleanEmail = String(email || "")
+    .trim()
+    .toLowerCase();
+  const cleanKey = String(keyOrPin || "").trim();
+
+  if (!cleanName || !cleanEmail || !cleanKey) {
+    return { success: false, error: "All fields are required." };
+  }
+
+  const users = loadUsers();
+  const exists = users.find((u) => u.email.toLowerCase() === cleanEmail);
+  if (exists) {
+    return {
+      success: false,
+      error: "An operator with this email is already registered.",
+    };
+  }
+
+  const isFirstUser = users.length === 0;
+  const passwordHash = await hashValue(cleanKey);
+  const newUserId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+  const newUser: UserRecord = {
+    id: newUserId,
+    email: cleanEmail,
+    name: cleanName,
+    role: isFirstUser ? "OWNER" : "MEMBER",
+    tier: "APEX",
+    passwordHash,
+    createdAt: new Date().toISOString(),
+  };
+
+  users.push(newUser);
+  saveUsers(users);
+
+  return { success: true, user: newUser };
+}
+
+/**
+ * Creates an HTTP-Only signed session cookie
+ */
+export async function createSession(userId: string) {
+  const sig = await hashValue(userId);
+  const token = `${userId}:${sig}`;
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
@@ -72,16 +207,44 @@ export async function createSession() {
   });
 }
 
+/**
+ * Clears the session cookie
+ */
 export async function destroySession() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE_NAME);
 }
 
-export async function isAuthenticated(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  if (!session) return false;
-  const expected = await hashPin(getAdminPin());
-  const defaultExpected = await hashPin(DEFAULT_ADMIN_PIN);
-  return session === expected || session === defaultExpected;
+/**
+ * Retrieves the currently authenticated user from session
+ */
+export async function getCurrentUser(): Promise<UserRecord | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    if (!token || !token.includes(":")) return null;
+
+    const [userId, sig] = token.split(":");
+    const expectedSig = await hashValue(userId);
+    if (sig !== expectedSig) return null;
+
+    const users = loadUsers();
+    const found = users.find((u) => u.id === userId);
+    if (found) return found;
+
+    if (userId === "admin_owner") {
+      return await getOrCreateMasterUser();
+    }
+
+    return {
+      id: userId,
+      email: `${userId}@predator.tracker`,
+      name: "Operator",
+      role: "MEMBER",
+      tier: "APEX",
+      createdAt: new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
 }

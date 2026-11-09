@@ -3,15 +3,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE = "predator_session";
-const DEFAULT_PIN = "2026";
-const PIN = (process.env.ADMIN_PIN || DEFAULT_PIN).trim();
 const SECRET = (
   process.env.WEBHOOK_SHARED_SECRET || "predator_tracker_salt_2026"
 ).trim();
 
-async function hashPin(pin: string): Promise<string> {
+async function hashValue(val: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(`${pin}:${SECRET}`);
+  const data = encoder.encode(`${val}:${SECRET}`);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -20,7 +18,7 @@ async function hashPin(pin: string): Promise<string> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Bypass static assets, Next internals, webhooks, and public files
+  // 1. Bypass static assets, webhooks, and public files
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/webhook") ||
@@ -31,9 +29,15 @@ export async function middleware(request: NextRequest) {
   }
 
   const session = request.cookies.get(SESSION_COOKIE)?.value;
-  const expectedToken = await hashPin(PIN);
-  const defaultToken = await hashPin(DEFAULT_PIN);
-  const isAuthed = session === expectedToken || session === defaultToken;
+  let isAuthed = false;
+
+  if (session && session.includes(":")) {
+    const [userId, sig] = session.split(":");
+    const expectedSig = await hashValue(userId);
+    if (sig === expectedSig) {
+      isAuthed = true;
+    }
+  }
 
   // 2. Allow /login
   if (pathname === "/login") {
