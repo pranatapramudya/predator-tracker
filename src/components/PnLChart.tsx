@@ -28,14 +28,16 @@ function formatChartTime(d: string | Date | undefined): string {
   if (isNaN(dt.getTime())) return "";
   return (
     dt.toLocaleDateString("id-ID", {
-      day: "numeric",
+      day: "2-digit",
       month: "short",
+      year: "numeric",
     }) +
     " " +
     dt.toLocaleTimeString("id-ID", {
       hour: "2-digit",
       minute: "2-digit",
-    })
+    }) +
+    " WIB"
   );
 }
 
@@ -44,10 +46,35 @@ export default function PnLChart({
   transactions = [],
 }: PnLChartProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const [liveNow, setLiveNow] = useState<Date>(new Date());
 
   useEffect(() => {
     setIsMounted(true);
+    // Ticking live clock every 10s to keep UI perfectly realtime
+    const timer = setInterval(() => {
+      setLiveNow(new Date());
+    }, 10000);
+    return () => clearInterval(timer);
   }, []);
+
+  const currentFullDateStr = useMemo(() => {
+    return liveNow.toLocaleDateString("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }, [liveNow]);
+
+  const currentLiveClock = useMemo(() => {
+    return (
+      liveNow.toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }) + " WIB"
+    );
+  }, [liveNow]);
 
   // Compute curve trajectory and date ranges from transactions or positions
   const {
@@ -63,11 +90,10 @@ export default function PnLChart({
     const token = rawTokens[0] || transactions[0]?.tokenSymbol || "TOKEN";
     const totalPosPnl = data.reduce((sum, d) => sum + (Number(d.pnl) || 0), 0);
 
-    const now = new Date();
-    const defaultDateStr = now.toLocaleDateString("id-ID", {
-      weekday: "short",
+    const defaultDayYear = liveNow.toLocaleDateString("id-ID", {
       day: "numeric",
       month: "short",
+      year: "numeric",
     });
 
     // If transactions available, build chronological progression
@@ -96,7 +122,7 @@ export default function PnLChart({
 
         return {
           step: `${dayLabel} ${timeLabel}`,
-          fullTime: `${dayLabel}, ${timeLabel}`,
+          fullTime: `${dayLabel} ${txDate.getFullYear()}, ${timeLabel} WIB`,
           pnl: Math.round(runningPnl * 100) / 100,
           token: tx.tokenSymbol || token,
         };
@@ -104,14 +130,16 @@ export default function PnLChart({
 
       const firstTxDate = sorted[0]?.createdAt;
       const lastTxDate = sorted[sorted.length - 1]?.createdAt;
-      const startStr = formatChartTime(firstTxDate) || "Awal Trade";
-      const endStr = formatChartTime(lastTxDate) || "Live";
+      const startStr =
+        formatChartTime(firstTxDate) || `${defaultDayYear} (Entry)`;
+      const endStr =
+        formatChartTime(lastTxDate) || `${defaultDayYear} (Terkini)`;
 
       // Anchor start at 0
       const curve = [
         {
           step: startStr,
-          fullTime: `${startStr} (Entry)`,
+          fullTime: `${startStr} (Start Trade)`,
           pnl: 0,
           token,
         },
@@ -132,19 +160,19 @@ export default function PnLChart({
 
     // Fallback: smooth 3-point progression from positions
     const finalPnl = totalPosPnl;
-    const startFallback = "Hari ini";
-    const endFallback = "Live";
+    const startFallback = `${defaultDayYear} (Entry)`;
+    const endFallback = `${defaultDayYear} (Realtime)`;
     const curve = [
-      { step: "T0", fullTime: `${defaultDateStr} (Start)`, pnl: 0, token },
+      { step: "T0", fullTime: `${defaultDayYear} (Start)`, pnl: 0, token },
       {
         step: "T1",
-        fullTime: `${defaultDateStr} (Mid)`,
+        fullTime: `${defaultDayYear} (Mid-Wave)`,
         pnl: Math.round(finalPnl * 0.45 * 100) / 100,
         token,
       },
       {
         step: "T2",
-        fullTime: `${defaultDateStr} (Sekarang)`,
+        fullTime: `${defaultDayYear} (Live Sekarang)`,
         pnl: Math.round(finalPnl * 100) / 100,
         token,
       },
@@ -157,13 +185,13 @@ export default function PnLChart({
       isPositive: finalPnl >= 0,
       startTimeStr: startFallback,
       endTimeStr: endFallback,
-      dateRangeLabel: `${defaultDateStr} (Real-time)`,
+      dateRangeLabel: `${defaultDayYear} (Real-time)`,
     };
-  }, [data, transactions]);
+  }, [data, transactions, liveNow]);
 
   if (!isMounted) {
     return (
-      <div className="h-24 w-full mt-2 border border-white/5 bg-white/[0.02] rounded-xl flex items-center justify-center">
+      <div className="h-28 w-full mt-2 border border-white/5 bg-white/[0.02] rounded-xl flex items-center justify-center">
         <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping opacity-40" />
       </div>
     );
@@ -171,7 +199,7 @@ export default function PnLChart({
 
   if (chartData.length <= 1 && netPnl === 0) {
     return (
-      <div className="h-24 w-full flex items-center justify-center border border-white/10 bg-white/[0.03] rounded-xl mt-2">
+      <div className="h-28 w-full flex items-center justify-center border border-white/10 bg-white/[0.03] rounded-xl mt-2">
         <p className="text-[10px] text-white uppercase tracking-widest font-black">
           No Activity Yet
         </p>
@@ -183,11 +211,27 @@ export default function PnLChart({
   const strokeColor = isPositive ? "#10b981" : "#f43f5e";
 
   return (
-    <div className="mt-2 bg-zinc-950/80 border border-white/15 rounded-xl p-2.5 relative overflow-hidden group">
-      {/* Top Micro-Header with Date/Day Range */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] mb-1.5 font-mono gap-1">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-white font-black tracking-wider flex items-center gap-1.5">
+    <div className="mt-2 bg-zinc-950/90 border border-white/15 rounded-2xl p-3 relative overflow-hidden group">
+      {/* 🌟 1. Real-time Cyber Live Date & Clock Bar */}
+      <div className="flex items-center justify-between bg-black/60 border border-white/10 rounded-xl px-2.5 py-1.5 mb-2 text-[9px] font-mono">
+        <div className="flex items-center gap-1.5 text-white font-bold flex-wrap">
+          <span className="text-emerald-400 font-black">📅</span>
+          <span>{currentFullDateStr}</span>
+          <span className="text-white/40">•</span>
+          <span className="text-emerald-400 font-black font-mono">
+            {currentLiveClock}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-emerald-400 font-black shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.9)]" />
+          <span>LIVE RADAR</span>
+        </div>
+      </div>
+
+      {/* 🌟 2. Top Micro-Header with Token & Date Range */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] mb-2 font-mono gap-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-white font-black tracking-wider flex items-center gap-1.5 text-xs">
             <span
               className={`w-2 h-2 rounded-full ${
                 isPositive
@@ -197,8 +241,8 @@ export default function PnLChart({
             />
             ${primaryToken}
           </span>
-          <span className="text-[9px] font-bold text-white bg-white/10 px-1.5 py-0.2 rounded border border-white/15">
-            📅 {dateRangeLabel}
+          <span className="text-[9px] font-bold text-white bg-white/10 px-2 py-0.5 rounded-lg border border-white/20">
+            🕒 {dateRangeLabel}
           </span>
         </div>
 
@@ -216,7 +260,7 @@ export default function PnLChart({
         </span>
       </div>
 
-      {/* Modern Area Chart Sparkline */}
+      {/* 🌟 3. Modern Area Chart Sparkline */}
       <div className="h-16 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
@@ -282,14 +326,18 @@ export default function PnLChart({
         </ResponsiveContainer>
       </div>
 
-      {/* Real-time date/day range footer */}
-      <div className="flex items-center justify-between text-[8px] font-mono font-bold text-white mt-1 pt-1 border-t border-white/10">
-        <span className="truncate max-w-[130px]">{startTimeStr}</span>
-        <span className="flex items-center gap-1 text-emerald-400 font-black">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span>LIVE TRACK</span>
+      {/* 🌟 4. Real-time date/day range footer */}
+      <div className="flex items-center justify-between text-[8px] font-mono font-bold text-white mt-1 pt-1.5 border-t border-white/10">
+        <span className="truncate max-w-[140px] text-zinc-100">
+          ▶ Entry: {startTimeStr}
         </span>
-        <span className="truncate max-w-[130px]">{endTimeStr}</span>
+        <span className="flex items-center gap-1 text-emerald-400 font-black">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+          <span>ON-CHAIN LIVE</span>
+        </span>
+        <span className="truncate max-w-[140px] text-zinc-100">
+          ◀ Terkini: {endTimeStr}
+        </span>
       </div>
     </div>
   );

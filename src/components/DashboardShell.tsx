@@ -442,10 +442,10 @@ export default function DashboardShell({
               <button
                 type="submit"
                 className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer"
-                title="Keluar / Sign Out"
+                title="Sign Out"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">KELUAR</span>
+                <span className="hidden sm:inline">SIGNOUT</span>
               </button>
             </form>
           </div>
@@ -703,9 +703,15 @@ export default function DashboardShell({
 
                         {/* 🌟 GLOWING MICRO SPARKLINE PNL CHART */}
                         <div className="mt-3.5">
-                          <p className="text-[9px] font-black text-white uppercase tracking-widest mb-1.5">
-                            PnL Performance
-                          </p>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <p className="text-[9px] font-black text-white uppercase tracking-widest">
+                              PnL Performance
+                            </p>
+                            <span className="text-[8px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              <span>REALTIME TRAJECTORY</span>
+                            </span>
+                          </div>
                           <PnLChart
                             data={(w.positions || []).map((p: any) => ({
                               tokenSymbol: p.tokenSymbol || "TOKEN",
@@ -1520,7 +1526,7 @@ export default function DashboardShell({
                     className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500 text-red-400 rounded-xl text-xs font-mono font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                    <span>Keluar / Sign Out Sesi</span>
+                    <span>SIGNOUT SESI</span>
                   </button>
                 </form>
               </div>
