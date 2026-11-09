@@ -52,7 +52,7 @@ export default function UpgradeModal({
     {
       id: "SCOUT",
       name: "SCOUT RADAR",
-      tagline: "Entry Smart Money Hunter",
+      tagline: "Starter Alpha Discovery",
       price: 29,
       wallets: 3,
       features: [
@@ -76,7 +76,7 @@ export default function UpgradeModal({
         "Multi-Wallet Confluence Signal Engine",
         "Deep Liquidity & Contract Verifier",
         "Multi-Chain: Solana + Base + Ethereum",
-        "Priority Support & Strategy Tips",
+        "Priority Support & Scalper Tips",
       ],
     },
     {
@@ -105,8 +105,13 @@ export default function UpgradeModal({
     };
     if (isOpen) {
       window.addEventListener("keydown", handleKeyDown);
+      // Cegah scrolling di background body saat modal buka
+      document.body.style.overflow = "hidden";
     }
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "unset";
+    };
   }, [isOpen]);
 
   const handleClose = () => {
@@ -160,41 +165,41 @@ export default function UpgradeModal({
         <span className="inline sm:hidden">UPGRADE</span>
       </button>
 
-      {/* MODAL OVERLAY (BACKDROP KLIK TUTUP) */}
+      {/* MODAL OVERLAY: SCROLLABLE CONTAINER DENGAN my-auto ANTI CLIPPING */}
       {isOpen && (
         <div
           onClick={(e) => {
             if (e.target === e.currentTarget) handleClose();
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-5 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-black/85 backdrop-blur-md p-3 sm:p-6 flex justify-center items-start sm:items-center animate-in fade-in duration-150"
         >
-          <div className="bg-[#121316] border border-white/20 rounded-2xl sm:rounded-3xl w-full max-w-4xl p-5 sm:p-7 relative shadow-[0_0_50px_rgba(16,185,129,0.15)] max-h-[92vh] overflow-y-auto">
-            {/* CLOSE BUTTON */}
+          <div className="relative w-full max-w-4xl my-auto bg-[#121316] border border-white/20 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-[0_0_50px_rgba(16,185,129,0.2)]">
+            {/* CLOSE BUTTON BULLETPROOF TOP-RIGHT */}
             <button
               onClick={handleClose}
-              className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/20 text-white hover:text-emerald-400 transition-all cursor-pointer z-10"
+              className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-emerald-400 transition-all cursor-pointer z-20 flex items-center justify-center shadow-lg"
               aria-label="Tutup Modal"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-white" />
             </button>
 
             {/* HEADER AREA */}
-            <div className="text-center mb-6 sm:mb-8 pr-8 sm:pr-0">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-[11px] font-black uppercase tracking-widest mb-3">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                PREDATOR CLEARANCE UPGRADE
+            <div className="text-center mb-5 sm:mb-7 pr-10 sm:pr-0">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-2.5">
+                <Sparkles className="w-3 h-3 text-emerald-400" />
+                <span>PREDATOR CLEARANCE UPGRADE</span>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tight">
                 UNLOCK <span className="text-emerald-400">SMART MONEY</span>{" "}
                 RADAR
               </h2>
-              <p className="text-white font-bold text-xs sm:text-sm mt-2 max-w-lg mx-auto">
+              <p className="text-white font-bold text-xs sm:text-sm mt-1.5 max-w-lg mx-auto">
                 Tingkatkan kapasitas pelacakan paus on-chain, notifikasi instan
                 Telegram 0-delay, dan sinyal konfluensi multi-chain.
               </p>
 
               {/* CURRENT CLEARANCE BADGE */}
-              <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 bg-black/40 border border-white/15 rounded-xl font-mono text-[11px] text-white">
+              <div className="mt-2.5 inline-flex items-center gap-2 px-3.5 py-1 bg-black/50 border border-white/15 rounded-xl font-mono text-[10px] sm:text-[11px] text-white">
                 <span className="text-white font-bold">STATUS OPERATOR:</span>
                 <span className="text-emerald-400 font-black">
                   {isOwner
@@ -206,39 +211,39 @@ export default function UpgradeModal({
 
             {!selectedTier ? (
               // ================= TAHAP 1: PILIH TIER =================
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
                 {tiers.map((t) => (
                   <div
                     key={t.id}
                     onClick={() => setSelectedTier(t)}
-                    className={`relative p-5 sm:p-6 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between group hover:-translate-y-1.5 ${
+                    className={`relative p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between group hover:-translate-y-1 ${
                       t.popular
                         ? "border-emerald-500/80 bg-gradient-to-b from-emerald-500/15 via-[#181a20] to-[#121316] shadow-[0_0_30px_rgba(16,185,129,0.25)]"
                         : "border-white/15 hover:border-emerald-500/40 bg-[#18191e] hover:bg-[#1e2026]"
                     }`}
                   >
                     {t.popular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-black text-[10px] font-black px-3 py-0.5 rounded-full uppercase tracking-wider shadow-md shadow-emerald-500/30 flex items-center gap-1">
-                        <Zap className="w-3 h-3 fill-black" />
+                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-black text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md shadow-emerald-500/30 flex items-center gap-1 z-10">
+                        <Zap className="w-2.5 h-2.5 fill-black" />
                         RECOMMENDED
                       </div>
                     )}
 
                     <div>
                       <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-black text-white uppercase tracking-wider group-hover:text-emerald-400 transition-colors">
+                        <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider group-hover:text-emerald-400 transition-colors">
                           {t.name}
                         </h3>
                         <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-white/10 text-white border border-white/15">
                           {t.wallets} WHALES
                         </span>
                       </div>
-                      <p className="text-white text-[11px] font-bold mt-1">
+                      <p className="text-white text-[11px] font-bold mt-0.5">
                         {t.tagline}
                       </p>
 
-                      <div className="mt-4 flex items-baseline gap-1">
-                        <span className="text-3xl sm:text-4xl font-black text-white">
+                      <div className="mt-3 flex items-baseline gap-1">
+                        <span className="text-2xl sm:text-3xl font-black text-white">
                           ${t.price}
                         </span>
                         <span className="text-xs font-mono font-bold text-white">
@@ -247,11 +252,11 @@ export default function UpgradeModal({
                       </div>
 
                       {/* FEATURE LIST */}
-                      <ul className="mt-5 space-y-2.5 pt-4 border-t border-white/10">
+                      <ul className="mt-3.5 space-y-1.5 sm:space-y-2 pt-3 border-t border-white/10">
                         {t.features.map((feat, idx) => (
                           <li
                             key={idx}
-                            className="flex items-start gap-2 text-xs text-white font-bold"
+                            className="flex items-start gap-1.5 text-xs text-white font-bold"
                           >
                             <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
                             <span>{feat}</span>
@@ -262,7 +267,7 @@ export default function UpgradeModal({
 
                     <button
                       type="button"
-                      className={`mt-6 w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      className={`mt-5 w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                         t.popular
                           ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                           : "bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-emerald-500/50"
@@ -276,7 +281,7 @@ export default function UpgradeModal({
               </div>
             ) : (
               // ================= TAHAP 2: CHECKOUT & PAYMENT =================
-              <div className="max-w-xl mx-auto bg-[#18191e] rounded-2xl sm:rounded-3xl p-6 sm:p-7 border border-white/20 shadow-2xl space-y-6">
+              <div className="max-w-xl mx-auto bg-[#18191e] rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-white/20 shadow-2xl space-y-5">
                 <button
                   onClick={() => setSelectedTier(null)}
                   className="inline-flex items-center gap-1.5 text-xs font-black uppercase text-white hover:text-emerald-400 transition-colors cursor-pointer"
@@ -286,12 +291,12 @@ export default function UpgradeModal({
                 </button>
 
                 {/* TIER SUMMARY */}
-                <div className="p-4 rounded-xl bg-black/40 border border-white/15 flex items-center justify-between">
+                <div className="p-3.5 sm:p-4 rounded-xl bg-black/40 border border-white/15 flex items-center justify-between">
                   <div>
                     <span className="text-[10px] font-mono font-black uppercase text-emerald-400 tracking-wider">
                       PAKET TERPILIH
                     </span>
-                    <h3 className="text-xl font-black text-white uppercase">
+                    <h3 className="text-lg sm:text-xl font-black text-white uppercase">
                       {selectedTier.name}
                     </h3>
                     <p className="text-xs text-white font-bold">
@@ -299,7 +304,7 @@ export default function UpgradeModal({
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-3xl font-black text-emerald-400">
+                    <div className="text-2xl sm:text-3xl font-black text-emerald-400">
                       ${selectedTier.price}
                     </div>
                     <span className="text-[10px] font-mono font-bold text-white">
