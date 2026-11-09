@@ -1,5 +1,47 @@
 [
   {
+    "timestamp": "2026-11-09T12:40:32.445Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #1",
+    "walletAddress": "HjxaEDvdje644vhUmE3VpjpteWLBmWgSsgvYhf6LVw2L",
+    "action": "SELL",
+    "tokenSymbol": "ELYSION",
+    "tokenAddress": "AWaBBNoVuwQ22B8Y5nEtLne2uEfk8UaYEFws7vT7pump",
+    "usdValue": 221.01416126202002,
+    "priceUsd": 0.0006275,
+    "txUrl": "https://solscan.io/tx/D6y4dMJdJoUVZWjcozrUbdTZtXexdacK6vWAFxAzgnCeJtMn2gF3qeUTuN6hadpvTJkXr2ZbP2KVciidreEZf7f",
+    "rugVerdict": "N/A",
+    "confluenceCount": 1
+  },
+  {
+    "timestamp": "2026-11-09T12:39:34.542Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #1",
+    "walletAddress": "HjxaEDvdje644vhUmE3VpjpteWLBmWgSsgvYhf6LVw2L",
+    "action": "SELL",
+    "tokenSymbol": "ELYSION",
+    "tokenAddress": "AWaBBNoVuwQ22B8Y5nEtLne2uEfk8UaYEFws7vT7pump",
+    "usdValue": 236.77199215221037,
+    "priceUsd": 0.0006014,
+    "txUrl": "https://solscan.io/tx/3DTsko8ryfCngqS7hXPp3t1BRjsQ6n9vYTwMo3DYYq2vebCPded7JLBbkgZRteNgBxm8apCzF3JGy3GbeYHpbLXC",
+    "rugVerdict": "N/A",
+    "confluenceCount": 1
+  },
+  {
+    "timestamp": "2026-11-09T12:37:42.066Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "BUY",
+    "tokenSymbol": "ELYSION",
+    "tokenAddress": "AWaBBNoVuwQ22B8Y5nEtLne2uEfk8UaYEFws7vT7pump",
+    "usdValue": 128.7598005158544,
+    "priceUsd": 0.0006156,
+    "txUrl": "https://solscan.io/tx/3A7Y7sFhe7Foc3wpWf1FkKCDp3vfUR1TpT5cWpQ59dYSmLh5KxeYyXZtWCSi62iiidwb2tNnNTV8v6gpm5WE6r2k",
+    "rugVerdict": "SAFE",
+    "confluenceCount": 2
+  },
+  {
     "timestamp": "2026-11-09T12:26:25.098Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #1",
