@@ -42,6 +42,8 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || '8483467657:AAHCKiyxTov-tazbxagkqfcNl62ZqUCkYSQ' }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID || '2079693450' }}
           TELEGRAM_ALPHA_CHANNEL_ID: ${{ secrets.TELEGRAM_ALPHA_CHANNEL_ID || '-1003737826938' }}
+          ASISTEN_MIN_USD: ${{ secrets.ASISTEN_MIN_USD || '100' }}
+          ALPHA_FEED_MIN_USD: ${{ secrets.ALPHA_FEED_MIN_USD || '1000' }}
           ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY || 'fGEpLjFJqd8KgM8T2Wbk7' }}
           BASESCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
         run: npm run daemon:continuous

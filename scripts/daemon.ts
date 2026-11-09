@@ -64,6 +64,8 @@ const SIGNALS_PATH = path.resolve(process.cwd(), "data/signals.json");
 
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS || 25000); // 25 detik
 const CONFLUENCE_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 jam window
+const ASISTEN_MIN_USD = Number(process.env.ASISTEN_MIN_USD || 100); // Asisten Crypto threshold (> $100)
+const ALPHA_FEED_MIN_USD = Number(process.env.ALPHA_FEED_MIN_USD || 1000); // Predator Alpha Feed threshold (> $1000)
 
 // Helper sleep
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -255,11 +257,13 @@ async function checkSolanaWallet(
       const currentPrice = marketInfo?.priceUsd || 0;
       const usdValue = tokenAmount * currentPrice;
 
-      // Filter dust transactions (default min $15)
-      const minAlert = wallet.minAlertUsd ?? 15;
-      if (usdValue < minAlert) {
+      // Filter dust transactions based on dual threshold
+      const asistenMin = wallet.minAlertUsd ?? ASISTEN_MIN_USD;
+      const alphaMin = ALPHA_FEED_MIN_USD;
+
+      if (usdValue <= asistenMin && usdValue <= alphaMin) {
         console.log(
-          `[SKIP DUST] ${wallet.name} ${isBuy ? "BUY" : "SELL"} $${tokenSymbol} valued at $${usdValue.toFixed(2)} (< $${minAlert})`,
+          `[SKIP FILTER] ${wallet.name} ${isBuy ? "BUY" : "SELL"} $${tokenSymbol} valued at $${usdValue.toFixed(2)} (<= $${asistenMin})`,
         );
         processed.seenSignatures.push(signature);
         continue;
@@ -321,27 +325,52 @@ async function checkSolanaWallet(
 
       const keyboard = buildInlineKeyboard("SOLANA", targetToken, txUrl);
 
-      // Multi-tenant alert routing: send to tenant's chatId, or fallback to global chatId
+      // Multi-tenant alert routing: send to tenant's chatId (Asisten Crypto DM) if > asistenMin
       const targetChatId = wallet.chatId || process.env.TELEGRAM_CHAT_ID;
-      await sendTelegramNotification({
-        chatId: targetChatId,
-        text: alertText,
-        replyMarkup: { inline_keyboard: keyboard },
-      });
+      let alertDispatched = false;
 
-      // Also forward to private Alpha Channel (Predator Alpha Feed)
+      if (usdValue > asistenMin && targetChatId) {
+        await sendTelegramNotification({
+          chatId: targetChatId,
+          text: alertText,
+          replyMarkup: { inline_keyboard: keyboard },
+        });
+        console.log(
+          `✅ [ASISTEN CRYPTO SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)} > $${asistenMin})`,
+        );
+        alertDispatched = true;
+      }
+
+      // Forward to Predator Alpha Feed Channel ONLY if > alphaMin ($1,000)
       const alphaChannel =
         wallet.alphaChannelId ||
         process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
         "-1003737826938";
 
-      if (alphaChannel && alphaChannel !== targetChatId) {
+      const isAlphaFeedEligible = usdValue > alphaMin;
+
+      if (
+        isAlphaFeedEligible &&
+        alphaChannel &&
+        alphaChannel !== targetChatId
+      ) {
         await sendTelegramNotification({
           chatId: alphaChannel,
           text: alertText,
           replyMarkup: { inline_keyboard: keyboard },
-        }).catch((err) =>
-          console.error("Failed to forward to Alpha Channel:", err),
+        })
+          .then(() => {
+            console.log(
+              `👑 [PREDATOR ALPHA FEED SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)} > $${alphaMin})`,
+            );
+          })
+          .catch((err) =>
+            console.error("Failed to forward to Alpha Channel:", err),
+          );
+        alertDispatched = true;
+      } else if (!isAlphaFeedEligible) {
+        console.log(
+          `ℹ️ [SKIP ALPHA FEED] $${usdValue.toFixed(2)} is not > $${alphaMin} threshold for Predator Alpha Feed.`,
         );
       }
 
@@ -417,8 +446,10 @@ async function checkBaseWallet(
       const currentPrice = marketInfo?.priceUsd || 0;
       const usdValue = currentPrice * amount;
 
-      const minAlert = wallet.minAlertUsd ?? 15;
-      if (usdValue < minAlert) {
+      const asistenMin = wallet.minAlertUsd ?? ASISTEN_MIN_USD;
+      const alphaMin = ALPHA_FEED_MIN_USD;
+
+      if (usdValue <= asistenMin && usdValue <= alphaMin) {
         processed.seenSignatures.push(hash);
         continue;
       }
@@ -445,27 +476,52 @@ async function checkBaseWallet(
 
       const keyboard = buildInlineKeyboard("BASE", tokenAddress, txUrl);
 
-      // Multi-tenant alert routing: send to tenant's chatId, or fallback to global chatId
+      // Multi-tenant alert routing: send to tenant's chatId (Asisten Crypto DM) if > asistenMin
       const targetChatId = wallet.chatId || process.env.TELEGRAM_CHAT_ID;
-      await sendTelegramNotification({
-        chatId: targetChatId,
-        text: alertText,
-        replyMarkup: { inline_keyboard: keyboard },
-      });
+      let alertDispatched = false;
 
-      // Also forward to private Alpha Channel (Predator Alpha Feed)
+      if (usdValue > asistenMin && targetChatId) {
+        await sendTelegramNotification({
+          chatId: targetChatId,
+          text: alertText,
+          replyMarkup: { inline_keyboard: keyboard },
+        });
+        console.log(
+          `✅ [ASISTEN CRYPTO SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)} > $${asistenMin})`,
+        );
+        alertDispatched = true;
+      }
+
+      // Forward to Predator Alpha Feed Channel ONLY if > alphaMin ($1,000)
       const alphaChannel =
         wallet.alphaChannelId ||
         process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
         "-1003737826938";
 
-      if (alphaChannel && alphaChannel !== targetChatId) {
+      const isAlphaFeedEligible = usdValue > alphaMin;
+
+      if (
+        isAlphaFeedEligible &&
+        alphaChannel &&
+        alphaChannel !== targetChatId
+      ) {
         await sendTelegramNotification({
           chatId: alphaChannel,
           text: alertText,
           replyMarkup: { inline_keyboard: keyboard },
-        }).catch((err) =>
-          console.error("Failed to forward to Alpha Channel:", err),
+        })
+          .then(() => {
+            console.log(
+              `👑 [PREDATOR ALPHA FEED SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)} > $${alphaMin})`,
+            );
+          })
+          .catch((err) =>
+            console.error("Failed to forward to Alpha Channel:", err),
+          );
+        alertDispatched = true;
+      } else if (!isAlphaFeedEligible) {
+        console.log(
+          `ℹ️ [SKIP ALPHA FEED] $${usdValue.toFixed(2)} is not > $${alphaMin} threshold for Predator Alpha Feed.`,
         );
       }
 
@@ -511,6 +567,9 @@ async function main() {
     `[DAEMON] Helius RPC: ${process.env.HELIUS_API_KEY ? "Configured" : "MISSING"}`,
   );
   console.log(`[DAEMON] Watchlist File: ${CONFIG_PATH}`);
+  console.log(
+    `[DAEMON] Alert Filter: Asisten Crypto > $${ASISTEN_MIN_USD} | Predator Alpha Feed > $${ALPHA_FEED_MIN_USD}`,
+  );
   console.log("==================================================\n");
 
   const runOnce = process.argv.includes("--once");

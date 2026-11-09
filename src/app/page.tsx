@@ -89,7 +89,7 @@ function syncWatchlistFile(
         userId: wallet.userId || "admin_owner",
         chatId: wallet.chatId || process.env.TELEGRAM_CHAT_ID || "",
         isActive: true,
-        minAlertUsd: 15,
+        minAlertUsd: 100,
       };
       if (idx >= 0) {
         list[idx] = { ...list[idx], ...item };
