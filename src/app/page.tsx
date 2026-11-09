@@ -793,40 +793,42 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   });
 
   return (
-    <main className="min-h-screen p-4 md:p-10 max-w-[1600px] mx-auto space-y-10 bg-[#09090b] text-white overflow-x-hidden transition-colors duration-300">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-white/10">
+    <main className="min-h-screen p-3 sm:p-5 md:p-8 lg:p-10 max-w-[1600px] mx-auto space-y-6 md:space-y-8 bg-[#09090b] text-white overflow-x-hidden selection:bg-emerald-500 selection:text-black">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 pb-6 md:pb-8 border-b border-white/10">
         <div>
-          <div className="flex flex-wrap items-center gap-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-3">
             <LiveRadarPoller intervalSec={15} />
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-bold tracking-wide">
-              <Send className="w-3.5 h-3.5" />
-              <span>Telegram Bot: @skom_tracker_bot</span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[11px] sm:text-xs font-bold tracking-wide">
+              <Send className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span className="truncate max-w-[140px] sm:max-w-none">
+                @skom_tracker_bot
+              </span>
               <span className="text-emerald-400 font-bold ml-1">● SINKRON</span>
             </div>
           </div>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-none">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight uppercase leading-none">
             Predator <span className="text-emerald-400">Tracker</span>
           </h1>
-          <p className="text-sm text-neutral-400 mt-2">
+          <p className="text-xs sm:text-sm text-neutral-400 mt-1.5">
             Targeting Intelligence System // Memantau Transaksi Smart Money &
             Paus Kripto
           </p>
         </div>
 
-        <div className="flex items-center gap-3 md:gap-5">
-          <div className="hidden md:block px-5 py-3 bg-white/5 border border-white/10 rounded-2xl text-right">
-            <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold">
+        <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-3 md:gap-4 pt-2 md:pt-0 border-t border-white/5 md:border-0">
+          <div className="px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl text-left md:text-right">
+            <p className="text-[9px] sm:text-[10px] text-white/60 uppercase tracking-widest font-bold">
               Your Whales
             </p>
-            <p className="text-xl font-black">
+            <p className="text-base sm:text-xl font-black leading-none mt-0.5">
               {totalWallets}{" "}
-              <span className="text-xs font-normal text-white/40 italic">
+              <span className="text-[10px] sm:text-xs font-normal text-white/40 italic">
                 TARGETS
               </span>
             </p>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 font-mono text-[11px] font-bold">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl sm:rounded-2xl text-emerald-400 font-mono text-[11px] font-bold">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>{userName.toUpperCase()}</span>
             <span className="text-white/30">//</span>
@@ -840,7 +842,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           <form action={logoutAction}>
             <button
               type="submit"
-              className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/60 text-red-400 rounded-2xl text-xs font-mono font-bold tracking-wider transition-all"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/60 text-red-400 rounded-xl sm:rounded-2xl text-xs font-mono font-bold tracking-wider transition-all"
               title="Lock Predator Terminal"
             >
               <Lock className="w-3.5 h-3.5" />
@@ -865,8 +867,8 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 xl:grid-cols-12 gap-6 relative">
-        <section className="lg:col-span-4 xl:col-span-3 h-fit lg:sticky lg:top-10">
-          <div className="bg-[#18181b] border border-white/10 rounded-[32px] p-6 shadow-2xl transition-colors">
+        <section className="order-2 lg:order-1 lg:col-span-4 xl:col-span-3 h-fit lg:sticky lg:top-10">
+          <div className="bg-[#18181b] border border-white/10 rounded-2xl sm:rounded-[32px] p-4 sm:p-6 shadow-2xl transition-colors">
             <h2 className="text-lg font-black uppercase mb-6 flex items-center gap-3">
               <Shield className="text-emerald-400 w-5 h-5" /> Acquisition
             </h2>
@@ -1026,7 +1028,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </div>
         </section>
 
-        <section className="block xl:hidden lg:col-span-8 w-full mt-2">
+        <section className="order-3 block xl:hidden lg:col-span-8 w-full mt-2">
           {/* 🔥 TRENDING MOBILE/TABLET VIEW 🔥 */}
           <div className="bg-[#18181b] border border-orange-500/30 rounded-[24px] p-5 shadow-2xl mb-4 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-[40px] rounded-full"></div>
@@ -1172,7 +1174,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </details>
         </section>
 
-        <section className="lg:col-span-8 xl:col-span-6 space-y-6">
+        <section className="order-1 lg:order-2 lg:col-span-8 xl:col-span-6 space-y-4 sm:space-y-6">
           <h3 className="flex items-center gap-2 text-sm font-black text-white/60 uppercase tracking-[0.2em] px-2">
             <Activity className="text-cyan-400 w-4 h-4" /> Your Watchlist
           </h3>
@@ -1320,10 +1322,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                             PnL Performance
                           </p>
                           <PnLChart
-                            data={(w.positions || []).map((p) => ({
+                            data={(w.positions || []).map((p: any) => ({
                               tokenSymbol: p.tokenSymbol || "TOKEN",
                               pnl: Number(p.realizedPnlUsd) || 0,
                             }))}
+                            transactions={w.transactions}
                           />
                         </div>
 

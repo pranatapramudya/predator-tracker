@@ -57,16 +57,17 @@ export default function UpgradeModal({
       {/* TOMBOL UPGRADE UTAMA */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/40 hover:border-emerald-400 text-emerald-400 rounded-2xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-500 hover:text-black transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] group"
+        className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-2 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/40 hover:border-emerald-400 text-emerald-400 rounded-xl sm:rounded-2xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-500 hover:text-black transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] group shrink-0"
       >
         <span className="text-amber-400">⚡</span>
-        <span>Upgrade Radar</span>
+        <span className="hidden sm:inline">Upgrade Radar</span>
+        <span className="inline sm:hidden">Upgrade</span>
       </button>
 
       {/* MODAL POP-UP */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#111111] border border-neutral-800 rounded-2xl w-full max-w-4xl p-6 relative shadow-2xl shadow-emerald-500/10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+          <div className="bg-[#111111] border border-neutral-800 rounded-2xl w-full max-w-4xl p-5 sm:p-6 relative shadow-2xl shadow-emerald-500/10 max-h-[92vh] overflow-y-auto">
             <button
               onClick={() => {
                 setIsOpen(false);

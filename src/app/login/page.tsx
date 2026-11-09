@@ -134,7 +134,7 @@ export default function LoginPage() {
             SECURE TERMINAL // MULTI-TENANT CLEARANCE
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase tracking-tight text-white">
             PREDATOR <span className="text-emerald-400">TRACKER</span>
           </h1>
 
@@ -150,7 +150,7 @@ export default function LoginPage() {
         </div>
 
         {/* Keypad Auth Card */}
-        <div className="bg-[#121216] border border-neutral-800 rounded-3xl p-6 md:p-8 shadow-2xl relative backdrop-blur-xl space-y-6">
+        <div className="bg-[#121216] border border-neutral-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl relative backdrop-blur-xl space-y-5 sm:space-y-6">
           {/* Top Mode Tabs */}
           <div className="grid grid-cols-3 gap-1 bg-[#18181e] p-1 rounded-2xl border border-neutral-800 text-xs font-bold">
             <button
