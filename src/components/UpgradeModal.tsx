@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 
 const MOONPAY_LINKS = {
   SCOUT: "69f2f1f23efa8db4c0c649df",
@@ -12,8 +11,8 @@ export default function UpgradeModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<any>(null);
 
-  // Narik User ID yang lagi aktif/login dari Clerk
-  const { userId } = useAuth();
+  // Operator Master ID (Standalone / Single Operator)
+  const userId = "admin_owner";
 
   const tiers = [
     { id: "SCOUT", name: "SCOUT", price: 29, wallets: 3 },

@@ -1,4 +1,4 @@
-import { ClerkProvider } from "@clerk/nextjs";
+// src/app/layout.tsx
 import "./globals.css";
 
 export const metadata = {
@@ -12,13 +12,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
-      {/* 🔥 INI JURUS KEBALNYA BRE! Wajib ada biar Phantom/Metamask ga bikin error 🔥 */}
-      <html lang="en" suppressHydrationWarning>
-        <body className="antialiased" suppressHydrationWarning>
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
+        {children}
+      </body>
+    </html>
   );
 }

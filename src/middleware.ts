@@ -1,20 +1,54 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+// src/middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-// 🔥 DAFTAR HALAMAN PUBLIK (Bisa diakses tanpa login)
-const isPublicRoute = createRouteMatcher([
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/invite(.*)", // Biar temen lu bisa masukin data dompet
-  "/api/webhook(.*)", // Wajib publik biar UptimeRobot gak diblokir!
-]);
+const SESSION_COOKIE = "predator_session";
+const PIN = (process.env.ADMIN_PIN || "2026").trim();
+const SECRET = (
+  process.env.WEBHOOK_SHARED_SECRET || "predator_tracker_salt_2026"
+).trim();
 
-// 🔥 PERUBAHAN DI SINI: Tambahin 'async' dan pake 'await auth.protect()'
-export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) {
-    await auth.protect();
+async function hashPin(pin: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`${pin}:${SECRET}`);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // 1. Bypass static assets, Next internals, webhooks, and public files
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/webhook") ||
+    pathname === "/favicon.ico" ||
+    pathname.includes(".")
+  ) {
+    return NextResponse.next();
   }
-});
+
+  const session = request.cookies.get(SESSION_COOKIE)?.value;
+  const expectedToken = await hashPin(PIN);
+  const isAuthed = session === expectedToken;
+
+  // 2. Allow /login
+  if (pathname === "/login") {
+    if (isAuthed) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 3. Redirect unauthenticated visitors to /login
+  if (!isAuthed) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
-  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

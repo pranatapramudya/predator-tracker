@@ -5,12 +5,13 @@ import { getOrFetchTokenIntel } from "@/lib/gemini";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { UserButton } from "@clerk/nextjs";
+import { logoutAction } from "@/app/actions/auth";
 import PnLChart from "@/components/PnLChart";
 import { auditHistoricalWinRate } from "@/lib/scanner";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import fs from "fs";
+import path from "path";
 
 import {
   Shield,
@@ -27,12 +28,74 @@ import {
   Flame,
   BrainCircuit,
   TrendingUp,
+  Lock,
+  LogOut,
 } from "lucide-react";
 
-// WAJIB: force-dynamic karena halaman ini menggunakan auth() dari Clerk
-// yang merupakan dynamic API — Next.js tidak bisa static render halaman ini.
-// unstable_cache di bawah tetap bekerja untuk meng-cache data trending saja.
 export const dynamic = "force-dynamic";
+
+const CONFIG_WATCHLIST_PATH = path.resolve(
+  process.cwd(),
+  "config/watchlist.json",
+);
+
+function loadWatchlistFromFile(): any[] {
+  try {
+    if (fs.existsSync(CONFIG_WATCHLIST_PATH)) {
+      const content = fs.readFileSync(CONFIG_WATCHLIST_PATH, "utf-8");
+      return JSON.parse(content);
+    }
+  } catch (err) {
+    console.error("Failed to read config/watchlist.json:", err);
+  }
+  return [];
+}
+
+function syncWatchlistFile(
+  action: "add" | "delete",
+  wallet: { address: string; name?: string; network?: string },
+) {
+  try {
+    const list = loadWatchlistFromFile();
+    if (action === "add") {
+      const idx = list.findIndex(
+        (w: any) => w.address?.toLowerCase() === wallet.address?.toLowerCase(),
+      );
+      const item = {
+        name: wallet.name || "Target Whale",
+        address: wallet.address,
+        network: wallet.network || "SOLANA",
+        chain: (wallet.network || "SOLANA").toLowerCase(),
+        isActive: true,
+        minAlertUsd: 15,
+      };
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...item };
+      } else {
+        list.push(item);
+      }
+    } else if (action === "delete") {
+      const filtered = list.filter(
+        (w: any) =>
+          w.address?.toLowerCase() !== wallet.address?.toLowerCase() &&
+          w.name?.toLowerCase() !== wallet.address?.toLowerCase(),
+      );
+      fs.writeFileSync(
+        CONFIG_WATCHLIST_PATH,
+        JSON.stringify(filtered, null, 2),
+        "utf-8",
+      );
+      return;
+    }
+    fs.writeFileSync(
+      CONFIG_WATCHLIST_PATH,
+      JSON.stringify(list, null, 2),
+      "utf-8",
+    );
+  } catch (err) {
+    console.error("Failed to sync config/watchlist.json:", err);
+  }
+}
 
 // [PHASE 3] Cache dihapus karena bentrokan dengan Clerk Auth
 // Menggunakan fungsi async biasa.
@@ -263,8 +326,7 @@ function getWhaleTag(winRate: number, totalTrades: number) {
 
 async function createWalletAction(formData: FormData) {
   "use server";
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  const userId = "admin_owner";
 
   try {
     if (process.env.UPSTASH_REDIS_REST_URL) {
@@ -288,13 +350,18 @@ async function createWalletAction(formData: FormData) {
   ).toUpperCase() as WalletNetwork;
 
   if (!chatId || !alphaChannelId) {
-    const existingUserWallets = await prisma.wallet.findMany({
-      where: { userId: userId },
-      select: { chatId: true, alphaChannelId: true },
-    });
+    const existingUserWallets = await prisma.wallet
+      .findMany({
+        where: { userId: userId },
+        select: { chatId: true, alphaChannelId: true },
+      })
+      .catch(() => []);
 
     if (!chatId) {
-      chatId = existingUserWallets.find((w) => w.chatId)?.chatId || "";
+      chatId =
+        existingUserWallets.find((w) => w.chatId)?.chatId ||
+        process.env.TELEGRAM_CHAT_ID ||
+        "";
     }
     if (!alphaChannelId) {
       alphaChannelId =
@@ -312,72 +379,62 @@ async function createWalletAction(formData: FormData) {
         ? address
         : address.toLowerCase();
 
-    const userStatus = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { _count: { select: { wallets: true } } },
+    // 1. Sync immediately to config/watchlist.json so 24/7 daemon & GitHub Actions track it
+    syncWatchlistFile("add", {
+      address: normalized,
+      name,
+      network,
     });
-
-    if (!userStatus) {
-      redirect("/?feedback=failed");
-    }
-
-    const isWalletExist = await prisma.wallet.findUnique({
-      where: {
-        address_network_userId: { address: normalized, network, userId },
-      },
-    });
-
-    if (
-      !isWalletExist &&
-      userStatus.role !== "OWNER" &&
-      userStatus._count.wallets >= userStatus.maxWallets
-    ) {
-      // redirect("/?feedback=limit_reached"); // Disabled for development/admin
-    }
 
     let balance = 0;
-
     try {
       if (network === "BITCOIN") balance = await getBTCBalance(normalized);
       else if (network === "SOLANA")
         balance = await getSolanaBalance(normalized);
       else balance = await getEVMBalance(normalized, network);
-    } catch (apiError) {
+    } catch {
       balance = 0;
     }
 
-    const savedWallet = await prisma.wallet.upsert({
-      where: {
-        address_network_userId: {
+    try {
+      const savedWallet = await prisma.wallet.upsert({
+        where: {
+          address_network_userId: {
+            address: normalized,
+            network,
+            userId,
+          },
+        },
+        update: {
+          name,
+          chatId,
+          alphaChannelId,
+          lastBalance: balance,
+          isActive: true,
+        },
+        create: {
           address: normalized,
+          name,
           network,
+          chatId,
+          alphaChannelId,
+          lastBalance: balance,
+          isActive: true,
           userId,
         },
-      },
-      update: {
-        name,
-        chatId,
-        alphaChannelId,
-        lastBalance: balance,
-        isActive: true,
-      },
-      create: {
-        address: normalized,
-        name,
-        network,
-        chatId,
-        alphaChannelId,
-        lastBalance: balance,
-        isActive: true,
-        userId,
-      },
-    });
+      });
 
-    auditHistoricalWinRate(
-      savedWallet.id,
-      savedWallet.address,
-      savedWallet.network,
-    );
+      auditHistoricalWinRate(
+        savedWallet.id,
+        savedWallet.address,
+        savedWallet.network,
+      );
+    } catch (dbErr) {
+      console.warn(
+        "Prisma save skipped or failed, watchlist.json updated:",
+        dbErr,
+      );
+    }
 
     if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
       try {
@@ -410,23 +467,26 @@ async function createWalletAction(formData: FormData) {
 
 async function deleteWalletAction(formData: FormData) {
   "use server";
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
-
+  const userId = "admin_owner";
   let feedback = "failed";
   try {
     const id = String(formData.get("id"));
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { tier: true, role: true },
-    });
-
-    if (user?.tier === "FREE" && user?.role !== "OWNER") {
-      redirect("/?feedback=locked");
+    // Sync deletion to config/watchlist.json
+    try {
+      const targetWallet = await prisma.wallet
+        .findFirst({ where: { id } })
+        .catch(() => null);
+      if (targetWallet) {
+        syncWatchlistFile("delete", { address: targetWallet.address });
+      } else {
+        syncWatchlistFile("delete", { address: id });
+      }
+      await prisma.wallet.deleteMany({ where: { id } }).catch(() => {});
+    } catch {
+      syncWatchlistFile("delete", { address: id });
     }
 
-    await prisma.wallet.deleteMany({ where: { id, userId } });
     revalidatePath("/");
     feedback = "deleted";
   } catch (e) {
@@ -439,38 +499,37 @@ async function deleteWalletAction(formData: FormData) {
 }
 
 export default async function Page({ searchParams }: { searchParams: any }) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  const userId = "admin_owner";
+  const userEmail = "owner@predator.tracker";
 
-  const clerkUser = await currentUser();
-  const userEmail = clerkUser?.emailAddresses[0]?.emailAddress || "no-email";
+  let dbUser = {
+    id: userId,
+    email: userEmail,
+    name: "Master Predator",
+    role: "OWNER",
+    tier: "APEX",
+    maxWallets: 1000,
+    shadowBalance: 100,
+  };
 
-  const isAdmin = userEmail === "pranajaya52@gmail.com";
-
-  const ghostUser = await prisma.user.findUnique({
-    where: { email: userEmail },
-  });
-
-  if (ghostUser && ghostUser.id !== userId) {
-    console.log("Removing legacy ghost data for:", userEmail);
-    await prisma.wallet.deleteMany({ where: { userId: ghostUser.id } });
-    await prisma.user.delete({ where: { id: ghostUser.id } });
+  try {
+    const upserted = await prisma.user.upsert({
+      where: { id: userId },
+      update: { role: "OWNER", tier: "APEX", maxWallets: 1000 },
+      create: {
+        id: userId,
+        email: userEmail,
+        name: "Master Predator",
+        role: "OWNER",
+        tier: "APEX",
+        maxWallets: 1000,
+        shadowBalance: 100,
+      },
+    });
+    if (upserted) dbUser = upserted as any;
+  } catch {
+    // Non-blocking fallback if DB credentials masked or offline
   }
-
-  const dbUser = await prisma.user.upsert({
-    where: { id: userId },
-    update: {
-      email: userEmail,
-      name: clerkUser?.firstName || "Whale Hunter",
-      ...(isAdmin ? { role: "OWNER" } : {}),
-    },
-    create: {
-      id: userId,
-      email: userEmail,
-      name: clerkUser?.firstName || "Whale Hunter",
-      role: isAdmin ? "OWNER" : "MEMBER",
-    },
-  });
 
   const params = await searchParams;
   const feedback = params.feedback
@@ -481,54 +540,74 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const limit = 4;
   const skip = (page - 1) * limit;
 
-  // [PHASE 2] Hapus query userWalletsRecord yang redundan.
-  // chatId & alphaChannelId diambil langsung dari hasil wallets di bawah.
-  const [wallets, totalWallets, privateAlphaLogs] =
-    await Promise.all([
-      prisma.wallet
-        .findMany({
-          where: { userId: userId },
-          skip,
-          take: limit,
-          orderBy: { createdAt: "desc" },
-          include: {
-            transactions: { orderBy: { createdAt: "desc" }, take: 50 },
-            positions: true,
-          },
-        })
-        .catch(() => []),
-      prisma.wallet.count({ where: { userId: userId } }).catch(() => 0),
-      prisma.transaction
-        .findMany({
-          where: {
-            usdValue: { gte: 1000 },
-            wallet: { userId: userId },
-          },
-          include: { wallet: true },
-          orderBy: { createdAt: "desc" },
-          take: 15,
-        })
-        .catch(() => []),
-    ]);
+  let [wallets, totalWallets, privateAlphaLogs] = await Promise.all([
+    prisma.wallet
+      .findMany({
+        where: { userId: userId },
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          transactions: { orderBy: { createdAt: "desc" }, take: 50 },
+          positions: true,
+        },
+      })
+      .catch(() => []),
+    prisma.wallet.count({ where: { userId: userId } }).catch(() => 0),
+    prisma.transaction
+      .findMany({
+        where: {
+          usdValue: { gte: 1000 },
+          wallet: { userId: userId },
+        },
+        include: { wallet: true },
+        orderBy: { createdAt: "desc" },
+        take: 15,
+      })
+      .catch(() => []),
+  ]);
+
+  // Fallback to config/watchlist.json if DB has no wallets (keeps UI synced with 24/7 daemon)
+  const fileWatchlist = loadWatchlistFromFile();
+  if (wallets.length === 0 && fileWatchlist.length > 0) {
+    totalWallets = fileWatchlist.length;
+    const paginatedFile = fileWatchlist.slice(skip, skip + limit);
+    wallets = paginatedFile.map((w: any, idx: number) => ({
+      id: w.address,
+      name: w.name || `Target Whale #${skip + idx + 1}`,
+      address: w.address,
+      network: (w.network || w.chain || "SOLANA").toUpperCase(),
+      lastBalance: 0,
+      winRate: 0,
+      totalTrades: 0,
+      chatId: process.env.TELEGRAM_CHAT_ID || "",
+      alphaChannelId: "",
+      isActive: w.isActive ?? true,
+      transactions: [],
+      positions: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      userId: userId,
+    })) as any;
+  }
 
   // [PHASE 3] Gunakan getTrendingData yang sudah di-cache di module scope.
-  // Gemini API hanya dipanggil max 1x per 300 detik, bukan setiap render.
   const smartMoneyTrends = await getTrendingData();
 
-  const totalPages = Math.ceil(totalWallets / limit);
+  const totalPages = Math.max(1, Math.ceil(totalWallets / limit));
 
-  // [PHASE 2] Reuse data wallets yang sudah di-fetch — hapus userWalletsRecord redundan.
-  const savedChatId = wallets.find((w) => w.chatId)?.chatId || "";
-  const savedAlphaId = wallets.find((w) => w.alphaChannelId)?.alphaChannelId || "";
+  const savedChatId =
+    wallets.find((w) => w.chatId)?.chatId || process.env.TELEGRAM_CHAT_ID || "";
+  const savedAlphaId =
+    wallets.find((w) => w.alphaChannelId)?.alphaChannelId || "";
 
   // [PHASE 2] Pindahkan reduce() dari JSX ke server-side.
-  // Dihitung sekali di sini, bukan diulang setiap render card wallet.
   const walletStats = wallets.map((w) => {
-    const totalInvested = w.positions.reduce(
+    const totalInvested = (w.positions || []).reduce(
       (sum, p) => sum + Number(p.totalInvestedUsd),
       0,
     );
-    const totalPnl = w.positions.reduce(
+    const totalPnl = (w.positions || []).reduce(
       (sum, p) => sum + Number(p.realizedPnlUsd),
       0,
     );
@@ -549,7 +628,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
           </h1>
         </div>
 
-        <div className="flex items-center gap-4 md:gap-6">
+        <div className="flex items-center gap-3 md:gap-5">
           <div className="hidden md:block px-5 py-3 bg-white/5 border border-white/10 rounded-2xl text-right">
             <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold">
               Your Whales
@@ -562,15 +641,21 @@ export default async function Page({ searchParams }: { searchParams: any }) {
             </p>
           </div>
 
-          <UpgradeModal />
-
-          <div className="border border-white/20 rounded-full p-1 hover:border-emerald-500/50 transition-colors bg-white/5">
-            <UserButton
-              appearance={{
-                elements: { userButtonAvatarBox: "w-10 h-10 md:w-12 md:h-12" },
-              }}
-            />
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 font-mono text-[11px] font-bold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            ARMED // MASTER
           </div>
+
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/60 text-red-400 rounded-2xl text-xs font-mono font-bold tracking-wider transition-all"
+              title="Lock Predator Terminal"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">LOCK</span>
+            </button>
+          </form>
         </div>
       </header>
 
