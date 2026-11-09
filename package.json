@@ -12,7 +12,7 @@
     "wallet:list": "tsx scripts/manage-wallets.ts list",
     "wallet:add": "tsx scripts/manage-wallets.ts add",
     "wallet:remove": "tsx scripts/manage-wallets.ts remove",
-    "build": "prisma generate && prisma db push --accept-data-loss && next build",
+    "build": "prisma generate && (prisma db push --accept-data-loss || true) && next build",
     "start": "next start",
     "postinstall": "prisma generate",
     "prepare": "husky"
