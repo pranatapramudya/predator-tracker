@@ -38,6 +38,7 @@ const CONFIG_WATCHLIST_PATH = path.resolve(
   process.cwd(),
   "config/watchlist.json",
 );
+const SIGNALS_PATH = path.resolve(process.cwd(), "data/signals.json");
 
 function loadWatchlistFromFile(): any[] {
   try {
@@ -47,6 +48,18 @@ function loadWatchlistFromFile(): any[] {
     }
   } catch (err) {
     console.error("Failed to read config/watchlist.json:", err);
+  }
+  return [];
+}
+
+function loadSignalsFromFile(): any[] {
+  try {
+    if (fs.existsSync(SIGNALS_PATH)) {
+      const content = fs.readFileSync(SIGNALS_PATH, "utf-8");
+      return JSON.parse(content);
+    }
+  } catch (err) {
+    console.error("Failed to read data/signals.json:", err);
   }
   return [];
 }
@@ -569,27 +582,72 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
   // Fallback to config/watchlist.json if DB has no wallets (keeps UI synced with 24/7 daemon)
   const fileWatchlist = loadWatchlistFromFile();
+  const rawSignals = loadSignalsFromFile();
+
   if (wallets.length === 0 && fileWatchlist.length > 0) {
     totalWallets = fileWatchlist.length;
     const paginatedFile = fileWatchlist.slice(skip, skip + limit);
-    wallets = paginatedFile.map((w: any, idx: number) => ({
-      id: w.address,
-      name: w.name || `Target Whale #${skip + idx + 1}`,
-      address: w.address,
-      network: (w.network || w.chain || "SOLANA").toUpperCase(),
-      lastBalance: 0,
-      winRate: 0,
-      totalTrades: 0,
-      chatId: process.env.TELEGRAM_CHAT_ID || "",
-      alphaChannelId: "",
-      isActive: w.isActive ?? true,
-      transactions: [],
-      positions: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      userId: userId,
+    wallets = paginatedFile.map((w: any, idx: number) => {
+      const walletSignals = rawSignals.filter(
+        (s: any) => s.walletAddress?.toLowerCase() === w.address?.toLowerCase(),
+      );
+      return {
+        id: w.address,
+        name: w.name || `Target Whale #${skip + idx + 1}`,
+        address: w.address,
+        network: (w.network || w.chain || "SOLANA").toUpperCase(),
+        lastBalance: 0,
+        winRate: 0,
+        totalTrades: walletSignals.length,
+        chatId: process.env.TELEGRAM_CHAT_ID || "2079693450",
+        alphaChannelId: "",
+        isActive: w.isActive ?? true,
+        transactions: walletSignals.map((s: any) => ({
+          id: s.txUrl || Math.random().toString(),
+          type: s.action || "BUY",
+          usdValue: s.usdValue || 0,
+          tokenSymbol: s.tokenSymbol || "SOL",
+          tokenAddress: s.tokenAddress || "",
+          createdAt: new Date(s.timestamp || Date.now()),
+        })),
+        positions: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        userId: userId,
+      };
+    }) as any;
+  }
+
+  // Fallback to data/signals.json for Alpha Feed if DB is empty
+  if (privateAlphaLogs.length === 0 && rawSignals.length > 0) {
+    privateAlphaLogs = rawSignals.slice(0, 15).map((s: any, idx: number) => ({
+      id: s.txUrl || `sig_${idx}`,
+      wallet: { name: s.whaleName || "Smart Money" },
+      createdAt: new Date(s.timestamp || Date.now()),
+      type: (s.action || "BUY").toUpperCase(),
+      tokenSymbol: s.tokenSymbol || "SOL",
+      usdValue: s.usdValue || 0,
+      rsi14AtTx: null,
+      explorerUrl: s.txUrl || `https://solscan.io`,
     })) as any;
   }
+
+  // Asynchronously query live balances for displayed wallets
+  await Promise.allSettled(
+    wallets.map(async (w: any) => {
+      try {
+        if (w.network === "SOLANA") {
+          w.lastBalance = await getSolanaBalance(w.address);
+        } else if (w.network === "BITCOIN") {
+          w.lastBalance = await getBTCBalance(w.address);
+        } else {
+          w.lastBalance = await getEVMBalance(w.address, w.network);
+        }
+      } catch {
+        // Fallback silently
+      }
+    }),
+  );
 
   // [PHASE 3] Gunakan getTrendingData yang sudah di-cache di module scope.
   const smartMoneyTrends = await getTrendingData();
@@ -597,7 +655,9 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   const totalPages = Math.max(1, Math.ceil(totalWallets / limit));
 
   const savedChatId =
-    wallets.find((w) => w.chatId)?.chatId || process.env.TELEGRAM_CHAT_ID || "";
+    wallets.find((w) => w.chatId)?.chatId ||
+    process.env.TELEGRAM_CHAT_ID ||
+    "2079693450";
   const savedAlphaId =
     wallets.find((w) => w.alphaChannelId)?.alphaChannelId || "";
 
@@ -617,15 +677,26 @@ export default async function Page({ searchParams }: { searchParams: any }) {
 
   return (
     <main className="min-h-screen p-4 md:p-10 max-w-[1600px] mx-auto space-y-10 bg-[#09090b] text-white overflow-x-hidden transition-colors duration-300">
-      <header className="flex flex-row items-center justify-between gap-4 pb-8 border-b border-white/10">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-white/10">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold tracking-[0.3em] uppercase mb-4">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse will-change-opacity transform-gpu" />{" "}
-            Targeting System Online
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-wider uppercase">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />{" "}
+              Radar Online (24/7 Cloud Tracker)
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-bold tracking-wide">
+              <Send className="w-3.5 h-3.5" />
+              <span>Telegram Bot: @skom_tracker_bot</span>
+              <span className="text-emerald-400 font-bold ml-1">● SINKRON</span>
+            </div>
           </div>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-none">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-none">
             Predator <span className="text-emerald-400">Tracker</span>
           </h1>
+          <p className="text-sm text-neutral-400 mt-2">
+            Targeting Intelligence System // Memantau Transaksi Smart Money &
+            Paus Kripto
+          </p>
         </div>
 
         <div className="flex items-center gap-3 md:gap-5">

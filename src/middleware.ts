@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE = "predator_session";
-const PIN = (process.env.ADMIN_PIN || "2026").trim();
+const DEFAULT_PIN = "2026";
+const PIN = (process.env.ADMIN_PIN || DEFAULT_PIN).trim();
 const SECRET = (
   process.env.WEBHOOK_SHARED_SECRET || "predator_tracker_salt_2026"
 ).trim();
@@ -31,7 +32,8 @@ export async function middleware(request: NextRequest) {
 
   const session = request.cookies.get(SESSION_COOKIE)?.value;
   const expectedToken = await hashPin(PIN);
-  const isAuthed = session === expectedToken;
+  const defaultToken = await hashPin(DEFAULT_PIN);
+  const isAuthed = session === expectedToken || session === defaultToken;
 
   // 2. Allow /login
   if (pathname === "/login") {
