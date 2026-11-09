@@ -229,7 +229,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
   }
 
   const page = Math.max(1, Number(resolvedParams?.page) || 1);
-  const limit = 12;
+  const limit = 3;
   const skip = (page - 1) * limit;
 
   const feedbackParam =

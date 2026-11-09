@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Trash2,
   Send,
   ExternalLink,
@@ -41,16 +42,16 @@ import {
 
 const NETWORK_OPTIONS = [
   {
-    value: "BITCOIN",
-    label: "Bitcoin",
-    color: "text-orange-500",
-    border: "border-orange-500/30",
-  },
-  {
     value: "SOLANA",
     label: "Solana",
     color: "text-emerald-400",
     border: "border-emerald-500/30",
+  },
+  {
+    value: "BASE",
+    label: "Base",
+    color: "text-indigo-400",
+    border: "border-indigo-500/30",
   },
   {
     value: "ETHEREUM",
@@ -59,20 +60,20 @@ const NETWORK_OPTIONS = [
     border: "border-cyan-500/30",
   },
   {
-    value: "BASE",
-    label: "Base",
-    color: "text-indigo-400",
-    border: "border-indigo-500/30",
+    value: "BITCOIN",
+    label: "Bitcoin",
+    color: "text-orange-500",
+    border: "border-orange-500/30",
   },
 ] as const;
 
 type WalletNetwork = (typeof NETWORK_OPTIONS)[number]["value"];
 
 const NETWORK_LOGOS: Record<string, string> = {
-  BITCOIN: "https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=035",
   SOLANA: "https://cryptologos.cc/logos/solana-sol-logo.svg?v=035",
-  ETHEREUM: "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=035",
   BASE: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png",
+  ETHEREUM: "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=035",
+  BITCOIN: "https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=035",
 };
 
 function formatAddress(address: string): string {
@@ -222,7 +223,17 @@ export default function DashboardShell({
     "ALL" | "BUY" | "SELL"
   >("ALL");
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
-  const [isSubmitting, startTransition] = useTransition();
+
+  // 🌟 Modern Blockchain Selector State
+  const [selectedNetwork, setSelectedNetwork] =
+    useState<WalletNetwork>("SOLANA");
+
+  // 🌟 Modern Delete Alert Modal State
+  const [whaleToDelete, setWhaleToDelete] = useState<{
+    id: string;
+    name: string;
+    address: string;
+  } | null>(null);
 
   const handleTabChange = (tab: "watchlist" | "feed" | "add" | "menu") => {
     setActiveTab(tab);
@@ -257,41 +268,27 @@ export default function DashboardShell({
 
   return (
     <main className="min-h-screen bg-[#09090b] text-white selection:bg-emerald-500 selection:text-black pb-28 md:pb-12">
-      {/* 🚀 TOP CYBER HEADER BAR */}
-      <header className="sticky top-0 z-40 bg-[#09090b]/80 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 lg:px-8 py-3.5 transition-all">
-        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-3">
-          {/* Logo & Live Status */}
-          <div className="flex items-center gap-3">
+      {/* 🚀 TOP CYBER HEADER BAR - CATEGORIZED INTO 3 CLEAN ZONES */}
+      <header className="sticky top-0 z-40 bg-[#09090b]/90 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 lg:px-8 py-3 transition-all">
+        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
+          {/* ZONE 1: BRAND IDENTITY & LIVE RADAR (LEFT) */}
+          <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => handleTabChange("watchlist")}
-              className="text-left group flex items-center gap-2.5"
+              className="text-left group flex items-center gap-2.5 transition-transform hover:opacity-90"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center p-0.5 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                <div className="w-full h-full bg-black rounded-[10px] flex items-center justify-center">
-                  <Activity className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-base sm:text-lg font-black tracking-tight uppercase leading-none flex items-center gap-1.5">
-                  PREDATOR <span className="text-emerald-400">TRACKER</span>
-                </h1>
-                <p className="hidden sm:block text-[9px] text-white/40 tracking-wider uppercase font-mono mt-0.5">
-                  Autonomous Whale Intel // 24/7
-                </p>
-              </div>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.9)]" />
+              <h1 className="text-base sm:text-lg font-black tracking-tight uppercase leading-none">
+                PREDATOR <span className="text-emerald-400">TRACKER</span>
+              </h1>
             </button>
 
-            <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-white/10">
+            <div className="hidden lg:block pl-3 border-l border-white/10">
               <LiveRadarPoller intervalSec={15} />
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[10px] font-bold tracking-wide">
-                <Send className="w-3 h-3" />
-                <span className="font-mono">@skom_tracker_bot</span>
-                <span className="text-emerald-400 font-bold">● SINKRON</span>
-              </div>
             </div>
           </div>
 
-          {/* DESKTOP CENTER NAVIGATION TABS */}
+          {/* ZONE 2: NAVIGATION CENTER (MIDDLE) */}
           <nav className="hidden md:flex items-center bg-zinc-900/80 border border-white/10 rounded-2xl p-1 gap-1 shadow-inner">
             <button
               onClick={() => handleTabChange("watchlist")}
@@ -301,7 +298,6 @@ export default function DashboardShell({
                   : "text-white/60 hover:text-white hover:bg-white/5"
               }`}
             >
-              <Activity className="w-3.5 h-3.5" />
               <span>Watchlist</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
@@ -324,7 +320,7 @@ export default function DashboardShell({
             >
               <Radio className="w-3.5 h-3.5" />
               <span>Alpha Feed</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             </button>
 
             <button
@@ -352,11 +348,11 @@ export default function DashboardShell({
             </button>
           </nav>
 
-          {/* Right Controls */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* ZONE 3: OPERATOR PROFILE & SECURITY CONTROLS (RIGHT) */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 font-mono text-[11px] font-bold">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="truncate max-w-[100px]">{dbUser.name}</span>
+              <span className="truncate max-w-[110px]">{dbUser.name}</span>
               <span className="text-white/30">//</span>
               <span className="text-white/60">{dbUser.role}</span>
             </div>
@@ -394,15 +390,12 @@ export default function DashboardShell({
         </div>
       )}
 
-      {/* 📱 MOBILE QUICK STATUS TICKER (ONLY ON MOBILE) */}
+      {/* 📱 MOBILE QUICK LIVE RADAR (CLEAN, NO OVERCROWDING) */}
       <div className="md:hidden flex items-center justify-between px-4 py-2 bg-zinc-950 border-b border-white/5 text-[10px] font-mono">
-        <div className="flex items-center gap-2">
-          <LiveRadarPoller intervalSec={15} />
-        </div>
-        <div className="flex items-center gap-1 text-cyan-400 font-bold">
-          <Send className="w-2.5 h-2.5" />
-          <span>@skom_tracker_bot ● SINKRON</span>
-        </div>
+        <LiveRadarPoller intervalSec={15} />
+        <span className="text-white/40 font-bold uppercase tracking-widest">
+          {totalWallets} TARGETS ON RADAR
+        </span>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════
@@ -414,19 +407,15 @@ export default function DashboardShell({
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Watchlist Sub-header & Controls */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/40 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400">
-                  <Activity className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight">
-                    Active Target Whales
-                  </h2>
-                  <p className="text-xs text-white/50">
-                    Memantau {filteredWallets.length} target paus kripto secara
-                    real-time
-                  </p>
-                </div>
+              <div>
+                <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  Active Target Whales
+                </h2>
+                <p className="text-xs text-white/50 mt-0.5">
+                  Menampilkan {filteredWallets.length} target aktif (Maks 3 per
+                  halaman)
+                </p>
               </div>
 
               {/* Chain Filter & Search */}
@@ -454,7 +443,7 @@ export default function DashboardShell({
                             : "text-white/50 hover:text-white"
                         }`}
                       >
-                        {chain === "ALL" ? "ALL CHAINS" : chain}
+                        {chain === "ALL" ? "ALL" : chain}
                       </button>
                     ),
                   )}
@@ -489,8 +478,8 @@ export default function DashboardShell({
                 </button>
               </div>
             ) : (
-              /* Whale Cards Grid */
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+              /* Whale Cards Grid (Max 3 per page, 3-col on desktop) */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
                 {filteredWallets.map((w, idx) => {
                   const config = NETWORK_OPTIONS.find(
                     (n) => n.value === w.network,
@@ -513,7 +502,7 @@ export default function DashboardShell({
                   return (
                     <div
                       key={w.id || idx}
-                      className="group bg-[#18181b] border border-white/10 p-4 sm:p-5 rounded-2xl sm:rounded-3xl hover:border-emerald-500/40 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between"
+                      className="group bg-[#18181b] border border-white/10 p-5 rounded-3xl hover:border-emerald-500/40 transition-all shadow-xl relative overflow-hidden flex flex-col justify-between"
                     >
                       {/* Card Header */}
                       <div>
@@ -521,7 +510,7 @@ export default function DashboardShell({
                           <div className="flex-1 min-w-0 pr-2">
                             <div className="flex items-center gap-2 mb-1.5">
                               <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
-                                TARGET #{idx + 1}
+                                TARGET #{(page - 1) * 3 + idx + 1}
                               </span>
                               <span
                                 className={`text-[8px] px-2 py-0.5 rounded border tracking-widest ${whaleTag.style}`}
@@ -564,7 +553,7 @@ export default function DashboardShell({
                             </div>
                           </div>
 
-                          {/* Network & Delete */}
+                          {/* Network & Modern Delete Trigger */}
                           <div className="flex flex-col items-end gap-2 shrink-0">
                             <span
                               className={`text-[8px] font-black px-2 py-1 rounded-full border border-white/10 bg-zinc-900/60 uppercase ${config?.color}`}
@@ -581,25 +570,20 @@ export default function DashboardShell({
                                 🔒
                               </span>
                             ) : (
-                              <form action={deleteWalletAction}>
-                                <input type="hidden" name="id" value={w.id} />
-                                <button
-                                  type="submit"
-                                  onClick={(e) => {
-                                    if (
-                                      !confirm(
-                                        `Hapus whale "${safeName}" dari pemantauan radar?`,
-                                      )
-                                    ) {
-                                      e.preventDefault();
-                                    }
-                                  }}
-                                  className="p-1.5 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-                                  title="Eliminate Target"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </form>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setWhaleToDelete({
+                                    id: w.id,
+                                    name: safeName,
+                                    address: w.address,
+                                  })
+                                }
+                                className="p-1.5 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                                title="Eliminate Target"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             )}
                           </div>
                         </div>
@@ -762,36 +746,49 @@ export default function DashboardShell({
               </div>
             )}
 
-            {/* Pagination Controls */}
+            {/* 🌟 ENHANCED NAVIGATION NEXT/PREV CONTROLS */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 pt-6">
-                {page > 1 ? (
-                  <Link
-                    href={`/?page=${page - 1}&tab=watchlist`}
-                    className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 text-white transition-colors"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Link>
-                ) : (
-                  <div className="p-2.5 bg-white/5 opacity-30 rounded-xl border border-white/10 text-white/30 cursor-not-allowed">
-                    <ChevronLeft className="w-4 h-4" />
-                  </div>
-                )}
-                <span className="text-xs font-bold uppercase tracking-widest text-white/80">
-                  Page {page} of {totalPages}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 pb-4 border-t border-white/10">
+                <span className="text-xs font-mono text-white/50">
+                  Showing targets {(page - 1) * 3 + 1} -{" "}
+                  {Math.min(page * 3, totalWallets)} of {totalWallets}
                 </span>
-                {page < totalPages ? (
-                  <Link
-                    href={`/?page=${page + 1}&tab=watchlist`}
-                    className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 text-white transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Link>
-                ) : (
-                  <div className="p-2.5 bg-white/5 opacity-30 rounded-xl border border-white/10 text-white/30 cursor-not-allowed">
-                    <ChevronRight className="w-4 h-4" />
-                  </div>
-                )}
+
+                <div className="flex items-center gap-3">
+                  {page > 1 ? (
+                    <Link
+                      href={`/?page=${page - 1}&tab=watchlist`}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>Prev</span>
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900/40 border border-white/5 rounded-xl text-xs font-bold uppercase tracking-wider text-white/30 cursor-not-allowed">
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>Prev</span>
+                    </div>
+                  )}
+
+                  <span className="px-3 py-1.5 bg-black/60 border border-white/10 rounded-xl text-xs font-mono font-bold text-emerald-400">
+                    {page} / {totalPages}
+                  </span>
+
+                  {page < totalPages ? (
+                    <Link
+                      href={`/?page=${page + 1}&tab=watchlist`}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition-colors"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900/40 border border-white/5 rounded-xl text-xs font-bold uppercase tracking-wider text-white/30 cursor-not-allowed">
+                      <span>Next</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -1068,25 +1065,49 @@ export default function DashboardShell({
                   />
                 </div>
 
-                {/* Network */}
+                {/* 🌟 MODERN BLOCKCHAIN NETWORK SELECTOR */}
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-white/60 uppercase tracking-widest ml-1">
                     Blockchain Network
                   </label>
-                  <select
-                    name="network"
-                    className="w-full bg-zinc-900/80 border border-white/10 rounded-2xl px-4 py-3.5 font-bold outline-none cursor-pointer text-sm text-white"
-                  >
-                    {NETWORK_OPTIONS.map((n) => (
-                      <option
-                        key={n.value}
-                        value={n.value}
-                        className="bg-zinc-900 text-white"
-                      >
-                        {n.label}
-                      </option>
-                    ))}
-                  </select>
+                  <input type="hidden" name="network" value={selectedNetwork} />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {NETWORK_OPTIONS.map((n) => {
+                      const isSelected = selectedNetwork === n.value;
+                      return (
+                        <button
+                          type="button"
+                          key={n.value}
+                          onClick={() =>
+                            setSelectedNetwork(n.value as WalletNetwork)
+                          }
+                          className={`flex items-center gap-2.5 p-3 rounded-2xl border transition-all text-left ${
+                            isSelected
+                              ? "bg-zinc-800 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500"
+                              : "bg-zinc-900/60 border-white/10 hover:border-white/20 hover:bg-zinc-800/50"
+                          }`}
+                        >
+                          <img
+                            src={NETWORK_LOGOS[n.value]}
+                            alt={n.label}
+                            className="w-6 h-6 rounded-full bg-white p-0.5 shrink-0 shadow-sm"
+                          />
+                          <div className="min-w-0">
+                            <p
+                              className={`text-xs font-black uppercase ${
+                                isSelected ? n.color : "text-white/80"
+                              }`}
+                            >
+                              {n.label}
+                            </p>
+                            <p className="text-[8px] text-white/40 uppercase font-mono">
+                              {isSelected ? "● SELECTED" : "SELECT"}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Alias Name */}
@@ -1411,6 +1432,67 @@ export default function DashboardShell({
           </div>
         )}
       </div>
+
+      {/* 🌟 MODERN DELETE CONFIRMATION MODAL (NO UGLY BROWSER POPUP) */}
+      {whaleToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#18181b] border border-rose-500/30 rounded-3xl p-6 sm:p-7 shadow-[0_0_50px_rgba(244,63,94,0.15)] relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 blur-[40px] rounded-full pointer-events-none" />
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-400">
+                <Trash2 className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black uppercase tracking-tight text-white">
+                  Eliminasi Target Whale?
+                </h3>
+                <p className="text-[10px] text-rose-400 uppercase font-mono font-bold">
+                  Security Clearance Warning
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-white/70 leading-relaxed mb-4">
+              Apakah Anda yakin ingin menghapus pemantauan target{" "}
+              <span className="text-white font-black">
+                "{whaleToDelete.name}"
+              </span>
+              ? Pelacakan transaksi on-chain untuk dompet ini akan
+              dinonaktifkan.
+            </p>
+
+            <div className="p-3 bg-black/50 border border-white/5 rounded-xl font-mono text-[11px] text-white/60 mb-6 truncate">
+              Address:{" "}
+              <span className="text-emerald-400 font-bold">
+                {whaleToDelete.address}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setWhaleToDelete(null)}
+                className="flex-1 py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+
+              <form action={deleteWalletAction} className="flex-1">
+                <input type="hidden" name="id" value={whaleToDelete.id} />
+                <button
+                  type="submit"
+                  onClick={() => setWhaleToDelete(null)}
+                  className="w-full py-3 px-4 bg-rose-500 hover:bg-rose-600 text-white font-black rounded-xl text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(244,63,94,0.3)] flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus Target</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 📱 MODERN FLOATING BOTTOM NAVIGATION BAR (FOR MOBILE & TABLET) */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-[#09090b]/95 backdrop-blur-xl border-t border-white/10 px-3 py-2 flex items-center justify-around shadow-[0_-10px_30px_rgba(0,0,0,0.8)] pb-safe">
