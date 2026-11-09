@@ -7,6 +7,7 @@
     "dev:webpack": "cross-env NEXT_DEV_BUNDLER=webpack next dev",
     "daemon": "tsx scripts/daemon.ts",
     "daemon:once": "tsx scripts/daemon.ts --once",
+    "daemon:continuous": "tsx scripts/daemon.ts --duration 260",
     "paper:status": "tsx scripts/paper-status.ts",
     "test:alert": "tsx scripts/test-alert.ts",
     "wallet:list": "tsx scripts/manage-wallets.ts list",

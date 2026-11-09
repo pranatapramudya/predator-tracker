@@ -514,10 +514,23 @@ async function main() {
   console.log("==================================================\n");
 
   const runOnce = process.argv.includes("--once");
-  let isInitialRun = true;
+  const durationArgIdx = process.argv.indexOf("--duration");
+  const maxDurationSec =
+    durationArgIdx !== -1 ? Number(process.argv[durationArgIdx + 1]) : 0;
+  const startTime = Date.now();
 
   const processed = loadProcessed();
   const confluenceMap = loadConfluence();
+
+  // If we already have seen signatures persisted, this is NOT a fresh cold start.
+  // We should NOT skip alerts for genuinely new transactions!
+  let isInitialRun = processed.seenSignatures.length === 0;
+
+  if (maxDurationSec > 0) {
+    console.log(
+      `[DAEMON] Continuous Mode active: will run for ${maxDurationSec}s (~${(maxDurationSec / 60).toFixed(1)}m) before graceful exit.`,
+    );
+  }
 
   while (true) {
     try {
@@ -569,6 +582,24 @@ async function main() {
     if (runOnce) {
       console.log("[DAEMON] Single run mode complete. Exiting.");
       break;
+    }
+
+    if (maxDurationSec > 0) {
+      const elapsedSec = (Date.now() - startTime) / 1000;
+      if (elapsedSec >= maxDurationSec) {
+        console.log(
+          `[DAEMON] Target duration (${maxDurationSec}s) reached (${Math.round(elapsedSec)}s elapsed). Exiting cleanly.`,
+        );
+        break;
+      }
+
+      const nextSleepSec = POLL_INTERVAL_MS / 1000;
+      if (elapsedSec + nextSleepSec > maxDurationSec + 10) {
+        console.log(
+          `[DAEMON] Next poll interval would exceed target duration (${maxDurationSec}s). Exiting cleanly.`,
+        );
+        break;
+      }
     }
 
     await sleep(POLL_INTERVAL_MS);
