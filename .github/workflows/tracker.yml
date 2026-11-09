@@ -1,0 +1,47 @@
+name: Predator Tracker - Smart Money Radar
+
+on:
+  schedule:
+    # Berjalan otomatis setiap 10 menit di cloud GitHub
+    - cron: '*/10 * * * *'
+  # Tombol pemicu manual dari web GitHub
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    name: Sweep Smart Money Wallets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm install --no-audit --prefer-offline
+
+      - name: ⚡ Run Predator Tracker Sweep (Single Pass)
+        env:
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY || '987f85c1-4b31-430a-bbb0-b8ef435b557f' }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || '8483467657:AAHCKiyxTov-tazbxagkqfcNl62ZqUCkYSQ' }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID || '2079693450' }}
+          ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY || 'fGEpLjFJqd8KgM8T2Wbk7' }}
+          BASESCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
+        run: npm run daemon:once
+
+      - name: 💾 Commit & Push Processed State
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f data/processed_txs.json data/signals.json config/watchlist.json || true
+          git diff --staged --quiet || git commit -m "chore(radar): update processed txs and signals [skip ci]"
+          git push || true
