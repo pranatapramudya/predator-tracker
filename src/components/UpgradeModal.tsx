@@ -1,11 +1,35 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
+import {
+  X,
+  Zap,
+  Shield,
+  Check,
+  ExternalLink,
+  Copy,
+  Sparkles,
+  ArrowLeft,
+  Lock,
+  Wallet,
+  CheckCircle2,
+} from "lucide-react";
 
 const MOONPAY_LINKS = {
   SCOUT: "69f2f1f23efa8db4c0c649df",
   PREDATOR: "69f2f303b1cea9fd7396688f",
   APEX: "69f2f3603efa8db4c0c6510d",
 };
+
+interface TierConfig {
+  id: "SCOUT" | "PREDATOR" | "APEX";
+  name: string;
+  tagline: string;
+  price: number;
+  wallets: number;
+  popular?: boolean;
+  features: string[];
+}
 
 export default function UpgradeModal({
   userId = "admin_owner",
@@ -15,140 +39,403 @@ export default function UpgradeModal({
   currentTier?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<any>(null);
+  const [selectedTier, setSelectedTier] = useState<TierConfig | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [activePaymentMethod, setActivePaymentMethod] = useState<
+    "gateway" | "direct"
+  >("gateway");
+  const [directCopied, setDirectCopied] = useState(false);
 
-  const tiers = [
-    { id: "SCOUT", name: "SCOUT", price: 29, wallets: 3 },
+  const directWalletSol = "EdaXoG9n8Wp62c2vK3k4qTz8y2Q5u1bK9z4r8y7W2abc";
+
+  const tiers: TierConfig[] = [
+    {
+      id: "SCOUT",
+      name: "SCOUT RADAR",
+      tagline: "Entry Smart Money Hunter",
+      price: 29,
+      wallets: 3,
+      features: [
+        "Track 3 Active Whale Targets",
+        "Real-Time Telegram Alpha Alerts",
+        "Basic Anti-Rugpull & Mint Guard",
+        "PnL Shadow Simulation ($100 Base)",
+        "Solana Network Scanner",
+      ],
+    },
     {
       id: "PREDATOR",
-      name: "PREDATOR",
+      name: "PREDATOR PRO",
+      tagline: "Most Popular // Scalper Alpha",
       price: 99,
       wallets: 15,
       popular: true,
+      features: [
+        "Track 15 Active Whale Targets",
+        "Zero-Delay Telegram Instant Push",
+        "Multi-Wallet Confluence Signal Engine",
+        "Deep Liquidity & Contract Verifier",
+        "Multi-Chain: Solana + Base + Ethereum",
+        "Priority Support & Strategy Tips",
+      ],
     },
     {
       id: "APEX",
       name: "APEX WHALE",
+      tagline: "Institutional Predator Grade",
       price: 499,
       wallets: 100,
+      features: [
+        "Track 100+ Whale Targets Non-Stop",
+        "Dedicated Private RPC Node Speed",
+        "Auto-Copy Trading Webhook Signals",
+        "Unlimited Custom Telegram Channels",
+        "1-on-1 VIP Direct Strategy Access",
+        "Lifetime Clearance & Zero Limits",
+      ],
     },
   ];
 
-  const handleCheckout = () => {
-    if (!userId) {
-      alert("Please sign in first to upgrade your tier.");
-      return;
+  // Close on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
     }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
 
-    if (!selectedTier) return;
-
-    // Ambil ID MoonPay sesuai tier yang di-klik
-    const linkId = MOONPAY_LINKS[selectedTier.id as keyof typeof MOONPAY_LINKS];
-
-    // Bikin URL lengkap dengan parameter clientReferenceId
-    const checkoutUrl = `https://moonpay.hel.io/pay/${linkId}?clientReferenceId=${userId}`;
-
-    // Buka halaman kasir MoonPay di tab baru
-    window.open(checkoutUrl, "_blank");
+  const handleClose = () => {
+    setIsOpen(false);
+    setSelectedTier(null);
+    setCopied(false);
+    setDirectCopied(false);
   };
+
+  const getCheckoutUrl = (tierId: "SCOUT" | "PREDATOR" | "APEX") => {
+    const linkId = MOONPAY_LINKS[tierId];
+    return `https://moonpay.hel.io/pay/${linkId}?clientReferenceId=${encodeURIComponent(
+      userId || "admin_owner",
+    )}`;
+  };
+
+  const handleOpenGateway = (url: string) => {
+    if (typeof window !== "undefined") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const copyToClipboard = (text: string, isDirect = false) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      if (isDirect) {
+        setDirectCopied(true);
+        setTimeout(() => setDirectCopied(false), 2500);
+      } else {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }
+    }
+  };
+
+  const isOwner =
+    userId === "admin_owner" ||
+    currentTier === "APEX" ||
+    currentTier === "OWNER";
 
   return (
     <>
-      {/* TOMBOL UPGRADE UTAMA */}
+      {/* TOMBOL UPGRADE UTAMA (NAVBAR / COMMAND MENU) */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-2 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/40 hover:border-emerald-400 text-emerald-400 rounded-xl sm:rounded-2xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-500 hover:text-black transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] group shrink-0"
+        className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-emerald-500/15 border border-emerald-500/40 hover:border-emerald-400 text-emerald-400 hover:text-white rounded-xl sm:rounded-2xl text-xs font-black uppercase tracking-wider hover:bg-emerald-500 transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] group shrink-0 cursor-pointer"
+        title="Upgrade Kapasitas Radar"
       >
-        <span className="text-amber-400">⚡</span>
-        <span className="hidden sm:inline">Upgrade Radar</span>
-        <span className="inline sm:hidden">Upgrade</span>
+        <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 group-hover:scale-110 transition-transform" />
+        <span className="hidden sm:inline">UPGRADE RADAR</span>
+        <span className="inline sm:hidden">UPGRADE</span>
       </button>
 
-      {/* MODAL POP-UP */}
+      {/* MODAL OVERLAY (BACKDROP KLIK TUTUP) */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
-          <div className="bg-[#111111] border border-neutral-800 rounded-2xl w-full max-w-4xl p-5 sm:p-6 relative shadow-2xl shadow-emerald-500/10 max-h-[92vh] overflow-y-auto">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleClose();
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-5 animate-in fade-in duration-200"
+        >
+          <div className="bg-[#121316] border border-white/20 rounded-2xl sm:rounded-3xl w-full max-w-4xl p-5 sm:p-7 relative shadow-[0_0_50px_rgba(16,185,129,0.15)] max-h-[92vh] overflow-y-auto">
+            {/* CLOSE BUTTON */}
             <button
-              onClick={() => {
-                setIsOpen(false);
-                setSelectedTier(null);
-              }}
-              className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors"
+              onClick={handleClose}
+              className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/20 text-white hover:text-emerald-400 transition-all cursor-pointer z-10"
+              aria-label="Tutup Modal"
             >
-              ✕
+              <X className="w-5 h-5" />
             </button>
 
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-black text-white uppercase tracking-wider">
-                Unlock <span className="text-emerald-400">Premium Target</span>
+            {/* HEADER AREA */}
+            <div className="text-center mb-6 sm:mb-8 pr-8 sm:pr-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-[11px] font-black uppercase tracking-widest mb-3">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                PREDATOR CLEARANCE UPGRADE
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">
+                UNLOCK <span className="text-emerald-400">SMART MONEY</span>{" "}
+                RADAR
               </h2>
-              <p className="text-neutral-400 text-sm mt-2">
-                Secure checkout via Crypto or Credit Card. Instant access.
+              <p className="text-white font-bold text-xs sm:text-sm mt-2 max-w-lg mx-auto">
+                Tingkatkan kapasitas pelacakan paus on-chain, notifikasi instan
+                Telegram 0-delay, dan sinyal konfluensi multi-chain.
               </p>
+
+              {/* CURRENT CLEARANCE BADGE */}
+              <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 bg-black/40 border border-white/15 rounded-xl font-mono text-[11px] text-white">
+                <span className="text-white font-bold">STATUS OPERATOR:</span>
+                <span className="text-emerald-400 font-black">
+                  {isOwner
+                    ? "MASTER PREDATOR (OWNER // UNLIMITED ACCESS)"
+                    : `${currentTier} TIER`}
+                </span>
+              </div>
             </div>
 
             {!selectedTier ? (
-              // TAHAP 1: PILIH TIER
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              // ================= TAHAP 1: PILIH TIER =================
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
                 {tiers.map((t) => (
                   <div
                     key={t.id}
-                    className={`p-5 rounded-xl border cursor-pointer transition-all hover:-translate-y-1 ${
-                      t.popular
-                        ? "border-emerald-500 bg-emerald-500/5 shadow-lg shadow-emerald-500/10"
-                        : "border-neutral-800 hover:border-neutral-600 bg-neutral-900/50"
-                    }`}
                     onClick={() => setSelectedTier(t)}
+                    className={`relative p-5 sm:p-6 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between group hover:-translate-y-1.5 ${
+                      t.popular
+                        ? "border-emerald-500/80 bg-gradient-to-b from-emerald-500/15 via-[#181a20] to-[#121316] shadow-[0_0_30px_rgba(16,185,129,0.25)]"
+                        : "border-white/15 hover:border-emerald-500/40 bg-[#18191e] hover:bg-[#1e2026]"
+                    }`}
                   >
                     {t.popular && (
-                      <span className="bg-emerald-500 text-black text-[10px] font-bold px-2 py-1 rounded mb-2 inline-block">
-                        BEST VALUE
-                      </span>
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-black text-[10px] font-black px-3 py-0.5 rounded-full uppercase tracking-wider shadow-md shadow-emerald-500/30 flex items-center gap-1">
+                        <Zap className="w-3 h-3 fill-black" />
+                        RECOMMENDED
+                      </div>
                     )}
-                    <h3 className="text-lg font-bold text-white uppercase">
-                      {t.name}
-                    </h3>
-                    <div className="text-3xl font-black mt-2 text-white">
-                      ${t.price}
+
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-black text-white uppercase tracking-wider group-hover:text-emerald-400 transition-colors">
+                          {t.name}
+                        </h3>
+                        <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-white/10 text-white border border-white/15">
+                          {t.wallets} WHALES
+                        </span>
+                      </div>
+                      <p className="text-white text-[11px] font-bold mt-1">
+                        {t.tagline}
+                      </p>
+
+                      <div className="mt-4 flex items-baseline gap-1">
+                        <span className="text-3xl sm:text-4xl font-black text-white">
+                          ${t.price}
+                        </span>
+                        <span className="text-xs font-mono font-bold text-white">
+                          / bulan
+                        </span>
+                      </div>
+
+                      {/* FEATURE LIST */}
+                      <ul className="mt-5 space-y-2.5 pt-4 border-t border-white/10">
+                        {t.features.map((feat, idx) => (
+                          <li
+                            key={idx}
+                            className="flex items-start gap-2 text-xs text-white font-bold"
+                          >
+                            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                            <span>{feat}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <div className="mt-4 text-sm text-neutral-400">
-                      Track up to{" "}
-                      <span className="text-emerald-400 font-bold">
-                        {t.wallets} Whales
-                      </span>
-                    </div>
+
+                    <button
+                      type="button"
+                      className={`mt-6 w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        t.popular
+                          ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                          : "bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-emerald-500/50"
+                      }`}
+                    >
+                      <span>Pilih {t.name}</span>
+                      <Zap className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 ))}
               </div>
             ) : (
-              // TAHAP 2: KONFIRMASI CHECKOUT
-              <div className="max-w-md mx-auto bg-neutral-900 rounded-xl p-6 border border-neutral-800 text-center">
+              // ================= TAHAP 2: CHECKOUT & PAYMENT =================
+              <div className="max-w-xl mx-auto bg-[#18191e] rounded-2xl sm:rounded-3xl p-6 sm:p-7 border border-white/20 shadow-2xl space-y-6">
                 <button
                   onClick={() => setSelectedTier(null)}
-                  className="text-xs text-neutral-500 mb-4 hover:text-white transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-black uppercase text-white hover:text-emerald-400 transition-colors cursor-pointer"
                 >
-                  ← Back to tiers
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Kembali ke Pilihan Tier</span>
                 </button>
-                <h3 className="text-xl font-bold text-white">
-                  {selectedTier.name} TIER
-                </h3>
-                <div className="text-5xl font-black text-emerald-400 my-4 tracking-tighter">
-                  ${selectedTier.price}
+
+                {/* TIER SUMMARY */}
+                <div className="p-4 rounded-xl bg-black/40 border border-white/15 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-mono font-black uppercase text-emerald-400 tracking-wider">
+                      PAKET TERPILIH
+                    </span>
+                    <h3 className="text-xl font-black text-white uppercase">
+                      {selectedTier.name}
+                    </h3>
+                    <p className="text-xs text-white font-bold">
+                      Kapasitas pelacakan: {selectedTier.wallets} Target Whales
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-black text-emerald-400">
+                      ${selectedTier.price}
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-white">
+                      USD / BULAN
+                    </span>
+                  </div>
                 </div>
 
-                <p className="text-sm text-neutral-400 mb-6">
-                  You will be redirected to our secure payment gateway to
-                  complete the transaction.
-                </p>
-
-                <div className="space-y-3">
+                {/* PAYMENT METHOD TABS */}
+                <div className="grid grid-cols-2 gap-2 p-1 bg-black/40 border border-white/15 rounded-xl">
                   <button
-                    onClick={handleCheckout}
-                    className="w-full flex items-center justify-center gap-2 py-4 bg-emerald-500 text-black rounded-lg hover:bg-emerald-400 font-black uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                    type="button"
+                    onClick={() => setActivePaymentMethod("gateway")}
+                    className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      activePaymentMethod === "gateway"
+                        ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20"
+                        : "text-white hover:bg-white/5"
+                    }`}
                   >
-                    Proceed to Checkout 🔒
+                    ⚡ Instant Gateway
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActivePaymentMethod("direct")}
+                    className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      activePaymentMethod === "direct"
+                        ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20"
+                        : "text-white hover:bg-white/5"
+                    }`}
+                  >
+                    💎 Transfer Kripto
                   </button>
                 </div>
+
+                {activePaymentMethod === "gateway" ? (
+                  // GATEWAY PAYMENT (HELIOPAY / MOONPAY)
+                  <div className="space-y-4">
+                    <p className="text-xs text-white font-bold leading-relaxed">
+                      Klik tombol di bawah untuk membuka gateway pembayaran aman
+                      (Mendukung Solana Pay, USDT, USDC, & Kartu Kredit). Akses
+                      di-unlock otomatis setelah konfirmasi blockchain.
+                    </p>
+
+                    <div className="space-y-2.5">
+                      <button
+                        onClick={() =>
+                          handleOpenGateway(getCheckoutUrl(selectedTier.id))
+                        }
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-500 text-black hover:bg-emerald-400 rounded-xl font-black uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(16,185,129,0.35)] cursor-pointer text-sm"
+                      >
+                        <Lock className="w-4 h-4" />
+                        <span>Buka Checkout Gateway</span>
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+
+                      {/* FALLBACK DIRECT LINK */}
+                      <div className="pt-2 flex items-center justify-between gap-2">
+                        <a
+                          href={getCheckoutUrl(selectedTier.id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-bold text-emerald-400 hover:underline inline-flex items-center gap-1"
+                        >
+                          <span>Buka tautan langsung di tab baru</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                        <button
+                          onClick={() =>
+                            copyToClipboard(getCheckoutUrl(selectedTier.id))
+                          }
+                          className="text-[11px] font-mono font-bold text-white hover:text-emerald-400 inline-flex items-center gap-1 px-2.5 py-1 bg-white/5 border border-white/15 rounded-lg transition-colors cursor-pointer"
+                        >
+                          {copied ? (
+                            <>
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              <span className="text-emerald-400">
+                                Tersalin!
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Salin Link</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // DIRECT CRYPTO TRANSFER
+                  <div className="space-y-4">
+                    <p className="text-xs text-white font-bold leading-relaxed">
+                      Transfer senilai{" "}
+                      <strong>${selectedTier.price} USD</strong> dalam bentuk{" "}
+                      <strong>SOL</strong> atau{" "}
+                      <strong>USDT (SPL Solana)</strong> ke alamat resmi radar
+                      di bawah ini:
+                    </p>
+
+                    <div className="p-3 bg-black/60 border border-white/15 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-white">
+                        <span className="font-bold">JARINGAN:</span>
+                        <span className="text-emerald-400 font-black">
+                          SOLANA MAINNET (SPL)
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 p-2 bg-white/5 border border-white/10 rounded-lg">
+                        <span className="text-xs font-mono font-bold text-white truncate">
+                          {directWalletSol}
+                        </span>
+                        <button
+                          onClick={() => copyToClipboard(directWalletSol, true)}
+                          className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black rounded-lg transition-all shrink-0 cursor-pointer flex items-center gap-1"
+                        >
+                          {directCopied ? (
+                            <>
+                              <Check className="w-3 h-3" />
+                              <span>Tersalin!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Salin</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-white font-bold">
+                      💡 Setelah transfer, kirimkan bukti transaksi (Tx Hash) ke
+                      admin Telegram bot untuk clearance instan akun Anda.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -44,10 +44,21 @@ Seluruh sistem pelacak on-chain, daemon lokal, sinkronisasi bot Telegram, dan an
 - **Predator Alpha Feed (Channel VIP)**: Mengisolasi transaksi paus mega-whale bernilai **> $1,000 USD** agar tim fokus pada pergerakan smart money terbesar.
 - Disertai tautan eksekusi 1-klik ke **DexScreener** dan **Solscan**.
 
-### 5. Peningkatan Kontras UI & Real-Time PnL Timeline
+### 5. Peningkatan Kontras UI, Real-Time PnL Timeline, & Upgrade Radar Modal
 - **Full White Text Contrast**: Seluruh teks abu-abu redup telah diganti menjadi **`text-white`** berbobot tebal (`font-bold` / `font-black`) untuk kenyamanan membaca di mobile dan desktop.
-- **Tombol KELUAR**: Tombol kunci terminal kini bertuliskan **`KELUAR` / `Sign Out`** dengan ikon `LogOut` yang intuitif.
-- **Real-Time PnL Sparkline**: Grafik performa di dalam card whale kini menampilkan rentang tanggal dan jam real-time transaksi (`📅 09 Nov 18:14 — 09 Nov 21:02`) beserta tooltip waktu terperinci.
+- **Tombol SIGNOUT**: Tombol kunci terminal kini bertuliskan **`SIGNOUT`** dengan ikon `LogOut` yang intuitif.
+- **Real-Time PnL Live Time Bar**: Grafik performa di dalam card whale kini menampilkan rentang waktu dan jam detik ticking real-time transaksi lengkap dengan hari, tanggal, bulan, tahun, dan jam WIB (`📅 Senin, 09 Nov 2026 • 21:20:30 WIB`).
+- **Refactor Upgrade Radar Modal (UI/UX Bug Fix)**:
+  - Mengganti seluruh teks abu redup menjadi teks putih tegas kontras tinggi.
+  - Memperbaiki tombol close (✕) dengan padding dan hit-area luas, backdrop click-to-close, dan listener tombol Escape.
+  - Menampilkan badge status clearance operator saat ini (`MASTER PREDATOR // OWNER`).
+  - Menambahkan 3 tier kartu cyber (`SCOUT RADAR`, `PREDATOR PRO`, `APEX WHALE`) dengan daftar fitur detail.
+  - Flow pembayaran ganda: **Instant Gateway (MoonPay/Helio)** dengan fallback tautan langsung + salin link (mencegah popup blocker), serta **Direct Crypto Transfer (SOL / USDT SPL)** lengkap dengan fitur 1-klik salin alamat dompet.
+
+### 6. Arsitektur 24/7 Cloud Tracker (Laptop/PC Mati Tetap Berjalan)
+- **Status Cloud Worker**: GitHub Actions Workflow (`.github/workflows/tracker.yml`) dikonfigurasi untuk menjalankan radar di cloud GitHub secara terjadwal (`cron: '*/5 * * * *'`) dan saat push commit.
+- **Serverless Webhook Helius**: Endpoint `/api/webhook/helius` di Vercel siap menerima event transaksi real-time secara instan tanpa perlu laptop/PC menyala.
+- **Dukungan Always-On Worker**: Siap di-deploy ke platform cloud (Railway / Render / VPS) dengan single command `npm run daemon`.
 
 ---
 
@@ -77,3 +88,4 @@ Seluruh sistem pelacak on-chain, daemon lokal, sinkronisasi bot Telegram, dan an
 3. Pantau sinyal trading paus yang masuk melalui bot Telegram **@skom_tracker_bot** dan channel **Predator Alpha Feed**.
 
 *Laporan selesai disusun. Siap diteruskan ke kanal koordinasi.*
+

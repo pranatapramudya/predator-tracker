@@ -1,9 +1,9 @@
 name: Predator Tracker - Smart Money Radar
 
 on:
-  # Berjalan setiap kali Anda push commit ke branch main
+  # Berjalan setiap kali Anda push commit ke branch main atau refactor/audit-sop
   push:
-    branches: [ main ]
+    branches: [ main, refactor/audit-sop ]
   # Berjalan otomatis setiap 5 menit di cloud GitHub (Continuous Radar Loop)
   schedule:
     - cron: '*/5 * * * *'
