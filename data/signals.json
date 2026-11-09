@@ -1,5 +1,19 @@
 [
   {
+    "timestamp": "2026-11-09T14:35:23.622Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #1",
+    "walletAddress": "HjxaEDvdje644vhUmE3VpjpteWLBmWgSsgvYhf6LVw2L",
+    "action": "SELL",
+    "tokenSymbol": "ELYSION",
+    "tokenAddress": "AWaBBNoVuwQ22B8Y5nEtLne2uEfk8UaYEFws7vT7pump",
+    "usdValue": 364.89253443248003,
+    "priceUsd": 0.000284,
+    "txUrl": "https://solscan.io/tx/42BSFroYX9omCyMx6oi3wHrTkbN1R1YCraCtcmGKGAd6tzK9BHFX2igso68nhCHxUZcc1ieEBBKuiGUY4G1gn7GE",
+    "rugVerdict": "N/A",
+    "confluenceCount": 1
+  },
+  {
     "timestamp": "2026-11-09T14:04:50.812Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #1",
