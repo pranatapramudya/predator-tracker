@@ -37,6 +37,7 @@ jobs:
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY || '987f85c1-4b31-430a-bbb0-b8ef435b557f' }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || '8483467657:AAHCKiyxTov-tazbxagkqfcNl62ZqUCkYSQ' }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID || '2079693450' }}
+          TELEGRAM_ALPHA_CHANNEL_ID: ${{ secrets.TELEGRAM_ALPHA_CHANNEL_ID || '-1003737826938' }}
           ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY || 'fGEpLjFJqd8KgM8T2Wbk7' }}
           BASESCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
         run: npm run daemon:once

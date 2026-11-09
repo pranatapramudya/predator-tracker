@@ -4,13 +4,17 @@
     "address": "HjxaEDvdje644vhUmE3VpjpteWLBmWgSsgvYhf6LVw2L",
     "network": "SOLANA",
     "isActive": true,
-    "minAlertUsd": 15
+    "minAlertUsd": 15,
+    "chatId": "2079693450",
+    "alphaChannelId": "-1003737826938"
   },
   {
     "name": "Smart Money Alpha #2",
     "address": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
     "network": "SOLANA",
     "isActive": true,
-    "minAlertUsd": 15
+    "minAlertUsd": 15,
+    "chatId": "2079693450",
+    "alphaChannelId": "-1003737826938"
   }
 ]

@@ -56,12 +56,25 @@ async function main() {
   const keyboard = buildInlineKeyboard("SOLANA", tokenAddress, txUrl);
 
   console.log("Mengirim verifikasi ke Telegram...");
+  // 1. Kirim ke Chat Pribadi (Asisten Crypto)
   await sendTelegramNotification({
+    chatId: process.env.TELEGRAM_CHAT_ID || "2079693450",
     text: message,
     replyMarkup: { inline_keyboard: keyboard },
   });
 
-  console.log("✅ Pesan verifikasi data real terkirim ke Telegram!");
+  // 2. Kirim ke Channel (Predator Alpha Feed)
+  const alphaChannelId =
+    process.env.TELEGRAM_ALPHA_CHANNEL_ID || "-1003737826938";
+  await sendTelegramNotification({
+    chatId: alphaChannelId,
+    text: message,
+    replyMarkup: { inline_keyboard: keyboard },
+  }).catch((err) => console.error("Gagal kirim ke channel:", err.message));
+
+  console.log(
+    "✅ Pesan verifikasi data real terkirim ke Asisten Crypto & Predator Alpha Feed!",
+  );
 }
 
 main().catch((err) => {

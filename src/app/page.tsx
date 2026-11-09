@@ -388,7 +388,9 @@ async function createWalletAction(formData: FormData) {
     }
     if (!alphaChannelId) {
       alphaChannelId =
-        existingUserWallets.find((w) => w.alphaChannelId)?.alphaChannelId || "";
+        existingUserWallets.find((w) => w.alphaChannelId)?.alphaChannelId ||
+        process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
+        "-1003737826938";
     }
   }
 
@@ -702,7 +704,9 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     process.env.TELEGRAM_CHAT_ID ||
     "2079693450";
   const savedAlphaId =
-    wallets.find((w) => w.alphaChannelId)?.alphaChannelId || "";
+    wallets.find((w) => w.alphaChannelId)?.alphaChannelId ||
+    process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
+    "-1003737826938";
 
   // [PHASE 2] Pindahkan reduce() dari JSX ke server-side.
   const walletStats = wallets.map((w) => {

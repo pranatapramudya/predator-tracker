@@ -329,13 +329,20 @@ async function checkSolanaWallet(
         replyMarkup: { inline_keyboard: keyboard },
       });
 
-      // Also forward to private Alpha Channel if tenant configured it
-      if (wallet.alphaChannelId && wallet.alphaChannelId !== targetChatId) {
+      // Also forward to private Alpha Channel (Predator Alpha Feed)
+      const alphaChannel =
+        wallet.alphaChannelId ||
+        process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
+        "-1003737826938";
+
+      if (alphaChannel && alphaChannel !== targetChatId) {
         await sendTelegramNotification({
-          chatId: wallet.alphaChannelId,
+          chatId: alphaChannel,
           text: alertText,
           replyMarkup: { inline_keyboard: keyboard },
-        }).catch(() => {});
+        }).catch((err) =>
+          console.error("Failed to forward to Alpha Channel:", err),
+        );
       }
 
       console.log(`✅ [TELEGRAM ALERT SENT] ${wallet.name} $${tokenSymbol}`);
@@ -446,12 +453,20 @@ async function checkBaseWallet(
         replyMarkup: { inline_keyboard: keyboard },
       });
 
-      if (wallet.alphaChannelId && wallet.alphaChannelId !== targetChatId) {
+      // Also forward to private Alpha Channel (Predator Alpha Feed)
+      const alphaChannel =
+        wallet.alphaChannelId ||
+        process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
+        "-1003737826938";
+
+      if (alphaChannel && alphaChannel !== targetChatId) {
         await sendTelegramNotification({
-          chatId: wallet.alphaChannelId,
+          chatId: alphaChannel,
           text: alertText,
           replyMarkup: { inline_keyboard: keyboard },
-        }).catch(() => {});
+        }).catch((err) =>
+          console.error("Failed to forward to Alpha Channel:", err),
+        );
       }
 
       console.log(`✅ [TELEGRAM ALERT SENT] ${wallet.name} $${tokenSymbol}`);
