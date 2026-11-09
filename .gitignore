@@ -33,6 +33,3 @@ yarn-error.log*
 PRD.md
 # clerk configuration (can include secrets)
 /.clerk/
-
-# local daemon state & signals
-/data/

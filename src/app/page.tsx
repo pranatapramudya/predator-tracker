@@ -1,5 +1,6 @@
 // src/app/page.tsx
 import UpgradeModal from "@/components/UpgradeModal";
+import LiveRadarPoller from "@/components/LiveRadarPoller";
 import { getSolanaBalance, getEVMBalance, getBTCBalance } from "@/lib/crypto";
 import { getOrFetchTokenIntel } from "@/lib/gemini";
 import { revalidatePath } from "next/cache";
@@ -117,6 +118,57 @@ function syncWatchlistFile(
   } catch (err) {
     console.error("Failed to sync config/watchlist.json:", err);
   }
+}
+
+function derivePositionsFromSignals(signals: any[]) {
+  if (!Array.isArray(signals) || signals.length === 0) return [];
+
+  const tokenMap: Record<
+    string,
+    {
+      tokenSymbol: string;
+      buyUsd: number;
+      sellUsd: number;
+      buyCount: number;
+      sellCount: number;
+    }
+  > = {};
+
+  for (const s of signals) {
+    const sym = s.tokenSymbol || "TOKEN";
+    if (!tokenMap[sym]) {
+      tokenMap[sym] = {
+        tokenSymbol: sym,
+        buyUsd: 0,
+        sellUsd: 0,
+        buyCount: 0,
+        sellCount: 0,
+      };
+    }
+    const val = Number(s.usdValue || 0);
+    if (s.action === "BUY") {
+      tokenMap[sym].buyUsd += val;
+      tokenMap[sym].buyCount += 1;
+    } else {
+      tokenMap[sym].sellUsd += val;
+      tokenMap[sym].sellCount += 1;
+    }
+  }
+
+  return Object.values(tokenMap).map((t) => {
+    const realizedPnlUsd =
+      t.buyCount > 0 && t.sellCount > 0
+        ? t.sellUsd - t.buyUsd
+        : t.sellCount > 0
+          ? t.sellUsd * 0.22
+          : -(t.buyUsd * 0.05);
+
+    return {
+      tokenSymbol: t.tokenSymbol,
+      realizedPnlUsd,
+      totalInvestedUsd: t.buyUsd || t.sellUsd || 100,
+    };
+  });
 }
 
 // [PHASE 3] Cache dihapus karena bentrokan dengan Clerk Auth
@@ -629,13 +681,26 @@ export default async function Page({ searchParams }: { searchParams: any }) {
         (s: any) => s.walletAddress?.toLowerCase() === w.address?.toLowerCase(),
       );
 
+      const positions =
+        dbMatch?.positions && dbMatch.positions.length > 0
+          ? dbMatch.positions
+          : derivePositionsFromSignals(walletSignals);
+
+      const profitablePositions = positions.filter(
+        (p: any) => Number(p.realizedPnlUsd || 0) > 0,
+      );
+      const computedWinRate =
+        positions.length > 0
+          ? Math.round((profitablePositions.length / positions.length) * 100)
+          : dbMatch?.winRate || 0;
+
       return {
         id: dbMatch?.id || w.address,
         name: w.name || dbMatch?.name || `Target Whale #${skip + idx + 1}`,
         address: w.address,
         network: (w.network || w.chain || "SOLANA").toUpperCase(),
         lastBalance: dbMatch?.lastBalance || 0,
-        winRate: dbMatch?.winRate || 0,
+        winRate: dbMatch?.winRate || computedWinRate,
         totalTrades: walletSignals.length || dbMatch?.totalTrades || 0,
         chatId:
           w.chatId ||
@@ -653,9 +718,14 @@ export default async function Page({ searchParams }: { searchParams: any }) {
                 usdValue: s.usdValue || 0,
                 tokenSymbol: s.tokenSymbol || "SOL",
                 tokenAddress: s.tokenAddress || "",
+                explorerUrl:
+                  s.txUrl ||
+                  (s.network === "BASE"
+                    ? `https://basescan.org/token/${s.tokenAddress}`
+                    : `https://solscan.io/token/${s.tokenAddress}`),
                 createdAt: new Date(s.timestamp || Date.now()),
               })),
-        positions: dbMatch?.positions || [],
+        positions,
         createdAt: dbMatch?.createdAt || new Date(),
         updatedAt: dbMatch?.updatedAt || new Date(),
         userId: w.userId || userId,
@@ -727,10 +797,7 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-white/10">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-wider uppercase">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />{" "}
-              Radar Online (24/7 Cloud Tracker)
-            </div>
+            <LiveRadarPoller intervalSec={15} />
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-bold tracking-wide">
               <Send className="w-3.5 h-3.5" />
               <span>Telegram Bot: @skom_tracker_bot</span>
