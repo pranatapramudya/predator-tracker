@@ -1,6 +1,6 @@
 # 🎯 Predator Tracker (Smart Money & Whale Radar)
 
-Sistem intelijen pelacakan dompet paus (*Whale*) dan *Smart Money* secara *real-time* lintas jaringan (**Solana** dan **Base/EVM**), dilengkapi **4-Layer Anti-Rugpull Guard**, **Multi-Wallet Confluence Engine**, **Paper Trading Simulator**, dan **Simple Master PIN Gate** untuk operasional pribadi yang hemat sumber daya (0 Vercel CPU).
+Sistem intelijen pelacakan dompet paus (*Whale*) dan *Smart Money* secara *real-time* lintas jaringan (**Solana**, **Base**, **Ethereum**, dan **Bitcoin**), dilengkapi **4-Layer Anti-Rugpull Guard**, **Multi-Wallet Confluence Engine**, **Paper Trading Simulator**, **Dual-Channel Telegram Alert Dispatcher**, dan **Cyberpunk Terminal UI** berstandar arsitektur industri (**Next.js Fundamental SOP & Pabrik Robot Modul 11**).
 
 ---
 
@@ -13,7 +13,7 @@ Predator Tracker dirancang dengan pemisahan tegas antara **UI Visualizer** dan *
  │                    TRACKING ENGINES                    │
  │                                                        │
  │  [Engine A: Local Standalone Daemon]                   │
- │   npm run daemon  (Polling 15-30 detik di PC/VPS)      │
+ │   npm run daemon  (Polling 15-25 detik di PC/VPS)      │
  │                                                        │
  │  [Engine B: GitHub Actions 24/7 Cloud Tracker]         │
  │   .github/workflows/tracker.yml (Cron tiap 10 menit)   │
@@ -33,43 +33,66 @@ Predator Tracker dirancang dengan pemisahan tegas antara **UI Visualizer** dan *
                              │
                              ▼
  ┌────────────────────────────────────────────────────────┐
- │                   TELEGRAM BOT DISPATCH                │
- │  • Chat ID & Bot Token Terverifikasi                   │
+ │             DUAL-CHANNEL ALERT DISPATCHER              │
+ │  • Personal Bot DM (@skom_tracker_bot)  : > $100 USD   │
+ │  • Predator Alpha Channel (VIP Signal)  : > $1,000 USD │
  │  • Confluence Badge (🔥 2+ Paus Masuk Bersamaan)       │
- │  • Tactical SOP ($2-$3 micro-entry, ladder TP)         │
- │  • Quick Execution (DexScreener, Jupiter, BonkBot)     │
+ │  • Quick Execution (DexScreener, Jupiter, Solscan)     │
  └────────────────────────────────────────────────────────┘
 ```
 
 ---
 
+## 🏛️ Standar Arsitektur (SOP Compliance)
+
+### 1. Next.js Fundamental SOP (Clean Server-Client Separation)
+- **`page.tsx` Sebagai Koki (Server Component)**: Seluruh pemrosesan data, pembacaan konfigurasi `watchlist.json`, audit saldo RPC on-chain, dan kueri Prisma berjalan di sisi server secara aman.
+- **Client Component Sebagai Pelayan**: Direktif `'use client'` didorong khusus ke komponen interaktif kecil (`DashboardShell.tsx`, `LiveRadarPoller.tsx`, `PnLChart.tsx`, `UpgradeModal.tsx`).
+- **Resilient Route Handlers**: Dilengkapi rute penting bawaan App Router:
+  - `src/app/loading.tsx`: Skeleton radar glowing dengan animasi cyber pulse.
+  - `src/app/error.tsx`: Client error boundary dengan tombol diagnostik instan `reset()`.
+  - `src/app/not-found.tsx`: Halaman koordinat hilang 404 terenkripsi.
+- **Persistent Tab Routing**: Pemilihan menu (`Watchlist`, `Alpha Feed`, `Acquisition`, `Command Menu`) disinkronkan ke `localStorage` (`predator_active_tab`) dan URL query `router.replace('/?tab=' + tab)`, sehingga perpindahan tab tidak pernah reset saat auto-refresh.
+
+### 2. Pabrik Robot SOP (Modul 11 - Standar Otomasi Industri)
+- **Sentralisasi `process.env` (`src/config/env.ts`)**: Dilengkapi **Booting Crash Guard** yang memvalidasi seluruh kredensial lingkungan saat runtime booting awal.
+- **Try-Catch Isolation di Dalam Loop**: Iterasi pemindaian wallet Solana dan Base diproteksi secara independen di dalam `scripts/daemon.ts`. Jika 1 RPC atau wallet timeout, pemindaian dompet lain **tetap berjalan 100% tanpa henti**.
+- **Struktur 3 Pilar**:
+  - `src/config/`: Konfigurasi terpusat & env guard (`env.ts`).
+  - `src/services/`: Logika konektivitas RPC on-chain & blockchain scanner (`crypto.ts`, `scanner.ts`, `gemini.ts`).
+  - `src/handlers/`: Pengendali perutean pesan & eksekusi bisnis (`alertDispatcher.ts`).
+- **Watchdog & Anti-Freeze Delay**: Proteksi rate-limit dengan backoff eksponensial otomatis untuk mencegah pemblokiran API provider.
+
+---
+
 ## 🛡️ Fitur Unggulan
 
-### 1. 4-Layer Anti-Rugpull Guard (`src/lib/rugcheck.ts`)
+### 1. Smart Non-Intrusive Live Radar Poller (`src/components/LiveRadarPoller.tsx`)
+- **Singleton Countdown Architecture**: Timer 15 detik dikoordinasikan secara global sehingga tampilan desktop dan mobile selalu serempak detik demi detik.
+- **User Activity Guard**: Poller otomatis mendeteksi jika operator sedang aktif mengetik di input form (`address`, `name`, `search`) atau membuka dialog modal. Refresh server otomatis ditunda 5 detik agar form atau keyboard HP tidak tertutup/terganggu.
+
+### 2. Dual-Channel Alert Routing (`src/handlers/alertDispatcher.ts`)
+- **Personal DM (@skom_tracker_bot)**: Menerima seluruh transaksi paus di atas **$100 USD** untuk keperluan copy-trade taktis.
+- **Predator Alpha Channel**: Mengisolasi transaksi paus bernominal besar di atas **$1,000 USD** untuk memfilter pergerakan mega-whale.
+
+### 3. Real-Time Sparkline PnL dengan Rentang Hari & Jam (`src/components/PnLChart.tsx`)
+- Grafik sparkline mikro kini dilengkapi rentang tanggal dan jam real-time transaksi (`📅 09 Nov 18:14 — 09 Nov 21:02`).
+- Tooltip interaktif menampilkan waktu eksekusi tepat dan nilai PnL per titik trade.
+
+### 4. 4-Layer Anti-Rugpull Guard (`src/lib/rugcheck.ts`)
 Setiap kali target paus membeli token baru di Solana, transaksi otomatis diaudit sebelum notifikasi Telegram dikirim:
 - **Layer 1 (LP Locked/Burnt):** Minimal 95% likuiditas harus terkunci permanen atau dibakar.
 - **Layer 2 (Mint Revoked):** Developer tidak bisa mencetak token baru seenaknya untuk *dump*.
 - **Layer 3 (Freeze Disabled):** Developer tidak bisa membekukan dompet pembeli (*honeypot*).
 - **Layer 4 (Top 10 Holders):** Akumulasi total kepemilikan 10 *holder* terbesar wajib di bawah 20% dari total suplai.
-> Token berstatus **CRITICAL RUG** (LP belum burn / mint aktif) langsung dibuang secara senyap demi melindungi modal operator.
 
-### 2. Multi-Wallet Confluence Engine (`data/confluence.json`)
+### 5. Multi-Wallet Confluence Engine (`data/confluence.json`)
 - Mendeteksi ketika 2 atau lebih dompet *Smart Money* membeli token yang sama dalam jendela waktu 30 menit.
 - Notifikasi Telegram akan diberi stempel khusus: `🔥 SUPER ALPHA CONFLUENCE: 2 SMART MONEY WALLETS BUYING!`.
 
-### 3. Simple Master PIN Authentication (No Clerk Complexity)
-- Menggantikan Clerk dengan sistem otentikasi **Master PIN** mandiri (`src/lib/auth.ts`, `src/app/login/page.tsx`).
-- Sesi disimpan aman di *HTTP-Only Cookie* (`predator_session`) terenkripsi SHA-256.
-- PIN dikonfigurasi via `ADMIN_PIN` di `.env` (Default: `2026`).
-- Menghemat ukuran *bundle*, menghilangkan *redirect pop-up* pihak ketiga, dan bebas masalah sinkronisasi akun.
-
-### 4. Zero Dummy Data Policy
-- 100% data transaksi diambil langsung secara *real-time* dari RPC Helius (Solana) dan Basescan/Alchemy (Base).
-- Tidak ada data acak/simulasi `Math.random()` di dalam sistem.
-
-### 5. Paper Trading Simulator (`scripts/paper-status.ts`)
-- Setiap sinyal beli yang valid otomatis dicatat ke dalam log simulasi `data/signals.json`.
-- Menghitung modal hipotetis ($2–$3), harga beli saat sinyal masuk, harga pasar *live* via DexScreener API, dan kalkulasi PnL / ROI saat ini.
+### 6. High-Contrast Typography & Ergonomic Cyber UI
+- Seluruh teks antarmuka dioptimasi dengan kontras maksimal (`text-white font-black` / `text-white font-bold`).
+- Tombol navigasi keluar kini jelas berlabel **KELUAR / Sign Out** dengan ikon `LogOut`.
 
 ---
 
@@ -79,7 +102,7 @@ Semua perintah dijalankan langsung dari terminal:
 
 ### 1. Menjalankan Tracker Daemon
 ```bash
-# Mode Continuously Running (Patroli otomatis setiap 30 detik)
+# Mode Continuously Running (Patroli otomatis setiap 25 detik)
 npm run daemon
 
 # Mode Single Sweep (Satu kali jalan - dipakai oleh GitHub Actions Cron)
@@ -93,7 +116,7 @@ npm run wallet:list
 
 # Menambah dompet target baru
 # Format: npm run wallet:add -- <address> "<alias>" [network] [minAlertUsd]
-npm run wallet:add -- HjxaEDvdje644vhUmE3VpjpteWLBmWgSsgvYhf6LVw2L "Smart Money Alpha #1" SOLANA 15
+npm run wallet:add -- HjxaEDvdje644vhUmE3VpjpteWLBmWgSsgvYhf6LVw2L "Smart Money Alpha #1" SOLANA 100
 
 # Menghapus dompet dari radar
 npm run wallet:remove -- "Smart Money Alpha #1"
@@ -106,7 +129,6 @@ npm run wallet:toggle -- "Smart Money Alpha #1"
 ```bash
 npm run paper:status
 ```
-*Output menampilkan tabel rapi: Token, Waktu Beli, Harga Entry, Harga Sekarang, ROI %, dan Estimasi PnL.*
 
 ### 4. Tes Sinyal Notifikasi Telegram
 ```bash
@@ -117,8 +139,6 @@ npm run test:alert
 
 ## 🌐 Menjalankan Dashboard UI
 
-Dashboard Next.js dapat dibuka secara lokal maupun di Vercel:
-
 ```bash
 # Menjalankan development server
 npm run dev
@@ -127,25 +147,11 @@ npm run dev
 http://localhost:3000
 ```
 - Masukkan Master PIN (Default: `2026`) untuk membuka kontrol radar.
-- Setiap penambahan atau penghapusan dompet di dashboard UI otomatis tersinkronisasi dengan `config/watchlist.json`.
+- Setiap penambahan atau penghapusan dompet di dashboard UI otomatis tersinkronisasi dengan `config/watchlist.json` dan database SQLite/Prisma.
 
 ---
 
-## ☁️ 24/7 Cloud Tracker via GitHub Actions (Bebas Biaya Vercel)
-
-Untuk menjaga pelacakan tetap berjalan 24 jam nonstop tanpa menghabiskan kuota Vercel CPU (yang sebelumnya menyebabkan *deployment paused*):
-
-1. File alur kerja terletak di [.github/workflows/tracker.yml](file:///.github/workflows/tracker.yml).
-2. Berjalan otomatis setiap **10 menit** (`cron: '*/10 * * * *'`) dan setiap kali ada *commit push*.
-3. Menggunakan GitHub Secrets berikut pada repositori GitHub Anda:
-   - `HELIUS_API_KEY`
-   - `TELEGRAM_BOT_TOKEN`
-   - `TELEGRAM_CHAT_ID`
-   - `ADMIN_PIN`
-
----
-
-## ⚙️ Variabel Lingkungan (`.env`)
+## ⚙️ Variabel Lingkungan Terpusat (`.env`)
 
 ```env
 # Master PIN Gate
@@ -154,6 +160,7 @@ ADMIN_PIN="2026"
 # Telegram Bot Alerts
 TELEGRAM_BOT_TOKEN="8483467657:AAHCKiyxTov-tazbxagkqfcNl62ZqUCkYSQ"
 TELEGRAM_CHAT_ID="2079693450"
+TELEGRAM_ALPHA_CHANNEL_ID="-1003737826938"
 
 # Blockchain RPC Providers
 HELIUS_API_KEY="987f85c1-4b31-430a-bbb0-b8ef435b557f"

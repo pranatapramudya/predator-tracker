@@ -22,7 +22,7 @@
     "*.{js,jsx,ts,tsx}": [
       "prettier --write"
     ],
-    "*.json": [
+    "{package,tsconfig,config/**}.json": [
       "prettier --write"
     ]
   },
