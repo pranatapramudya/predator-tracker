@@ -29,6 +29,7 @@ import {
   Copy,
   Check,
   Cpu,
+  LogOut,
 } from "lucide-react";
 
 const NETWORK_OPTIONS = [
@@ -441,10 +442,10 @@ export default function DashboardShell({
               <button
                 type="submit"
                 className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer"
-                title="Lock Terminal"
+                title="Keluar / Sign Out"
               >
-                <Lock className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">LOCK</span>
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">KELUAR</span>
               </button>
             </form>
           </div>
@@ -1518,8 +1519,8 @@ export default function DashboardShell({
                     type="submit"
                     className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500 text-red-400 rounded-xl text-xs font-mono font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Kunci Terminal / Logout Sesi</span>
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Keluar / Sign Out Sesi</span>
                   </button>
                 </form>
               </div>
