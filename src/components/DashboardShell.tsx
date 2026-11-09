@@ -1,7 +1,7 @@
 // src/components/DashboardShell.tsx
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import UpgradeModal from "@/components/UpgradeModal";
@@ -208,7 +208,19 @@ export default function DashboardShell({
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
     "watchlist" | "feed" | "add" | "menu"
-  >((initialTab as any) || "watchlist");
+  >(() => {
+    if (typeof window !== "undefined") {
+      const urlTab = new URLSearchParams(window.location.search).get("tab");
+      if (urlTab && ["watchlist", "feed", "add", "menu"].includes(urlTab)) {
+        return urlTab as any;
+      }
+      const savedTab = localStorage.getItem("predator_active_tab");
+      if (savedTab && ["watchlist", "feed", "add", "menu"].includes(savedTab)) {
+        return savedTab as any;
+      }
+    }
+    return (initialTab as any) || "watchlist";
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedChainFilter, setSelectedChainFilter] = useState<string>("ALL");
   const [signalTypeFilter, setSignalTypeFilter] = useState<
@@ -227,9 +239,43 @@ export default function DashboardShell({
     address: string;
   } | null>(null);
 
+  // Keep state synchronized with URL query params and localStorage across background revalidation
+  useEffect(() => {
+    try {
+      const urlTab = new URLSearchParams(window.location.search).get("tab");
+      const savedTab = localStorage.getItem("predator_active_tab");
+      const targetTab = (urlTab || savedTab || initialTab) as any;
+      if (
+        targetTab &&
+        ["watchlist", "feed", "add", "menu"].includes(targetTab)
+      ) {
+        setActiveTab(targetTab);
+        try {
+          localStorage.setItem("predator_active_tab", targetTab);
+        } catch {}
+      }
+    } catch {}
+
+    const handlePopState = () => {
+      const urlTab = new URLSearchParams(window.location.search).get("tab");
+      if (urlTab && ["watchlist", "feed", "add", "menu"].includes(urlTab)) {
+        setActiveTab(urlTab as any);
+        try {
+          localStorage.setItem("predator_active_tab", urlTab);
+        } catch {}
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [initialTab]);
+
   const handleTabChange = (tab: "watchlist" | "feed" | "add" | "menu") => {
     setActiveTab(tab);
-    window.history.replaceState(null, "", `/?tab=${tab}`);
+    try {
+      localStorage.setItem("predator_active_tab", tab);
+    } catch {}
+    router.replace(`/?tab=${tab}`, { scroll: false });
   };
 
   const handleCopy = (text: string) => {
