@@ -155,7 +155,9 @@ export default function PnLChart({
                   const val = Number(payload[0].value || 0);
                   return (
                     <div className="bg-black/90 border border-white/10 rounded-lg px-2 py-1 text-[9px] font-mono shadow-xl backdrop-blur-md">
-                      <span className="text-white/50">{primaryToken}: </span>
+                      <span className="text-white font-bold">
+                        {primaryToken}:{" "}
+                      </span>
                       <span
                         className={`font-black ${val >= 0 ? "text-emerald-400" : "text-rose-400"}`}
                       >
