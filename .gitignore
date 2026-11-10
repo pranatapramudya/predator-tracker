@@ -29,6 +29,7 @@ yarn-error.log*
 
 # vercel
 .vercel
+*.tsbuildinfo
 
 PRD.md
 # clerk configuration (can include secrets)
