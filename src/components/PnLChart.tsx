@@ -218,22 +218,22 @@ export default function PnLChart({
   }
 
   const gradientId = `pnlGrad_${primaryToken.replace(/[^a-zA-Z0-9]/g, "_")}`;
-  const strokeColor = isPositive ? "#10b981" : "#f43f5e";
+  const strokeColor = isPositive ? "#a3f784" : "#f43f5e";
 
   return (
-    <div className="mt-2 bg-zinc-950/90 border border-white/15 rounded-2xl p-3 relative overflow-hidden group">
-      {/* 🌟 1. Real-time Cyber Live Date & Clock Bar */}
-      <div className="flex items-center justify-between bg-black/60 border border-white/10 rounded-xl px-2.5 py-1.5 mb-2 text-[9px] font-mono">
+    <div className="mt-2 bg-[#06181a]/90 border border-[#a3f784]/20 rounded-2xl p-3 relative overflow-hidden group shadow-inner">
+      {/* 🌟 1. Real-time Live Date & Clock Bar */}
+      <div className="flex items-center justify-between bg-[#0b272a]/80 border border-white/10 rounded-xl px-2.5 py-1.5 mb-2 text-[9px] font-mono">
         <div className="flex items-center gap-1.5 text-white font-semibold flex-wrap">
-          <span className="text-emerald-400">📅</span>
+          <span className="text-[#a3f784]">📅</span>
           <span>{currentFullDateStr}</span>
           <span className="text-white/40">•</span>
-          <span className="text-emerald-400 font-semibold font-mono tabular-nums">
+          <span className="text-[#a3f784] font-semibold font-mono tabular-nums">
             {currentLiveClock}
           </span>
         </div>
-        <div className="flex items-center gap-1 text-emerald-400 font-semibold shrink-0">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.9)]" />
+        <div className="flex items-center gap-1 text-[#a3f784] font-semibold shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#a3f784] animate-pulse shadow-[0_0_8px_rgba(163,247,132,0.8)]" />
           <span className="tracking-wider">LIVE RADAR</span>
         </div>
       </div>
@@ -245,20 +245,20 @@ export default function PnLChart({
             <span
               className={`w-2 h-2 rounded-full ${
                 isPositive
-                  ? "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]"
+                  ? "bg-[#a3f784] shadow-[0_0_8px_rgba(163,247,132,0.8)]"
                   : "bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]"
               }`}
             />
             ${primaryToken}
           </span>
-          <span className="text-[9px] font-medium text-white bg-white/10 px-2 py-0.5 rounded-lg border border-white/20">
+          <span className="text-[9px] font-medium text-[#9bb8b5] bg-white/5 px-2 py-0.5 rounded-lg border border-white/10">
             🕒 {dateRangeLabel}
           </span>
         </div>
 
         <span
           className={`font-bold tracking-tight text-xs tabular-nums ${
-            isPositive ? "text-emerald-400" : "text-rose-400"
+            isPositive ? "text-[#a3f784]" : "text-rose-400"
           }`}
         >
           {isPositive ? "+" : ""}$
@@ -290,23 +290,23 @@ export default function PnLChart({
             <ReferenceLine y={0} stroke="#ffffff12" strokeDasharray="2 2" />
 
             <Tooltip
-              cursor={{ stroke: "#ffffff30", strokeWidth: 1 }}
+              cursor={{ stroke: "rgba(163, 247, 132, 0.3)", strokeWidth: 1 }}
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   const item = payload[0].payload;
                   const val = Number(item.pnl || 0);
                   return (
-                    <div className="bg-black/95 border border-white/20 rounded-xl px-2.5 py-1.5 text-[9px] font-mono shadow-2xl backdrop-blur-md">
-                      <div className="text-white font-bold text-[8px] mb-0.5 flex items-center gap-1">
+                    <div className="bg-[#061a1d]/95 border border-[#a3f784]/30 rounded-xl px-2.5 py-1.5 text-[9px] font-mono shadow-2xl backdrop-blur-md">
+                      <div className="text-[#9bb8b5] font-medium text-[8px] mb-0.5 flex items-center gap-1">
                         <span>🕒</span>
                         <span>{item.fullTime || item.step || "Real-time"}</span>
                       </div>
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-white font-semibold">
-                          {primaryToken}
+                        <span className="text-[#f4fbf8] font-bold">
+                          ${primaryToken}
                         </span>
                         <span
-                          className={`font-bold tabular-nums ${val >= 0 ? "text-emerald-400" : "text-rose-400"}`}
+                          className={`font-bold tabular-nums ${val >= 0 ? "text-[#a3f784]" : "text-rose-400"}`}
                         >
                           {val >= 0 ? "+" : ""}${val.toFixed(2)} USD
                         </span>
@@ -341,8 +341,8 @@ export default function PnLChart({
         <span className="truncate max-w-[140px] text-zinc-100">
           ▶ Entry: {startTimeStr}
         </span>
-        <span className="flex items-center gap-1 text-emerald-400 font-semibold">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+        <span className="flex items-center gap-1 text-[#a3f784] font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#a3f784] animate-ping" />
           <span>ON-CHAIN LIVE</span>
         </span>
         <span className="truncate max-w-[140px] text-zinc-100">

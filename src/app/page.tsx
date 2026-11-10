@@ -42,7 +42,44 @@ function loadSignalsFromFile(): any[] {
   return [];
 }
 
-function derivePositionsFromSignals(signals: any[]) {
+async function fetchLiveTokenPrices(
+  tokenAddresses: string[],
+): Promise<Record<string, number>> {
+  const priceMap: Record<string, number> = {};
+  const unique = Array.from(new Set(tokenAddresses.filter(Boolean)));
+  if (unique.length === 0) return priceMap;
+
+  await Promise.allSettled(
+    unique.map(async (addr) => {
+      try {
+        const res = await fetch(
+          `https://api.dexscreener.com/latest/dex/tokens/${addr}`,
+          {
+            next: { revalidate: 10 },
+          },
+        );
+        if (res.ok) {
+          const json = await res.json();
+          const pair = json.pairs?.[0];
+          if (pair?.priceUsd) {
+            const p = parseFloat(pair.priceUsd);
+            priceMap[addr.toLowerCase()] = p;
+            priceMap[addr] = p;
+          }
+        }
+      } catch {
+        // Fallback silently
+      }
+    }),
+  );
+
+  return priceMap;
+}
+
+function derivePositionsFromSignals(
+  signals: any[],
+  livePrices: Record<string, number> = {},
+) {
   if (!Array.isArray(signals) || signals.length === 0) return [];
 
   const tokenMap: Record<
@@ -52,6 +89,8 @@ function derivePositionsFromSignals(signals: any[]) {
       tokenAddress: string;
       buyUsd: number;
       sellUsd: number;
+      buyTokens: number;
+      sellTokens: number;
       buyCount: number;
       sellCount: number;
       firstTime: Date;
@@ -69,6 +108,8 @@ function derivePositionsFromSignals(signals: any[]) {
         tokenAddress: s.tokenAddress || "",
         buyUsd: 0,
         sellUsd: 0,
+        buyTokens: 0,
+        sellTokens: 0,
         buyCount: 0,
         sellCount: 0,
         firstTime: tDate,
@@ -77,11 +118,16 @@ function derivePositionsFromSignals(signals: any[]) {
       };
     }
     const val = Number(s.usdValue || 0);
+    const price = Number(s.priceUsd || 0);
+    const tokenQty = price > 0 ? val / price : 0;
+
     if (s.action === "BUY") {
       tokenMap[sym].buyUsd += val;
+      tokenMap[sym].buyTokens += tokenQty;
       tokenMap[sym].buyCount += 1;
     } else {
       tokenMap[sym].sellUsd += val;
+      tokenMap[sym].sellTokens += tokenQty;
       tokenMap[sym].sellCount += 1;
     }
     if (tDate < tokenMap[sym].firstTime) tokenMap[sym].firstTime = tDate;
@@ -92,22 +138,27 @@ function derivePositionsFromSignals(signals: any[]) {
   }
 
   const positions = Object.values(tokenMap).map((t) => {
+    const livePrice = livePrices[t.tokenAddress.toLowerCase()] || 0;
+    const avgBuyPrice = t.buyTokens > 0 ? t.buyUsd / t.buyTokens : 0;
     let pnl = 0;
     let status = "HOLDING";
     const totalInvested = t.buyUsd || t.sellUsd || 100;
 
     if (t.sellCount > 0 && t.buyCount > 0) {
+      // Completed trade cycle
       pnl = t.sellUsd - t.buyUsd;
       status = pnl >= 0 ? "TAKE_PROFIT" : "CUT_LOSS";
     } else if (t.sellCount > 0 && t.buyCount === 0) {
       pnl = t.sellUsd * 0.22;
       status = "TAKE_PROFIT";
     } else {
-      // Active holding: fresh position
+      // Active open holding
+      if (livePrice > 0 && avgBuyPrice > 0) {
+        const roi = (livePrice - avgBuyPrice) / avgBuyPrice;
+        pnl = t.buyUsd * roi;
+      }
       const hoursAgo = (Date.now() - t.lastTime.getTime()) / (1000 * 60 * 60);
       status = hoursAgo <= 6 ? "FRESH_BUY" : "HOLDING";
-      // Estimated unrealized PnL based on momentum (positive pump trajectory)
-      pnl = t.buyUsd * 0.39; // +39% on-chain rebound
     }
 
     const roiPercent = totalInvested > 0 ? (pnl / totalInvested) * 100 : 0;
@@ -126,6 +177,8 @@ function derivePositionsFromSignals(signals: any[]) {
       firstTime: t.firstTime,
       lastTime: t.lastTime,
       latestAction: t.latestAction,
+      livePrice,
+      avgBuyPrice: Math.round(avgBuyPrice * 1000000) / 1000000,
     };
   });
 
@@ -323,6 +376,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
     totalWallets = fileWatchlist.length;
     const paginatedFile = fileWatchlist.slice(skip, skip + limit);
 
+    const allSignalTokenAddresses = rawSignals
+      .map((s: any) => s.tokenAddress)
+      .filter(Boolean);
+    const livePrices = await fetchLiveTokenPrices(allSignalTokenAddresses);
+
     wallets = paginatedFile.map((w: any, idx: number) => {
       const dbMatch = wallets.find(
         (dw) => dw.address?.toLowerCase() === w.address?.toLowerCase(),
@@ -333,9 +391,11 @@ export default async function Page({ searchParams }: { searchParams: any }) {
       );
 
       const positions =
-        dbMatch?.positions && dbMatch.positions.length > 0
-          ? dbMatch.positions
-          : derivePositionsFromSignals(walletSignals);
+        walletSignals.length > 0
+          ? derivePositionsFromSignals(walletSignals, livePrices)
+          : dbMatch?.positions && dbMatch.positions.length > 0
+            ? dbMatch.positions
+            : [];
 
       const profitablePositions = positions.filter(
         (p: any) => Number(p.realizedPnlUsd || 0) > 0,

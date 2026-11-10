@@ -9,6 +9,19 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      colors: {
+        floq: {
+          dark: "#061a1d", // Deep Pine Forest Background
+          card: "#0b272a", // Soft Dark Forest Card
+          surface: "#0f3236", // Elevated Sub-card / Input
+          border: "rgba(163, 247, 132, 0.16)",
+          mint: "#a3f784", // Floq Signature Soft Mint
+          mintHover: "#b6f99c",
+          mintText: "#052020",
+          sage: "#9bb8b5", // Soft eye-friendly label text
+          text: "#f4fbf8", // Crisp Warm White
+        },
+      },
       fontFamily: {
         sans: [
           "Inter",

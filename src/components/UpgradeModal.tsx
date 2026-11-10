@@ -163,7 +163,7 @@ export default function UpgradeModal({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-emerald-500/15 border border-emerald-500/40 hover:border-emerald-400 text-emerald-400 hover:text-white rounded-xl sm:rounded-2xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-500 transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] group shrink-0 cursor-pointer"
+        className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-[#a3f784]/15 hover:bg-[#a3f784] border border-[#a3f784]/40 hover:border-[#a3f784] text-[#a3f784] hover:text-[#061a1d] rounded-xl sm:rounded-2xl text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(163,247,132,0.2)] group shrink-0 cursor-pointer"
         title="Upgrade Kapasitas Radar"
       >
         <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 group-hover:scale-110 transition-transform" />
@@ -180,14 +180,14 @@ export default function UpgradeModal({
             onClick={(e) => {
               if (e.target === e.currentTarget) handleClose();
             }}
-            className="fixed inset-0 z-[999999] overflow-y-auto overflow-x-hidden bg-black/90 backdrop-blur-md p-3 sm:p-6 flex justify-center items-start sm:items-center animate-in fade-in duration-150"
+            className="fixed inset-0 z-[999999] overflow-y-auto overflow-x-hidden bg-[#061a1d]/90 backdrop-blur-md p-3 sm:p-6 flex justify-center items-start sm:items-center animate-in fade-in duration-150"
           >
-            <div className="relative w-full max-w-4xl my-auto bg-[#121316] border border-white/20 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-[0_0_60px_rgba(16,185,129,0.3)] z-10">
+            <div className="relative w-full max-w-4xl my-auto bg-[#0b272a] border border-[#a3f784]/25 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-[0_0_60px_rgba(163,247,132,0.15)] z-10">
               {/* CLOSE BUTTON BULLETPROOF TOP-RIGHT */}
               <button
                 type="button"
                 onClick={handleClose}
-                className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-emerald-400 transition-all cursor-pointer z-20 flex items-center justify-center shadow-lg"
+                className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-[#a3f784] transition-all cursor-pointer z-20 flex items-center justify-center shadow-lg"
                 aria-label="Tutup Modal"
               >
                 <X className="w-5 h-5 text-white" />
@@ -195,25 +195,25 @@ export default function UpgradeModal({
 
               {/* HEADER AREA */}
               <div className="text-center mb-5 sm:mb-7 pr-10 sm:pr-0">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest mb-2.5">
-                  <Sparkles className="w-3 h-3 text-emerald-400" />
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#a3f784]/15 border border-[#a3f784]/30 rounded-full text-[#a3f784] text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest mb-2.5">
+                  <Sparkles className="w-3 h-3 text-[#a3f784]" />
                   <span>PREDATOR CLEARANCE UPGRADE</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white uppercase tracking-tight">
-                  UNLOCK <span className="text-emerald-400">SMART MONEY</span>{" "}
+                  UNLOCK <span className="text-[#a3f784]">SMART MONEY</span>{" "}
                   RADAR
                 </h2>
-                <p className="text-white font-medium text-xs sm:text-sm mt-1.5 max-w-lg mx-auto">
+                <p className="text-[#9bb8b5] font-medium text-xs sm:text-sm mt-1.5 max-w-lg mx-auto">
                   Tingkatkan kapasitas pelacakan paus on-chain, notifikasi
                   instan Telegram 0-delay, dan sinyal konfluensi multi-chain.
                 </p>
 
                 {/* CURRENT CLEARANCE BADGE */}
-                <div className="mt-2.5 inline-flex items-center gap-2 px-3.5 py-1 bg-black/50 border border-white/15 rounded-xl font-mono text-[10px] sm:text-[11px] text-white">
-                  <span className="text-white font-medium">
+                <div className="mt-2.5 inline-flex items-center gap-2 px-3.5 py-1 bg-[#06181a]/80 border border-white/15 rounded-xl font-mono text-[10px] sm:text-[11px] text-white">
+                  <span className="text-[#9bb8b5] font-medium">
                     STATUS OPERATOR:
                   </span>
-                  <span className="text-emerald-400 font-bold">
+                  <span className="text-[#a3f784] font-bold">
                     {isOwner
                       ? "MASTER PREDATOR (OWNER // UNLIMITED ACCESS)"
                       : `${currentTier} TIER`}
@@ -230,27 +230,27 @@ export default function UpgradeModal({
                       onClick={() => setSelectedTier(t)}
                       className={`relative p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between group hover:-translate-y-1 ${
                         t.popular
-                          ? "border-emerald-500/80 bg-gradient-to-b from-emerald-500/15 via-[#181a20] to-[#121316] shadow-[0_0_30px_rgba(16,185,129,0.25)]"
-                          : "border-white/15 hover:border-emerald-500/40 bg-[#18191e] hover:bg-[#1e2026]"
+                          ? "border-[#a3f784] bg-gradient-to-b from-[#a3f784]/15 via-[#0b272a] to-[#06181a] shadow-[0_0_30px_rgba(163,247,132,0.25)]"
+                          : "border-white/10 hover:border-[#a3f784]/40 bg-[#06181a]/80 hover:bg-[#0f3236]/80"
                       }`}
                     >
                       {t.popular && (
-                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-black text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md shadow-emerald-500/30 flex items-center gap-1 z-10">
-                          <Zap className="w-2.5 h-2.5 fill-black" />
+                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#a3f784] text-[#061a1d] text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md shadow-[#a3f784]/30 flex items-center gap-1 z-10">
+                          <Zap className="w-2.5 h-2.5 fill-[#061a1d]" />
                           RECOMMENDED
                         </div>
                       )}
 
                       <div>
                         <div className="flex items-center justify-between">
-                          <h3 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider group-hover:text-emerald-400 transition-colors">
+                          <h3 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider group-hover:text-[#a3f784] transition-colors">
                             {t.name}
                           </h3>
                           <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-white/10 text-white border border-white/15">
                             {t.wallets} WHALES
                           </span>
                         </div>
-                        <p className="text-white text-[11px] font-medium mt-0.5">
+                        <p className="text-[#9bb8b5] text-[11px] font-medium mt-0.5">
                           {t.tagline}
                         </p>
 
@@ -258,7 +258,7 @@ export default function UpgradeModal({
                           <span className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
                             ${t.price}
                           </span>
-                          <span className="text-xs font-mono font-medium text-white">
+                          <span className="text-xs font-mono font-medium text-[#9bb8b5]">
                             / bulan
                           </span>
                         </div>
@@ -268,9 +268,9 @@ export default function UpgradeModal({
                           {t.features.map((feat, idx) => (
                             <li
                               key={idx}
-                              className="flex items-start gap-1.5 text-xs text-white font-medium"
+                              className="flex items-start gap-1.5 text-xs text-[#f4fbf8] font-medium"
                             >
-                              <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                              <Check className="w-3.5 h-3.5 text-[#a3f784] shrink-0 mt-0.5" />
                               <span>{feat}</span>
                             </li>
                           ))}
@@ -281,8 +281,8 @@ export default function UpgradeModal({
                         type="button"
                         className={`mt-5 w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                           t.popular
-                            ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-                            : "bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-emerald-500/50"
+                            ? "bg-[#a3f784] hover:bg-[#b6f99c] text-[#061a1d] shadow-[0_0_20px_rgba(163,247,132,0.3)]"
+                            : "bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-[#a3f784]/50"
                         }`}
                       >
                         <span>PILIH {t.name}</span>
@@ -293,11 +293,11 @@ export default function UpgradeModal({
                 </div>
               ) : (
                 // ================= TAHAP 2: CHECKOUT & PAYMENT =================
-                <div className="max-w-xl mx-auto bg-[#18191e] rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-white/20 shadow-2xl space-y-5">
+                <div className="max-w-xl mx-auto bg-[#06181a] rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-[#a3f784]/25 shadow-2xl space-y-5">
                   <button
                     type="button"
                     onClick={() => setSelectedTier(null)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold uppercase text-white hover:text-emerald-400 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold uppercase text-white hover:text-[#a3f784] transition-colors cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Kembali ke Pilihan Tier</span>
