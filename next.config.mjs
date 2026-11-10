@@ -20,11 +20,18 @@ const nextConfig = {
   turbopack: {
     resolveAlias: {},
   },
-  // Optimasi ukuran Serverless Functions di Vercel agar tidak boros Functions Storage
+  // Sertakan file JSON data dan config ke dalam serverless bundle Vercel
+  outputFileTracingIncludes: {
+    '/**': [
+      './data/signals.json',
+      './data/confluence.json',
+      './config/watchlist.json',
+    ],
+  },
+  // Optimasi ukuran Serverless Functions di Vercel: buang folder non-kritis
   outputFileTracingExcludes: {
     '*': [
       './docs/**',
-      './data/**',
       './scripts/**',
       '**/*.md',
     ],

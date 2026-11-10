@@ -2,3 +2,4 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "ignoreCommand": "bash ./scripts/ignore-build.sh"
 }
+
