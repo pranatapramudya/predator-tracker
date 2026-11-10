@@ -215,7 +215,7 @@ export default function PnLChart({
   const strokeColor = isPositive ? "#a3f784" : "#f43f5e";
 
   return (
-    <div className="mt-2 bg-[#06181a]/90 border border-[#a3f784]/20 rounded-2xl p-3 relative overflow-hidden group shadow-inner">
+    <div className="mt-2 bg-[#06181a]/90 border border-[#a3f784]/20 rounded-2xl p-3 relative overflow-hidden group shadow-inner touch-pan-y select-none">
       {/* 🌟 1. Real-time Live Date & Clock Bar */}
       <div className="flex items-center justify-between bg-[#0b272a]/80 border border-white/10 rounded-xl px-2.5 py-1.5 mb-2 text-[9px] font-mono">
         <div className="flex items-center gap-1.5 text-white font-semibold flex-wrap">
@@ -265,11 +265,17 @@ export default function PnLChart({
       </div>
 
       {/* 🌟 3. Modern Area Chart Sparkline */}
-      <div className="h-16 w-full">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-16 w-full touch-pan-y">
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          debounce={100}
+          minWidth={50}
+        >
           <AreaChart
             data={chartData}
             margin={{ top: 4, right: 2, left: 2, bottom: 2 }}
+            style={{ touchAction: "pan-y" }}
           >
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">

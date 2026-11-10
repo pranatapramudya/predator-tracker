@@ -444,7 +444,7 @@ export default function DashboardShell({
 
       {/* 🔄 HEADLESS BACKGROUND AUTO-REFRESH RADAR (BERJALAN DI BELAKANG LAYAR TANPA MENGGANGGU UI) */}
       <div className="hidden" aria-hidden="true">
-        <LiveRadarPoller intervalSec={15} />
+        <LiveRadarPoller intervalSec={60} />
       </div>
 
       {/* 🌟 FLOQ-STYLE HERO HEADER ANNOUNCEMENT */}
@@ -650,6 +650,8 @@ export default function DashboardShell({
                                     NETWORK_LOGOS.SOLANA
                                   }
                                   alt=""
+                                  loading="lazy"
+                                  decoding="async"
                                   className="w-5 h-5 rounded-full bg-slate-100 p-0.5 shrink-0 shadow-sm border border-slate-200"
                                 />
                                 <span className="text-sm font-bold tabular-nums tracking-tight truncate text-slate-900">
@@ -883,7 +885,7 @@ export default function DashboardShell({
                               </span>
                             </div>
 
-                            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
+                            <div className="space-y-1.5 max-h-36 overflow-y-auto overscroll-contain pr-0.5 touch-pan-y">
                               {positions.length > 0 ? (
                                 positions.map((pos: any, pIdx: number) => {
                                   const isPosPositive =
