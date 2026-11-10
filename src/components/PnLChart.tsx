@@ -1,7 +1,7 @@
 // src/components/PnLChart.tsx
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import {
   AreaChart,
   Area,
@@ -41,10 +41,7 @@ function formatChartTime(d: string | Date | undefined): string {
   );
 }
 
-export default function PnLChart({
-  data = [],
-  transactions = [],
-}: PnLChartProps) {
+function PnLChart({ data = [], transactions = [] }: PnLChartProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [liveNow] = useState<Date>(() => new Date());
 
@@ -353,3 +350,5 @@ export default function PnLChart({
     </div>
   );
 }
+
+export default memo(PnLChart);
