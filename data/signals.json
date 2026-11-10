@@ -1,5 +1,33 @@
 [
   {
+    "timestamp": "2026-11-10T05:29:59.950Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "SELL",
+    "tokenSymbol": "ORBIT",
+    "tokenAddress": "83eVWmGeyXf1BxSXTnMjnRm8gR7bPvoQERANzzgDpump",
+    "usdValue": 394.81335768975356,
+    "priceUsd": 0.0001209,
+    "txUrl": "https://solscan.io/tx/3EHwwPj913NyANdaoamnMNyCEjNLyKAKe77aLq1tNMLEKwXSKZJt8aPSEYwtbjmwBLsEHeXVbuYGDoQ2S8ThN7gP",
+    "rugVerdict": "N/A",
+    "confluenceCount": 1
+  },
+  {
+    "timestamp": "2026-11-10T05:29:29.922Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "BUY",
+    "tokenSymbol": "ORBIT",
+    "tokenAddress": "83eVWmGeyXf1BxSXTnMjnRm8gR7bPvoQERANzzgDpump",
+    "usdValue": 117.22396387370901,
+    "priceUsd": 0.0001106,
+    "txUrl": "https://solscan.io/tx/4E12imH7vrXoEYxd6btHg7uSdYwW79edqHafGFykz2kmuFRB26M7fCPoKBjS57e2pKFKhuaSPfvgymPu5xCZcTwB",
+    "rugVerdict": "DANGER",
+    "confluenceCount": 1
+  },
+  {
     "timestamp": "2026-11-10T02:37:02.522Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #2",
