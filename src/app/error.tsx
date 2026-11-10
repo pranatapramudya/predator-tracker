@@ -24,12 +24,12 @@ export default function ErrorBoundary({
           <AlertTriangle className="w-7 h-7 animate-pulse" />
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-mono font-black mb-3">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-mono font-semibold mb-3">
           <Terminal className="w-3 h-3" />
           <span>RADAR CORE EXCEPTION</span>
         </div>
 
-        <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-white mb-2">
+        <h2 className="text-xl sm:text-2xl font-bold uppercase tracking-tight text-white mb-2">
           Telemetri Terganggu
         </h2>
 
@@ -48,7 +48,7 @@ export default function ErrorBoundary({
         <div className="flex items-center justify-center gap-3">
           <button
             onClick={() => reset()}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Reset & Pulihkan Radar</span>

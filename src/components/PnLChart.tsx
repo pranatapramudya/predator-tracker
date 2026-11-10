@@ -200,7 +200,7 @@ export default function PnLChart({
   if (chartData.length <= 1 && netPnl === 0) {
     return (
       <div className="h-28 w-full flex items-center justify-center border border-white/10 bg-white/[0.03] rounded-xl mt-2">
-        <p className="text-[10px] text-white uppercase tracking-widest font-black">
+        <p className="text-[10px] text-white uppercase tracking-widest font-medium">
           No Activity Yet
         </p>
       </div>
@@ -214,24 +214,24 @@ export default function PnLChart({
     <div className="mt-2 bg-zinc-950/90 border border-white/15 rounded-2xl p-3 relative overflow-hidden group">
       {/* 🌟 1. Real-time Cyber Live Date & Clock Bar */}
       <div className="flex items-center justify-between bg-black/60 border border-white/10 rounded-xl px-2.5 py-1.5 mb-2 text-[9px] font-mono">
-        <div className="flex items-center gap-1.5 text-white font-bold flex-wrap">
-          <span className="text-emerald-400 font-black">📅</span>
+        <div className="flex items-center gap-1.5 text-white font-semibold flex-wrap">
+          <span className="text-emerald-400">📅</span>
           <span>{currentFullDateStr}</span>
           <span className="text-white/40">•</span>
-          <span className="text-emerald-400 font-black font-mono">
+          <span className="text-emerald-400 font-semibold font-mono tabular-nums">
             {currentLiveClock}
           </span>
         </div>
-        <div className="flex items-center gap-1 text-emerald-400 font-black shrink-0">
+        <div className="flex items-center gap-1 text-emerald-400 font-semibold shrink-0">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.9)]" />
-          <span>LIVE RADAR</span>
+          <span className="tracking-wider">LIVE RADAR</span>
         </div>
       </div>
 
       {/* 🌟 2. Top Micro-Header with Token & Date Range */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] mb-2 font-mono gap-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-white font-black tracking-wider flex items-center gap-1.5 text-xs">
+          <span className="text-white font-bold tracking-wide flex items-center gap-1.5 text-xs">
             <span
               className={`w-2 h-2 rounded-full ${
                 isPositive
@@ -241,13 +241,13 @@ export default function PnLChart({
             />
             ${primaryToken}
           </span>
-          <span className="text-[9px] font-bold text-white bg-white/10 px-2 py-0.5 rounded-lg border border-white/20">
+          <span className="text-[9px] font-medium text-white bg-white/10 px-2 py-0.5 rounded-lg border border-white/20">
             🕒 {dateRangeLabel}
           </span>
         </div>
 
         <span
-          className={`font-black tracking-tight text-xs ${
+          className={`font-bold tracking-tight text-xs tabular-nums ${
             isPositive ? "text-emerald-400" : "text-rose-400"
           }`}
         >
@@ -292,11 +292,11 @@ export default function PnLChart({
                         <span>{item.fullTime || item.step || "Real-time"}</span>
                       </div>
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-white font-black">
+                        <span className="text-white font-semibold">
                           {primaryToken}
                         </span>
                         <span
-                          className={`font-black ${val >= 0 ? "text-emerald-400" : "text-rose-400"}`}
+                          className={`font-bold tabular-nums ${val >= 0 ? "text-emerald-400" : "text-rose-400"}`}
                         >
                           {val >= 0 ? "+" : ""}${val.toFixed(2)} USD
                         </span>
@@ -327,11 +327,11 @@ export default function PnLChart({
       </div>
 
       {/* 🌟 4. Real-time date/day range footer */}
-      <div className="flex items-center justify-between text-[8px] font-mono font-bold text-white mt-1 pt-1.5 border-t border-white/10">
+      <div className="flex items-center justify-between text-[8px] font-mono font-medium text-white mt-1 pt-1.5 border-t border-white/10">
         <span className="truncate max-w-[140px] text-zinc-100">
           ▶ Entry: {startTimeStr}
         </span>
-        <span className="flex items-center gap-1 text-emerald-400 font-black">
+        <span className="flex items-center gap-1 text-emerald-400 font-semibold">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
           <span>ON-CHAIN LIVE</span>
         </span>

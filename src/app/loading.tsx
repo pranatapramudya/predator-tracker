@@ -14,7 +14,7 @@ export default function Loading() {
 
         {/* Cyber Loading Text */}
         <div className="mt-8 text-center space-y-2">
-          <h2 className="text-sm font-black tracking-[0.3em] uppercase text-white font-mono">
+          <h2 className="text-sm font-bold tracking-[0.25em] uppercase text-white font-mono">
             SYNCING PREDATOR RADAR
           </h2>
           <p className="text-xs text-zinc-300 font-mono">

@@ -134,7 +134,7 @@ export default function LoginPage() {
             SECURE TERMINAL // MULTI-TENANT CLEARANCE
           </div>
 
-          <h1 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold uppercase tracking-tight text-white">
             PREDATOR <span className="text-emerald-400">TRACKER</span>
           </h1>
 
@@ -302,7 +302,7 @@ export default function LoginPage() {
                     setError("");
                   }}
                   placeholder="••••"
-                  className="w-full bg-[#18181e] border-2 border-neutral-700 focus:border-emerald-400 rounded-2xl px-6 py-3.5 text-center text-3xl font-mono tracking-[0.4em] font-black outline-none text-white transition-all placeholder:text-neutral-600 focus:ring-1 focus:ring-emerald-400/20"
+                  className="w-full bg-[#18181e] border-2 border-neutral-700 focus:border-emerald-400 rounded-2xl px-6 py-3.5 text-center text-3xl font-mono tracking-[0.4em] font-bold outline-none text-white transition-all placeholder:text-neutral-600 focus:ring-1 focus:ring-emerald-400/20"
                 />
               </div>
             </div>
@@ -372,7 +372,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full py-3.5 mt-2 bg-emerald-500 hover:bg-emerald-400 disabled:bg-neutral-800 disabled:text-neutral-500 text-black font-black uppercase tracking-wider rounded-xl text-sm transition-all shadow-[0_0_25px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 group"
+              className="w-full py-3.5 mt-2 bg-emerald-500 hover:bg-emerald-400 disabled:bg-neutral-800 disabled:text-neutral-500 text-black font-bold uppercase tracking-wider rounded-xl text-sm transition-all shadow-[0_0_25px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 group"
             >
               {isPending ? (
                 <>

@@ -163,7 +163,7 @@ export default function UpgradeModal({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-emerald-500/15 border border-emerald-500/40 hover:border-emerald-400 text-emerald-400 hover:text-white rounded-xl sm:rounded-2xl text-xs font-black uppercase tracking-wider hover:bg-emerald-500 transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] group shrink-0 cursor-pointer"
+        className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-emerald-500/15 border border-emerald-500/40 hover:border-emerald-400 text-emerald-400 hover:text-white rounded-xl sm:rounded-2xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-500 transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] group shrink-0 cursor-pointer"
         title="Upgrade Kapasitas Radar"
       >
         <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 group-hover:scale-110 transition-transform" />
@@ -195,23 +195,25 @@ export default function UpgradeModal({
 
               {/* HEADER AREA */}
               <div className="text-center mb-5 sm:mb-7 pr-10 sm:pr-0">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-[10px] sm:text-[11px] font-black uppercase tracking-widest mb-2.5">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest mb-2.5">
                   <Sparkles className="w-3 h-3 text-emerald-400" />
                   <span>PREDATOR CLEARANCE UPGRADE</span>
                 </div>
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tight">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white uppercase tracking-tight">
                   UNLOCK <span className="text-emerald-400">SMART MONEY</span>{" "}
                   RADAR
                 </h2>
-                <p className="text-white font-bold text-xs sm:text-sm mt-1.5 max-w-lg mx-auto">
+                <p className="text-white font-medium text-xs sm:text-sm mt-1.5 max-w-lg mx-auto">
                   Tingkatkan kapasitas pelacakan paus on-chain, notifikasi
                   instan Telegram 0-delay, dan sinyal konfluensi multi-chain.
                 </p>
 
                 {/* CURRENT CLEARANCE BADGE */}
                 <div className="mt-2.5 inline-flex items-center gap-2 px-3.5 py-1 bg-black/50 border border-white/15 rounded-xl font-mono text-[10px] sm:text-[11px] text-white">
-                  <span className="text-white font-bold">STATUS OPERATOR:</span>
-                  <span className="text-emerald-400 font-black">
+                  <span className="text-white font-medium">
+                    STATUS OPERATOR:
+                  </span>
+                  <span className="text-emerald-400 font-bold">
                     {isOwner
                       ? "MASTER PREDATOR (OWNER // UNLIMITED ACCESS)"
                       : `${currentTier} TIER`}
@@ -233,7 +235,7 @@ export default function UpgradeModal({
                       }`}
                     >
                       {t.popular && (
-                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-black text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md shadow-emerald-500/30 flex items-center gap-1 z-10">
+                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-black text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md shadow-emerald-500/30 flex items-center gap-1 z-10">
                           <Zap className="w-2.5 h-2.5 fill-black" />
                           RECOMMENDED
                         </div>
@@ -241,22 +243,22 @@ export default function UpgradeModal({
 
                       <div>
                         <div className="flex items-center justify-between">
-                          <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider group-hover:text-emerald-400 transition-colors">
+                          <h3 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider group-hover:text-emerald-400 transition-colors">
                             {t.name}
                           </h3>
-                          <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-white/10 text-white border border-white/15">
+                          <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-white/10 text-white border border-white/15">
                             {t.wallets} WHALES
                           </span>
                         </div>
-                        <p className="text-white text-[11px] font-bold mt-0.5">
+                        <p className="text-white text-[11px] font-medium mt-0.5">
                           {t.tagline}
                         </p>
 
                         <div className="mt-3 flex items-baseline gap-1">
-                          <span className="text-2xl sm:text-3xl font-black text-white">
+                          <span className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
                             ${t.price}
                           </span>
-                          <span className="text-xs font-mono font-bold text-white">
+                          <span className="text-xs font-mono font-medium text-white">
                             / bulan
                           </span>
                         </div>
@@ -266,7 +268,7 @@ export default function UpgradeModal({
                           {t.features.map((feat, idx) => (
                             <li
                               key={idx}
-                              className="flex items-start gap-1.5 text-xs text-white font-bold"
+                              className="flex items-start gap-1.5 text-xs text-white font-medium"
                             >
                               <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
                               <span>{feat}</span>
@@ -277,7 +279,7 @@ export default function UpgradeModal({
 
                       <button
                         type="button"
-                        className={`mt-5 w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        className={`mt-5 w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                           t.popular
                             ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                             : "bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-emerald-500/50"
@@ -295,7 +297,7 @@ export default function UpgradeModal({
                   <button
                     type="button"
                     onClick={() => setSelectedTier(null)}
-                    className="inline-flex items-center gap-1.5 text-xs font-black uppercase text-white hover:text-emerald-400 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold uppercase text-white hover:text-emerald-400 transition-colors cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Kembali ke Pilihan Tier</span>
@@ -304,22 +306,22 @@ export default function UpgradeModal({
                   {/* TIER SUMMARY */}
                   <div className="p-3.5 sm:p-4 rounded-xl bg-black/40 border border-white/15 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-mono font-black uppercase text-emerald-400 tracking-wider">
+                      <span className="text-[10px] font-mono font-semibold uppercase text-emerald-400 tracking-wider">
                         PAKET TERPILIH
                       </span>
-                      <h3 className="text-lg sm:text-xl font-black text-white uppercase">
+                      <h3 className="text-lg sm:text-xl font-bold text-white uppercase">
                         {selectedTier.name}
                       </h3>
-                      <p className="text-xs text-white font-bold">
+                      <p className="text-xs text-white font-medium">
                         Kapasitas pelacakan: {selectedTier.wallets} Target
                         Whales
                       </p>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl sm:text-3xl font-black text-emerald-400">
+                      <div className="text-2xl sm:text-3xl font-bold text-emerald-400 tabular-nums">
                         ${selectedTier.price}
                       </div>
-                      <span className="text-[10px] font-mono font-bold text-white">
+                      <span className="text-[10px] font-mono font-medium text-white">
                         USD / BULAN
                       </span>
                     </div>
@@ -330,7 +332,7 @@ export default function UpgradeModal({
                     <button
                       type="button"
                       onClick={() => setActivePaymentMethod("gateway")}
-                      className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`py-2 px-3 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
                         activePaymentMethod === "gateway"
                           ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20"
                           : "text-white hover:bg-white/5"
@@ -341,7 +343,7 @@ export default function UpgradeModal({
                     <button
                       type="button"
                       onClick={() => setActivePaymentMethod("direct")}
-                      className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`py-2 px-3 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
                         activePaymentMethod === "direct"
                           ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20"
                           : "text-white hover:bg-white/5"
@@ -354,7 +356,7 @@ export default function UpgradeModal({
                   {activePaymentMethod === "gateway" ? (
                     // GATEWAY PAYMENT (HELIOPAY / MOONPAY)
                     <div className="space-y-4">
-                      <p className="text-xs text-white font-bold leading-relaxed">
+                      <p className="text-xs text-white font-medium leading-relaxed">
                         Klik tombol di bawah untuk membuka gateway pembayaran
                         aman (Mendukung Solana Pay, USDT, USDC, & Kartu Kredit).
                         Akses di-unlock otomatis setelah konfirmasi blockchain.
@@ -366,7 +368,7 @@ export default function UpgradeModal({
                           onClick={() =>
                             handleOpenGateway(getCheckoutUrl(selectedTier.id))
                           }
-                          className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-500 text-black hover:bg-emerald-400 rounded-xl font-black uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(16,185,129,0.35)] cursor-pointer text-sm"
+                          className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-500 text-black hover:bg-emerald-400 rounded-xl font-bold uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(16,185,129,0.35)] cursor-pointer text-sm"
                         >
                           <Lock className="w-4 h-4" />
                           <span>Buka Checkout Gateway</span>
@@ -379,7 +381,7 @@ export default function UpgradeModal({
                             href={getCheckoutUrl(selectedTier.id)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[11px] font-bold text-emerald-400 hover:underline inline-flex items-center gap-1"
+                            className="text-[11px] font-semibold text-emerald-400 hover:underline inline-flex items-center gap-1"
                           >
                             <span>Buka tautan langsung di tab baru</span>
                             <ExternalLink className="w-3 h-3" />
@@ -389,7 +391,7 @@ export default function UpgradeModal({
                             onClick={() =>
                               copyToClipboard(getCheckoutUrl(selectedTier.id))
                             }
-                            className="text-[11px] font-mono font-bold text-white hover:text-emerald-400 inline-flex items-center gap-1 px-2.5 py-1 bg-white/5 border border-white/15 rounded-lg transition-colors cursor-pointer"
+                            className="text-[11px] font-mono font-semibold text-white hover:text-emerald-400 inline-flex items-center gap-1 px-2.5 py-1 bg-white/5 border border-white/15 rounded-lg transition-colors cursor-pointer"
                           >
                             {copied ? (
                               <>
@@ -411,23 +413,31 @@ export default function UpgradeModal({
                   ) : (
                     // DIRECT CRYPTO TRANSFER
                     <div className="space-y-4">
-                      <p className="text-xs text-white font-bold leading-relaxed">
+                      <p className="text-xs text-white font-medium leading-relaxed">
                         Transfer senilai{" "}
-                        <strong>${selectedTier.price} USD</strong> dalam bentuk{" "}
-                        <strong>SOL</strong> atau{" "}
-                        <strong>USDT (SPL Solana)</strong> ke alamat resmi radar
-                        di bawah ini:
+                        <strong className="text-white font-bold">
+                          ${selectedTier.price} USD
+                        </strong>{" "}
+                        dalam bentuk{" "}
+                        <strong className="text-emerald-400 font-bold">
+                          SOL
+                        </strong>{" "}
+                        atau{" "}
+                        <strong className="text-emerald-400 font-bold">
+                          USDT (SPL Solana)
+                        </strong>{" "}
+                        ke alamat resmi radar di bawah ini:
                       </p>
 
                       <div className="p-3 bg-black/60 border border-white/15 rounded-xl space-y-2">
                         <div className="flex items-center justify-between text-[11px] font-mono text-white">
-                          <span className="font-bold">JARINGAN:</span>
-                          <span className="text-emerald-400 font-black">
+                          <span className="font-semibold">JARINGAN:</span>
+                          <span className="text-emerald-400 font-bold">
                             SOLANA MAINNET (SPL)
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-2 p-2 bg-white/5 border border-white/10 rounded-lg">
-                          <span className="text-xs font-mono font-bold text-white truncate">
+                          <span className="text-xs font-mono font-medium text-white truncate">
                             {directWalletSol}
                           </span>
                           <button
@@ -435,7 +445,7 @@ export default function UpgradeModal({
                             onClick={() =>
                               copyToClipboard(directWalletSol, true)
                             }
-                            className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black rounded-lg transition-all shrink-0 cursor-pointer flex items-center gap-1"
+                            className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold rounded-lg transition-all shrink-0 cursor-pointer flex items-center gap-1"
                           >
                             {directCopied ? (
                               <>
