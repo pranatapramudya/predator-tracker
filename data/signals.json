@@ -1,5 +1,19 @@
 [
   {
+    "timestamp": "2026-11-10T12:22:52.081Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "SELL",
+    "tokenSymbol": "BORLY",
+    "tokenAddress": "F22QdNn7VYrtTgYDHEYcqQKVtDH8msh2xs6tnGxepump",
+    "usdValue": 616.6575571710748,
+    "priceUsd": 0.00006362,
+    "txUrl": "https://solscan.io/tx/cXsz83c93eb4h8t7WHWoJZdc8kL4B3eF9aeXSwPbySoyFShKWnDzP7sepwpxw7nzawm8YvG6Eb8fFLyvegomFrK",
+    "rugVerdict": "N/A",
+    "confluenceCount": 1
+  },
+  {
     "timestamp": "2026-11-10T12:13:42.526Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #2",
