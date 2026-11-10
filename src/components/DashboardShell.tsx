@@ -572,11 +572,45 @@ export default function DashboardShell({
                     totalInvested: 0,
                     totalPnl: 0,
                     roiPercent: 0,
+                    activePosition: null,
+                    activePnl: 0,
+                    activeRoi: 0,
                   };
-                  const { roiPercent } = stats;
+
+                  const positions: any[] = w.positions || [];
+                  const activePos =
+                    stats.activePosition || positions[0] || null;
+                  const activeToken =
+                    activePos?.tokenSymbol ||
+                    w.transactions?.[0]?.tokenSymbol ||
+                    "TOKEN";
+                  const activePnl = activePos
+                    ? Number(activePos.realizedPnlUsd || 0)
+                    : stats.totalPnl;
+                  const activeRoi = activePos
+                    ? Number(activePos.roiPercent || 0)
+                    : stats.roiPercent;
+                  const activeInvested = activePos
+                    ? Number(
+                        activePos.totalInvestedUsd || activePos.buyUsd || 0,
+                      )
+                    : stats.totalInvested;
+                  const isActivePositive = activePnl >= 0;
+                  const activeStatus = activePos?.status || "HOLDING";
+
+                  // Active token transactions only for sparkline chart
+                  const activeTransactions = (w.transactions || []).filter(
+                    (tx: any) =>
+                      tx.tokenSymbol?.toUpperCase() ===
+                      activeToken?.toUpperCase(),
+                  );
+                  const chartTransactions =
+                    activeTransactions.length > 0
+                      ? activeTransactions
+                      : w.transactions;
 
                   const baseShadow = dbUser.shadowBalance || 100;
-                  const shadowProfit = (baseShadow * roiPercent) / 100;
+                  const shadowProfit = (baseShadow * activeRoi) / 100;
                   const shadowTotal = baseShadow + shadowProfit;
                   const isFomoPositive = shadowProfit >= 0;
 
@@ -669,14 +703,29 @@ export default function DashboardShell({
                           </div>
                         </div>
 
-                        {/* Win Rate & Trades Metric Bar */}
-                        <div className="grid grid-cols-2 gap-2 mt-3">
-                          <div className="bg-zinc-900/80 border border-white/10 rounded-xl p-2.5 text-center">
-                            <p className="text-[9px] font-bold text-white uppercase tracking-widest">
+                        {/* 🏆 RAPOR AKUN MENYELURUH (LIFETIME WHALE STATS) */}
+                        <div className="grid grid-cols-3 gap-2 mt-3 p-2.5 bg-black/50 border border-white/10 rounded-2xl text-center text-xs font-mono">
+                          <div>
+                            <p className="text-[8px] font-bold text-zinc-300 uppercase tracking-wider">
+                              All-Time PnL
+                            </p>
+                            <p
+                              className={`text-xs font-bold mt-0.5 tabular-nums ${
+                                stats.totalPnl >= 0
+                                  ? "text-emerald-400"
+                                  : "text-rose-400"
+                              }`}
+                            >
+                              {stats.totalPnl >= 0 ? "+" : ""}$
+                              {Math.round(stats.totalPnl).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="border-x border-white/10 px-1">
+                            <p className="text-[8px] font-bold text-zinc-300 uppercase tracking-wider">
                               Win Rate
                             </p>
                             <p
-                              className={`text-base font-bold mt-0.5 tabular-nums ${
+                              className={`text-xs font-bold mt-0.5 tabular-nums ${
                                 w.winRate >= 70
                                   ? "text-amber-400"
                                   : w.winRate >= 40
@@ -687,41 +736,95 @@ export default function DashboardShell({
                               {Number(w.winRate).toFixed(1)}%
                             </p>
                           </div>
-                          <div className="bg-zinc-900/80 border border-white/10 rounded-xl p-2.5 text-center">
-                            <p className="text-[9px] font-bold text-white uppercase tracking-widest">
+                          <div>
+                            <p className="text-[8px] font-bold text-zinc-300 uppercase tracking-wider">
                               Total Trades
                             </p>
-                            <p className="text-base font-bold mt-0.5 tabular-nums text-white font-mono">
+                            <p className="text-xs font-bold mt-0.5 tabular-nums text-white">
                               <span className="text-emerald-400">
                                 {w.successTrades || 0}
                               </span>
-                              <span className="text-white mx-1">/</span>
+                              <span className="text-white/40 mx-0.5">/</span>
                               <span>{w.totalTrades || 0}</span>
                             </p>
                           </div>
                         </div>
 
-                        {/* 🌟 GLOWING MICRO SPARKLINE PNL CHART */}
-                        <div className="mt-3.5">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <p className="text-[9px] font-bold text-white uppercase tracking-widest">
-                              PnL Performance
-                            </p>
-                            <span className="text-[8px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                              <span>REALTIME TRAJECTORY</span>
+                        {/* 🎯 TARGET AKTIF (KOIN YANG SEDANG DITRADE) */}
+                        <div className="mt-3.5 p-3.5 bg-zinc-950/90 border border-emerald-500/30 rounded-2xl relative overflow-hidden shadow-inner">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider font-mono">
+                                KOIN AKTIF:
+                              </span>
+                              <span className="text-sm font-bold text-white tracking-wide">
+                                ${activeToken}
+                              </span>
+                            </div>
+
+                            <span
+                              className={`text-[8px] px-2 py-0.5 rounded-full border font-bold uppercase tracking-wider flex items-center gap-1 ${
+                                activeStatus === "FRESH_BUY"
+                                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 animate-pulse"
+                                  : activeStatus === "TAKE_PROFIT"
+                                    ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
+                                    : activeStatus === "CUT_LOSS"
+                                      ? "bg-rose-500/20 text-rose-300 border-rose-500/50"
+                                      : "bg-cyan-500/20 text-cyan-300 border-cyan-500/50"
+                              }`}
+                            >
+                              {activeStatus === "FRESH_BUY"
+                                ? "🟢 FRESH BUY // SEROK"
+                                : activeStatus === "TAKE_PROFIT"
+                                  ? "👑 TAKE PROFIT"
+                                  : activeStatus === "CUT_LOSS"
+                                    ? "🔴 CUT LOSS"
+                                    : "🟡 ACTIVE HOLDING"}
                             </span>
                           </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs font-mono py-1.5 border-t border-b border-white/10 my-2">
+                            <div>
+                              <span className="text-[9px] text-zinc-300 uppercase block font-medium">
+                                Modal Beli Paus:
+                              </span>
+                              <span className="text-white font-bold tabular-nums">
+                                ${activeInvested.toLocaleString()} USD
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[9px] text-zinc-300 uppercase block font-medium">
+                                PnL Khusus ${activeToken}:
+                              </span>
+                              <span
+                                className={`font-bold tabular-nums ${
+                                  isActivePositive
+                                    ? "text-emerald-400"
+                                    : "text-rose-400"
+                                }`}
+                              >
+                                {isActivePositive ? "+" : ""}$
+                                {activePnl.toLocaleString("en-US", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}{" "}
+                                ({activeRoi >= 0 ? "+" : ""}
+                                {activeRoi.toFixed(1)}%)
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* 🌟 GLOWING MICRO SPARKLINE PNL CHART (KHUSUS KOIN AKTIF) */}
                           <PnLChart
-                            data={(w.positions || []).map((p: any) => ({
-                              tokenSymbol: p.tokenSymbol || "TOKEN",
-                              pnl: Number(p.realizedPnlUsd) || 0,
-                            }))}
-                            transactions={w.transactions}
+                            data={[
+                              { tokenSymbol: activeToken, pnl: activePnl },
+                            ]}
+                            transactions={chartTransactions}
                           />
                         </div>
 
-                        {/* Shadow Mode Box */}
+                        {/* Shadow Mode Box specifically for active coin */}
                         <div
                           className={`mt-3 p-3 border rounded-xl flex justify-between items-center relative overflow-hidden ${
                             isFomoPositive
@@ -738,7 +841,7 @@ export default function DashboardShell({
                               }`}
                             >
                               <Ghost className="w-3.5 h-3.5" /> Shadow Mode
-                              ($100 Base)
+                              ($100 on ${activeToken})
                             </p>
                             <p className="text-xs font-bold text-white">
                               If copied:{" "}
@@ -770,34 +873,88 @@ export default function DashboardShell({
                           </div>
                         </div>
 
-                        {/* Recent Activity Tokens */}
+                        {/* 📜 HISTORI KOIN PAUS (PORTFOLIO BREAKDOWN PER-KOIN) */}
                         <div className="mt-3 pt-2.5 border-t border-white/10">
-                          <p className="text-[9px] font-bold text-white uppercase tracking-widest mb-1.5">
-                            Recent Trades
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {w.transactions && w.transactions.length > 0 ? (
-                              w.transactions
-                                .slice(0, 6)
-                                .map((tx: any, tIdx: number) => (
-                                  <a
-                                    key={tx.id || tIdx}
-                                    href={tx.explorerUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold border transition-all ${
-                                      tx.type === "BUY"
-                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30"
-                                        : "bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30"
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[9px] font-bold text-white uppercase tracking-widest">
+                              Portofolio Koin Paus
+                            </p>
+                            <span className="text-[9px] font-mono font-medium text-zinc-300">
+                              {positions.length} Koin Ditradingkan
+                            </span>
+                          </div>
+
+                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
+                            {positions.length > 0 ? (
+                              positions.map((pos: any, pIdx: number) => {
+                                const isPosPositive =
+                                  Number(pos.realizedPnlUsd || 0) >= 0;
+                                const isCurrent =
+                                  pos.tokenSymbol?.toUpperCase() ===
+                                  activeToken?.toUpperCase();
+                                return (
+                                  <div
+                                    key={pos.tokenSymbol || pIdx}
+                                    className={`flex items-center justify-between p-2 rounded-xl text-xs font-mono border transition-all ${
+                                      isCurrent
+                                        ? "bg-emerald-500/10 border-emerald-500/40 ring-1 ring-emerald-500/30"
+                                        : "bg-zinc-900/70 border-white/5 hover:border-white/20"
                                     }`}
                                   >
-                                    {tx.type === "BUY" ? "🟢" : "🔴"}{" "}
-                                    {tx.tokenSymbol?.slice(0, 5)}
-                                  </a>
-                                ))
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="font-bold text-white truncate">
+                                        ${pos.tokenSymbol}
+                                      </span>
+                                      {isCurrent && (
+                                        <span className="text-[8px] px-1.5 py-0.2 rounded bg-emerald-500 text-black font-bold uppercase">
+                                          AKTIF
+                                        </span>
+                                      )}
+                                      <span
+                                        className={`text-[8px] px-1.5 py-0.2 rounded uppercase font-semibold ${
+                                          pos.status === "TAKE_PROFIT"
+                                            ? "bg-amber-500/20 text-amber-300"
+                                            : pos.status === "CUT_LOSS"
+                                              ? "bg-rose-500/20 text-rose-300"
+                                              : "bg-cyan-500/20 text-cyan-300"
+                                        }`}
+                                      >
+                                        {pos.status === "TAKE_PROFIT"
+                                          ? "SOLD / TP"
+                                          : pos.status === "CUT_LOSS"
+                                            ? "CUT LOSS"
+                                            : "HOLDING"}
+                                      </span>
+                                    </div>
+
+                                    <div className="text-right shrink-0">
+                                      <span
+                                        className={`font-bold tabular-nums ${
+                                          isPosPositive
+                                            ? "text-emerald-400"
+                                            : "text-rose-400"
+                                        }`}
+                                      >
+                                        {isPosPositive ? "+" : ""}$
+                                        {Number(
+                                          pos.realizedPnlUsd || 0,
+                                        ).toLocaleString("en-US", {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2,
+                                        })}
+                                      </span>
+                                      <span className="text-[9px] text-zinc-300 ml-1 tabular-nums">
+                                        ({pos.roiPercent >= 0 ? "+" : ""}
+                                        {Number(pos.roiPercent || 0).toFixed(1)}
+                                        %)
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })
                             ) : (
                               <span className="text-[10px] text-white font-medium italic">
-                                No recent trades recorded
+                                Belum ada riwayat posisi
                               </span>
                             )}
                           </div>

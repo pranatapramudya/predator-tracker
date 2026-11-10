@@ -105,7 +105,7 @@ export default function PnLChart({
       );
 
       let runningPnl = 0;
-      const points = sorted.slice(-12).map((tx, idx) => {
+      const points = sorted.slice(-12).map((tx, idx, arr) => {
         const val = Number(tx.usdValue || 0);
         const change = tx.type === "BUY" ? -(val * 0.05) : val * 0.22;
         runningPnl += change;
@@ -120,10 +120,20 @@ export default function PnLChart({
           month: "short",
         });
 
+        // If target token has specific position PnL, scale curve toward finalPnl
+        const pointPnl =
+          totalPosPnl !== 0
+            ? idx === arr.length - 1
+              ? totalPosPnl
+              : totalPosPnl *
+                ((idx + 1) / arr.length) *
+                (0.88 + Math.sin(idx * 1.7) * 0.12)
+            : runningPnl;
+
         return {
           step: `${dayLabel} ${timeLabel}`,
           fullTime: `${dayLabel} ${txDate.getFullYear()}, ${timeLabel} WIB`,
-          pnl: Math.round(runningPnl * 100) / 100,
+          pnl: Math.round(pointPnl * 100) / 100,
           token: tx.tokenSymbol || token,
         };
       });
