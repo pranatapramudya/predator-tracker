@@ -1,9 +1,14 @@
 name: Predator Tracker - Smart Money Radar
 
 on:
-  # Berjalan setiap kali Anda push commit ke branch main atau refactor/audit-sop
+  # Berjalan setiap kali Anda push commit ke branch main atau refactor/audit-sop (kecuali perubahan data/docs)
   push:
     branches: [ main, refactor/audit-sop ]
+    paths-ignore:
+      - 'data/**'
+      - 'docs/**'
+      - '**.md'
+      - 'config/watchlist.json'
   # Berjalan otomatis setiap 5 menit di cloud GitHub (Continuous Radar Loop)
   schedule:
     - cron: '*/5 * * * *'
@@ -53,7 +58,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add -f data/processed_txs.json data/signals.json config/watchlist.json || true
-          git diff --staged --quiet || git commit -m "chore(radar): update processed txs and signals [skip ci]"
+          git diff --staged --quiet || git commit -m "chore(radar): update processed txs and signals [skip ci] [skip vercel]"
           git pull --rebase || true
           git push || true
 

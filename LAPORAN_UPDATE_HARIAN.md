@@ -36,6 +36,17 @@ Hari ini telah dilakukan pembaruan arsitektur besar-besaran pada **Predator Trac
 
 ---
 
+## 🛡️ Mitigasi Vercel Functions Storage (Pencegahan Limit 10 GB)
+
+- **Penyebab Lonjakan (8.29 GB):** GitHub Actions cron push commit data setiap 5 menit memicu auto-deploy Vercel karena Vercel default tidak mengabaikan `[skip ci]`. Setiap deploy menyimpan bundle Lambda/Prisma engine (~130 MB x puluhan build).
+- **Penyelesaian Otomatis:**
+  1. Menambahkan `vercel.json` dengan `ignoreCommand: "bash ./scripts/ignore-build.sh"`: Vercel otomatis mengabaikan (skip) build jika commit dari bot, berlabel `[skip ci]`, atau hanya mengubah data/docs.
+  2. Menambahkan `paths-ignore` dan tag `[skip vercel]` di `.github/workflows/tracker.yml`.
+  3. Mengonfigurasi `outputFileTracingExcludes` di `next.config.mjs` untuk memangkas ukuran Lambda bundle.
+  4. Membersihkan deployment lama di dashboard Vercel untuk melepaskan storage kembali ke < 1 GB.
+
+---
+
 ## 📋 Target Paus Aktif Terdaftar
 
 1. **Smart Money Alpha #1:** `HjxaEDvdje644vhUmE3VpjpteWLBmWgSsgvYhf6LVw2L` (Solana)

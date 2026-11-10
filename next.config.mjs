@@ -20,6 +20,15 @@ const nextConfig = {
   turbopack: {
     resolveAlias: {},
   },
+  // Optimasi ukuran Serverless Functions di Vercel agar tidak boros Functions Storage
+  outputFileTracingExcludes: {
+    '*': [
+      './docs/**',
+      './data/**',
+      './scripts/**',
+      '**/*.md',
+    ],
+  },
 };
 
 // [FIX] Hanya wrap dengan PWA di production.

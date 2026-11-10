@@ -1,4 +1,4 @@
-﻿# predator-tracker — AI Agent Context
+# predator-tracker — AI Agent Context
 
 ## Apa ini?
 Whale Tracking Dashboard & Real-Time Alert System untuk Solana, Ethereum, dan Base blockchain. Memantau transaksi besar (smart money whale) secara 100% cloud-native 24/7.
