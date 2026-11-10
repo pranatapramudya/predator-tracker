@@ -314,22 +314,18 @@ export default function DashboardShell({
     <main className="min-h-screen bg-[#061a1d] text-[#f4fbf8] selection:bg-[#a3f784] selection:text-[#061a1d] pb-28 md:pb-12">
       {/* 🚀 TOP CYBER HEADER BAR - CATEGORIZED INTO 3 CLEAN ZONES */}
       <header className="sticky top-0 z-40 bg-[#061a1d]/90 backdrop-blur-xl border-b border-[#a3f784]/15 px-4 sm:px-6 lg:px-8 py-3 transition-all">
-        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
-          {/* ZONE 1: BRAND IDENTITY & LIVE RADAR (LEFT) */}
+        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-3 sm:gap-4">
+          {/* ZONE 1: BRAND IDENTITY (LEFT) */}
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => handleTabChange("watchlist")}
               className="text-left group flex items-center gap-2.5 transition-transform hover:opacity-90 cursor-pointer"
             >
-              <span className="w-2.5 h-2.5 rounded-full bg-[#a3f784] animate-pulse shadow-[0_0_10px_rgba(163,247,132,0.9)]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#a3f784] shadow-[0_0_8px_rgba(163,247,132,0.8)]" />
               <h1 className="text-base sm:text-lg font-bold tracking-tight uppercase leading-none text-[#f4fbf8]">
                 PREDATOR <span className="text-[#a3f784]">TRACKER</span>
               </h1>
             </button>
-
-            <div className="hidden lg:block pl-3 border-l border-white/10">
-              <LiveRadarPoller intervalSec={15} />
-            </div>
           </div>
 
           {/* ZONE 2: NAVIGATION CENTER (MIDDLE) */}
@@ -367,7 +363,7 @@ export default function DashboardShell({
               />
               <span>Alpha Feed</span>
               <span
-                className={`w-1.5 h-1.5 rounded-full ${activeTab === "feed" ? "bg-[#061a1d]" : "bg-[#a3f784]"} animate-pulse`}
+                className={`w-1.5 h-1.5 rounded-full ${activeTab === "feed" ? "bg-[#061a1d]" : "bg-[#a3f784]"}`}
               />
             </button>
 
@@ -403,7 +399,7 @@ export default function DashboardShell({
           {/* ZONE 3: OPERATOR PROFILE & SECURITY CONTROLS (RIGHT) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-[#0f3236] border border-[#a3f784]/25 rounded-xl text-[#a3f784] font-mono text-[11px] font-bold">
-              <span className="w-2 h-2 rounded-full bg-[#a3f784] animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-[#a3f784]" />
               <span className="truncate max-w-[110px] text-white font-bold">
                 {dbUser.name}
               </span>
@@ -413,10 +409,10 @@ export default function DashboardShell({
 
             <UpgradeModal userId={dbUser.id} currentTier={dbUser.tier} />
 
-            <form action={logoutAction}>
+            <form action={logoutAction} className="flex items-center">
               <button
                 type="submit"
-                className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer"
+                className="flex items-center justify-center p-2.5 sm:px-3 sm:py-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer"
                 title="Sign Out"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -446,12 +442,9 @@ export default function DashboardShell({
         </div>
       )}
 
-      {/* 📱 MOBILE QUICK LIVE RADAR (CLEAN, NO OVERCROWDING) */}
-      <div className="md:hidden flex items-center justify-between px-4 py-2 bg-[#0b272a] border-b border-[#a3f784]/15 text-[11px] font-mono">
+      {/* 🔄 HEADLESS BACKGROUND AUTO-REFRESH RADAR (BERJALAN DI BELAKANG LAYAR TANPA MENGGANGGU UI) */}
+      <div className="hidden" aria-hidden="true">
         <LiveRadarPoller intervalSec={15} />
-        <span className="text-[#9bb8b5] font-semibold uppercase tracking-wider">
-          {totalWallets} TARGETS ON RADAR
-        </span>
       </div>
 
       {/* 🌟 FLOQ-STYLE HERO HEADER ANNOUNCEMENT */}
@@ -459,7 +452,7 @@ export default function DashboardShell({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#a3f784]/15 border border-[#a3f784]/30 text-[#a3f784] text-[11px] font-semibold mb-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#a3f784] animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-[#a3f784]" />
               <span>ON-CHAIN RADAR • MULTI-CHAIN PROTOCOL</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
@@ -483,63 +476,67 @@ export default function DashboardShell({
           {activeTab === "watchlist" && (
             <div className="space-y-6 animate-in fade-in duration-200">
               {/* Watchlist Sub-header & Controls */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm">
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold uppercase tracking-tight flex items-center gap-2 text-slate-900">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                    Active Target Whales
-                  </h2>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">
-                    Menampilkan {filteredWallets.length} target aktif (Maks 3
-                    per halaman)
-                  </p>
+              <div className="flex flex-col gap-3.5 bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base sm:text-xl font-bold uppercase tracking-tight flex items-center gap-2 text-slate-900">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                      Active Target Whales
+                    </h2>
+                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
+                      Menampilkan {filteredWallets.length} target aktif (Maks 3
+                      per halaman)
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleTabChange("add")}
+                    className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 bg-[#a3f784] hover:bg-[#8fe66f] text-[#061a1d] font-bold text-xs uppercase tracking-wider rounded-full transition-all shadow-sm shrink-0 cursor-pointer"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5 text-[#061a1d]" />
+                    <span>Lock Whale</span>
+                  </button>
                 </div>
 
-                {/* Chain Filter & Search */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative flex-1 sm:flex-none min-w-[200px]">
+                {/* Chain Filter & Search Bar - Clean Responsive Grid */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full">
+                  <div className="relative flex-1 min-w-0">
                     <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       placeholder="Cari whale atau address..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:bg-white rounded-full pl-9 pr-3.5 py-1.5 text-xs text-slate-900 placeholder-slate-400 outline-none font-medium transition-all shadow-inner"
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:bg-white rounded-full pl-9 pr-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 outline-none font-medium transition-all shadow-inner"
                     />
                   </div>
 
-                  <div className="flex items-center gap-1 p-1 bg-slate-100 border border-slate-200 rounded-full text-[10px] font-bold">
-                    {["ALL", "SOLANA", "BASE", "ETHEREUM", "BITCOIN"].map(
-                      (chain) => (
-                        <button
-                          key={chain}
-                          onClick={() => setSelectedChainFilter(chain)}
-                          className={`px-3 py-1 rounded-full uppercase tracking-wider transition-all cursor-pointer ${
-                            selectedChainFilter === chain
-                              ? "bg-[#061a1d] text-[#a3f784] font-bold shadow-sm"
-                              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/70"
-                          }`}
-                        >
-                          {chain === "ALL" ? "Semua" : chain}
-                        </button>
-                      ),
-                    )}
+                  <div className="w-full sm:w-auto overflow-x-auto scrollbar-none py-0.5">
+                    <div className="inline-flex items-center gap-1 p-1 bg-slate-100 border border-slate-200 rounded-full text-[10px] font-bold whitespace-nowrap">
+                      {["ALL", "SOLANA", "BASE", "ETHEREUM", "BITCOIN"].map(
+                        (chain) => (
+                          <button
+                            key={chain}
+                            onClick={() => setSelectedChainFilter(chain)}
+                            className={`px-3 py-1 rounded-full uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+                              selectedChainFilter === chain
+                                ? "bg-[#061a1d] text-[#a3f784] font-bold shadow-sm"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/70"
+                            }`}
+                          >
+                            {chain === "ALL" ? "Semua" : chain}
+                          </button>
+                        ),
+                      )}
+                    </div>
                   </div>
-
-                  <button
-                    onClick={() => handleTabChange("add")}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-[#a3f784] hover:bg-[#8fe66f] text-[#061a1d] font-bold text-xs uppercase tracking-wider rounded-full transition-all shadow-sm ml-auto sm:ml-0 cursor-pointer"
-                  >
-                    <PlusCircle className="w-3.5 h-3.5 text-[#061a1d]" />
-                    <span>Lock Whale</span>
-                  </button>
                 </div>
               </div>
 
               {/* Empty State */}
               {filteredWallets.length === 0 ? (
                 <div className="border border-dashed border-[#a3f784]/20 rounded-3xl p-12 sm:p-20 text-center bg-[#0b272a]/50">
-                  <Radio className="w-10 h-10 mx-auto mb-4 text-[#a3f784] animate-pulse" />
+                  <Radio className="w-10 h-10 mx-auto mb-4 text-[#a3f784]" />
                   <h3 className="text-base font-bold uppercase tracking-wider text-[#f4fbf8]">
                     Tidak Ada Target Sesuai Filter
                   </h3>
@@ -753,7 +750,7 @@ export default function DashboardShell({
                           <div className="mt-3.5 p-3.5 bg-[#061a1d] border border-[#a3f784]/30 rounded-2xl relative overflow-hidden shadow-md text-white">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-[#a3f784] animate-ping" />
+                                <span className="w-2 h-2 rounded-full bg-[#a3f784]" />
                                 <span className="text-[10px] font-bold text-[#a3f784] uppercase tracking-wider font-mono">
                                   KOIN AKTIF:
                                 </span>
@@ -765,7 +762,7 @@ export default function DashboardShell({
                               <span
                                 className={`text-[8px] px-2 py-0.5 rounded-full border font-bold uppercase tracking-wider flex items-center gap-1 ${
                                   activeStatus === "FRESH_BUY"
-                                    ? "bg-[#a3f784]/20 text-[#a3f784] border-[#a3f784]/50 animate-pulse"
+                                    ? "bg-[#a3f784]/20 text-[#a3f784] border-[#a3f784]/50"
                                     : activeStatus === "TAKE_PROFIT"
                                       ? "bg-amber-500/20 text-amber-300 border-amber-500/50"
                                       : activeStatus === "CUT_LOSS"
@@ -1000,7 +997,7 @@ export default function DashboardShell({
                             </button>
                           </div>
                           <div className="flex items-center gap-1.5 text-emerald-600 font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             <span className="tracking-widest uppercase text-[9px]">
                               LIVE
                             </span>
@@ -1069,12 +1066,12 @@ export default function DashboardShell({
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2.5">
                       <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600">
-                        <Radio className="w-4 h-4 animate-pulse" />
+                        <Radio className="w-4 h-4" />
                       </div>
                       <div>
                         <h2 className="text-base sm:text-lg font-bold uppercase tracking-tight flex items-center gap-2 text-slate-900">
                           Live Alpha Signals Feed
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
                         </h2>
                         <p className="text-[10px] text-slate-500 uppercase font-mono font-medium">
                           Direct on-chain execution stream
@@ -1625,7 +1622,7 @@ export default function DashboardShell({
                         Worker Daemon (Local):
                       </span>
                       <span className="text-emerald-600 font-bold flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
                         ONLINE (RUNNER)
                       </span>
                     </div>
@@ -1728,7 +1725,7 @@ export default function DashboardShell({
           <div className="w-full max-w-md bg-white border border-rose-200 rounded-3xl p-6 sm:p-7 shadow-2xl relative overflow-hidden">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-600">
-                <Trash2 className="w-6 h-6 animate-pulse" />
+                <Trash2 className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-base sm:text-lg font-bold uppercase tracking-tight text-slate-900">
@@ -1814,7 +1811,6 @@ export default function DashboardShell({
           <span className="text-[10px] font-semibold uppercase tracking-wider">
             Alpha Feed
           </span>
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 absolute top-1 right-3 animate-ping" />
         </button>
 
         {/* Add Target Tab (High Accent) */}

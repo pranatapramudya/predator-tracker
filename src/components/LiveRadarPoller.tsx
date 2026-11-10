@@ -94,7 +94,7 @@ export default function LiveRadarPoller({
 
   return (
     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold tracking-wider select-none">
-      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+      <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
       <span className="flex items-center gap-1.5">
         <Radio className="w-3 h-3 text-emerald-400" />
         <span className="text-white font-bold font-mono">

@@ -202,7 +202,7 @@ export default function PnLChart({
   if (!isMounted) {
     return (
       <div className="h-28 w-full mt-2 border border-white/5 bg-white/[0.02] rounded-xl flex items-center justify-center">
-        <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping opacity-40" />
+        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 opacity-60" />
       </div>
     );
   }
@@ -233,7 +233,7 @@ export default function PnLChart({
           </span>
         </div>
         <div className="flex items-center gap-1 text-[#a3f784] font-semibold shrink-0">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#a3f784] animate-pulse shadow-[0_0_8px_rgba(163,247,132,0.8)]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#a3f784] shadow-[0_0_8px_rgba(163,247,132,0.8)]" />
           <span className="tracking-wider">LIVE RADAR</span>
         </div>
       </div>
@@ -342,7 +342,7 @@ export default function PnLChart({
           ▶ Entry: {startTimeStr}
         </span>
         <span className="flex items-center gap-1 text-[#a3f784] font-semibold">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#a3f784] animate-ping" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#a3f784]" />
           <span>ON-CHAIN LIVE</span>
         </span>
         <span className="truncate max-w-[140px] text-zinc-100">

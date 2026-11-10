@@ -130,7 +130,7 @@ export default function LoginPage() {
         {/* Floq-Style Header */}
         <div className="text-center space-y-2.5">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#a3f784]/15 border border-[#a3f784]/30 text-[#a3f784] text-xs font-bold tracking-wider uppercase shadow-[0_0_20px_rgba(163,247,132,0.15)]">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#a3f784] animate-pulse" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#a3f784]" />
             SECURE TERMINAL // MULTI-TENANT CLEARANCE
           </div>
 
