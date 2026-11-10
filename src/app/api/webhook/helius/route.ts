@@ -87,6 +87,31 @@ async function sendTelegramMessage(
   }
 }
 
+const FALLBACK_SOLANA_WHALES = [
+  {
+    id: "smart-money-alpha-1",
+    name: "Smart Money Alpha #1",
+    address: "HjxaEDvdje644vhUmE3VpjpteWLBmWgSsgvYhf6LVw2L",
+    network: "SOLANA",
+    minAlertUsd: 100,
+    chatId: "2079693450",
+    alphaChannelId: "-1003737826938",
+    winRate: 33.3,
+    totalTrades: 3,
+  },
+  {
+    id: "smart-money-alpha-2",
+    name: "Smart Money Alpha #2",
+    address: "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    network: "SOLANA",
+    minAlertUsd: 100,
+    chatId: "2079693450",
+    alphaChannelId: "-1003737826938",
+    winRate: 40.0,
+    totalTrades: 5,
+  },
+];
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -95,31 +120,52 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, message: "Ping received" });
     }
 
-    const globalAlphaChatId = process.env.TELEGRAM_ALPHA_CHAT_ID;
+    const globalAlphaChatId =
+      process.env.TELEGRAM_ALPHA_CHANNEL_ID || process.env.TELEGRAM_ALPHA_CHAT_ID;
+    const defaultChatId = process.env.TELEGRAM_CHAT_ID || "2079693450";
+    const asistenMinDefault = Number(process.env.ASISTEN_MIN_USD || 100);
+    const alphaMinDefault = Number(process.env.ALPHA_FEED_MIN_USD || 1000);
 
     for (const tx of body) {
       const signature = tx.signature;
       if (!signature) continue;
 
       const accountData = tx.accountData || [];
-      const involvedAccounts = accountData.map((a: any) => a.account);
+      const involvedAccounts: string[] = accountData.map((a: any) => a.account);
 
-      const whales = await prisma.wallet.findMany({
-        where: {
-          isActive: true,
-          network: "SOLANA",
-          address: { in: involvedAccounts },
-        },
-      });
+      let whales: any[] = [];
+      try {
+        whales = await prisma.wallet.findMany({
+          where: {
+            isActive: true,
+            network: "SOLANA",
+            address: { in: involvedAccounts },
+          },
+        });
+      } catch {
+        console.warn("[HELIUS WEBHOOK] DB unreachable, falling back to watchlist config");
+      }
+
+      if (!whales || whales.length === 0) {
+        whales = FALLBACK_SOLANA_WHALES.filter((w) =>
+          involvedAccounts.some(
+            (acc: string) => acc?.toLowerCase() === w.address?.toLowerCase(),
+          ),
+        );
+      }
 
       if (whales.length === 0) continue;
 
       const tokenTransfers = tx.tokenTransfers || [];
 
       for (const whale of whales) {
-        const isExists = await prisma.transaction.findFirst({
-          where: { signature },
-        });
+        let isExists = false;
+        try {
+          const found = await prisma.transaction.findFirst({
+            where: { signature },
+          });
+          if (found) isExists = true;
+        } catch {}
         if (isExists) continue;
 
         let isBuy = false;
@@ -154,7 +200,7 @@ export async function POST(req: Request) {
         const currentPrice = marketInfo?.priceUsd || 0;
         const usdValue = tokenAmount * currentPrice;
 
-        const minThreshold = (whale as any).minAlertUsd ?? 20;
+        const minThreshold = whale.minAlertUsd ?? asistenMinDefault;
         if (usdValue < minThreshold) {
           console.log(
             `[KILL SWITCH] Tx Solana ${whale.name} diabaikan: $${usdValue.toFixed(2)} (< $${minThreshold})`,
@@ -162,37 +208,45 @@ export async function POST(req: Request) {
           continue;
         }
 
-        await processWhaleTrade(
-          whale.id,
-          targetToken,
-          tokenSymbol,
-          isBuy ? "BUY" : "SELL",
-          tokenAmount,
-          usdValue,
-        );
+        try {
+          await processWhaleTrade(
+            whale.id,
+            targetToken,
+            tokenSymbol,
+            isBuy ? "BUY" : "SELL",
+            tokenAmount,
+            usdValue,
+          );
+        } catch {}
 
         const explorerUrl = `https://solscan.io/tx/${signature}`;
 
-        await prisma.transaction.create({
-          data: {
-            walletId: whale.id,
-            dedupeKey: `${whale.id}-${signature}`,
-            signature,
-            type: isBuy ? "BUY" : "SELL",
-            amount: tokenAmount,
-            tokenSymbol,
-            tokenAddress: targetToken,
-            usdValue,
-            explorerUrl,
-            priceAtTx: currentPrice || null,
-          },
-        });
+        try {
+          await prisma.transaction.create({
+            data: {
+              walletId: whale.id,
+              dedupeKey: `${whale.id}-${signature}`,
+              signature,
+              type: isBuy ? "BUY" : "SELL",
+              amount: tokenAmount,
+              tokenSymbol,
+              tokenAddress: targetToken,
+              usdValue,
+              explorerUrl,
+              priceAtTx: currentPrice || null,
+            },
+          });
+        } catch {}
 
-        const pnlAggregate = await prisma.tokenPosition.aggregate({
-          where: { walletId: whale.id },
-          _sum: { realizedPnlUsd: true },
-        });
-        const totalRealizedPnl = Number(pnlAggregate._sum.realizedPnlUsd ?? 0);
+        let totalRealizedPnl = 0;
+        try {
+          const pnlAggregate = await prisma.tokenPosition.aggregate({
+            where: { walletId: whale.id },
+            _sum: { realizedPnlUsd: true },
+          });
+          totalRealizedPnl = Number(pnlAggregate._sum.realizedPnlUsd ?? 0);
+        } catch {}
+
         const winRateText =
           whale.totalTrades > 0
             ? `${Number(whale.winRate).toFixed(1)}%`
@@ -252,7 +306,7 @@ export async function POST(req: Request) {
           : "";
 
         const message =
-          `👑 *ALPHA PREDATOR (HELIUS WEBHOOK)*\n\n` +
+          `👑 *ALPHA PREDATOR (HELIUS 24/7 CLOUD)*\n\n` +
           `👤 *Whale:* ${whale.name ?? "Target"}\n` +
           `📍 *Address:* \`${whale.address}\`\n` +
           `📈 *Action:* ${actionText}\n` +
@@ -264,17 +318,25 @@ export async function POST(req: Request) {
           confluenceBlock +
           securityBlock +
           microSizingBlock +
-          `\n\n⚠️ *DYOR! Auto-generated from Helius.*`;
+          `\n\n⚠️ *DYOR! Cloud Webhook Realtime.*`;
 
         const keyboard = buildKeyboard(targetToken, explorerUrl);
-        const targetChatId =
-          (whale as any).alphaChannelId ||
-          whale.chatId ||
-          globalAlphaChatId ||
-          process.env.TELEGRAM_CHAT_ID;
 
-        if (targetChatId) {
-          await sendTelegramMessage(targetChatId, message, keyboard);
+        // Dual Telegram Routing:
+        // 1. Send to personal Asisten Crypto (DM)
+        const asistenChatId = whale.chatId || defaultChatId;
+        if (asistenChatId && usdValue >= minThreshold) {
+          await sendTelegramMessage(asistenChatId, message, keyboard);
+        }
+
+        // 2. Send to Predator Alpha Feed Channel if value > alphaMinDefault ($1,000)
+        const alphaTargetChatId = whale.alphaChannelId || globalAlphaChatId;
+        if (
+          alphaTargetChatId &&
+          alphaTargetChatId !== asistenChatId &&
+          usdValue >= alphaMinDefault
+        ) {
+          await sendTelegramMessage(alphaTargetChatId, message, keyboard);
         }
       }
     }
