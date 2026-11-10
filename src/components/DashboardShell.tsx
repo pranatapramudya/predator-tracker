@@ -313,7 +313,7 @@ export default function DashboardShell({
   return (
     <main className="min-h-screen bg-[#061a1d] text-[#f4fbf8] selection:bg-[#a3f784] selection:text-[#061a1d] pb-28 md:pb-12">
       {/* 🚀 TOP CYBER HEADER BAR - CATEGORIZED INTO 3 CLEAN ZONES */}
-      <header className="sticky top-0 z-40 bg-[#061a1d]/90 backdrop-blur-xl border-b border-[#a3f784]/15 px-4 sm:px-6 lg:px-8 py-3 transition-all">
+      <header className="sticky top-0 z-40 bg-[#061a1d] md:bg-[#061a1d]/90 md:backdrop-blur-xl border-b border-[#a3f784]/15 px-4 sm:px-6 lg:px-8 py-3 transition-colors">
         <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-3 sm:gap-4">
           {/* ZONE 1: BRAND IDENTITY (LEFT) */}
           <div className="flex items-center gap-3 shrink-0">
@@ -619,7 +619,7 @@ export default function DashboardShell({
                     return (
                       <div
                         key={w.id || idx}
-                        className="group bg-white border border-slate-200/90 hover:border-emerald-500/50 p-5 rounded-3xl transition-all shadow-sm hover:shadow-xl relative overflow-hidden flex flex-col justify-between"
+                        className="group bg-white border border-slate-200/90 hover:border-emerald-500/50 p-4 sm:p-5 rounded-3xl transition-colors shadow-sm relative overflow-hidden flex flex-col justify-between"
                       >
                         {/* Card Header */}
                         <div>
@@ -1779,7 +1779,7 @@ export default function DashboardShell({
       )}
 
       {/* 📱 MODERN FLOATING BOTTOM NAVIGATION BAR (FOR MOBILE & TABLET) */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-xl border-t border-slate-200/90 px-3 py-2 flex items-center justify-around shadow-[0_-10px_30px_rgba(0,0,0,0.06)] pb-safe">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-slate-200 px-3 py-2 flex items-center justify-around shadow-[0_-4px_16px_rgba(0,0,0,0.04)] pb-safe transform-gpu">
         {/* Watchlist Tab */}
         <button
           onClick={() => handleTabChange("watchlist")}

@@ -46,15 +46,10 @@ export default function PnLChart({
   transactions = [],
 }: PnLChartProps) {
   const [isMounted, setIsMounted] = useState(false);
-  const [liveNow, setLiveNow] = useState<Date>(new Date());
+  const [liveNow] = useState<Date>(() => new Date());
 
   useEffect(() => {
     setIsMounted(true);
-    // Ticking live clock every 10s to keep UI perfectly realtime
-    const timer = setInterval(() => {
-      setLiveNow(new Date());
-    }, 10000);
-    return () => clearInterval(timer);
   }, []);
 
   const currentFullDateStr = useMemo(() => {
@@ -71,7 +66,6 @@ export default function PnLChart({
       liveNow.toLocaleTimeString("id-ID", {
         hour: "2-digit",
         minute: "2-digit",
-        second: "2-digit",
       }) + " WIB"
     );
   }, [liveNow]);
@@ -325,6 +319,7 @@ export default function PnLChart({
               strokeWidth={2}
               fill={`url(#${gradientId})`}
               dot={false}
+              isAnimationActive={false}
               activeDot={{
                 r: 3.5,
                 fill: strokeColor,
