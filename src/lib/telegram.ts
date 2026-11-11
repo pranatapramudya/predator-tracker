@@ -67,6 +67,149 @@ export function buildMegaAlertMessage(input: MegaAlertMessageInput): string {
 }
 
 /**
+ * Format sinyal khusus Asisten Crypto (Personal DM)
+ * Fokus: Panduan eksekusi pribadi, tactical sizing, direct execution, anti-rug audit ($100 - $999)
+ */
+export function buildAsistenAlertMessage(p: PredatorAlertPayload): string {
+  const actionEmoji = p.action === "BUY" ? "🟢 BUY" : "🔴 SELL";
+  const networkTag =
+    p.network === "SOLANA"
+      ? "⚡ SOLANA"
+      : p.network === "BASE"
+        ? "🔵 BASE"
+        : "🔷 ETH";
+
+  const lines: string[] = [
+    `🤖 *ASISTEN CRYPTO (TACTICAL RADAR)* | ${networkTag}`,
+    `──────────────────────────`,
+    `👤 *Target:* ${p.whaleName} (\`${formatAddress(p.walletAddress)}\`)`,
+    `📈 *Aksi:* ${actionEmoji}`,
+    `🪙 *Token:* $${p.tokenSymbol}`,
+    `💰 *Nilai:* $${p.usdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    `📦 *Jumlah:* ${formatAmount(p.amount)} ${p.tokenSymbol}`,
+    `📍 *Kontrak:* \`${p.tokenAddress}\``,
+  ];
+
+  if (p.action === "BUY") {
+    const confluence = p.confluenceCount || 1;
+    if (confluence >= 2) {
+      lines.push(`\n🔥 *CONFLUENCE: ${confluence} DOMPET PAUS MASUK!*`);
+    }
+
+    if (p.rugAudit) {
+      const audit = p.rugAudit;
+      const verdictEmoji =
+        audit.verdict === "SAFE"
+          ? "🟢 PASSED ANTI-RUG"
+          : audit.verdict === "CAUTION"
+            ? "🟡 CAUTION"
+            : "🔴 DANGER / RUG RISK";
+
+      lines.push(
+        `\n🛡️ *ANTI-RUG AUDIT:* *${verdictEmoji}* (Skor: ${audit.score >= 0 ? audit.score : "N/A"})`,
+        `• LP: ${audit.lpStatus} | Mint: ${audit.mintStatus} | Freeze: ${audit.freezeStatus}`,
+      );
+    }
+
+    lines.push(
+      `\n🎯 *PANDUAN EKSEKUSI PRIBADI (SOP):*`,
+      `💵 *Alokasi Modal:* $2 – $3 (Rp 30.000 – Rp 50.000)`,
+      `🎯 *Take Profit:* Tangga 20% – 50% (Tarik modal awal!)`,
+      `🛑 *Cut Loss Segera:* Jika dev atau paus mulai dump`,
+    );
+  }
+
+  lines.push(
+    `\n🔍 [Lihat di Explorer](${p.txUrl})`,
+    `⚠️ _Asisten Taktis Harian ($100 – $999). Bukan nasihat finansial._`,
+  );
+
+  return lines.join("\n");
+}
+
+/**
+ * Format sinyal khusus VIP Predator Alpha Feed (Channel)
+ * Fokus: Mega Whale conviction, akumulasi besar (>= $1,000), statistik paus, high probability
+ */
+export function buildAlphaFeedAlertMessage(
+  p: PredatorAlertPayload & {
+    winRate?: number;
+    totalTrades?: number;
+    totalPnl?: number;
+  },
+): string {
+  const actionEmoji = p.action === "BUY" ? "🟢 MEGA BUY" : "🔴 MEGA SELL";
+  const networkTag =
+    p.network === "SOLANA"
+      ? "⚡ SOLANA"
+      : p.network === "BASE"
+        ? "🔵 BASE"
+        : "🔷 ETH";
+
+  const approxIdr = (p.usdValue * 16200).toLocaleString("id-ID", {
+    maximumFractionDigits: 0,
+  });
+
+  const lines: string[] = [
+    `👑 *PREDATOR ALPHA FEED* | ${networkTag}`,
+    `🚨 *HIGH-CONVICTION MEGA WHALE (>= $1,000 USD)*`,
+    `──────────────────────────`,
+    `👤 *Paus Alpha:* ${p.whaleName} (\`${formatAddress(p.walletAddress)}\`)`,
+    `📈 *Aksi:* ${actionEmoji}`,
+    `🪙 *Token:* $${p.tokenSymbol}`,
+    `💰 *Nilai Serok:* $${p.usdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (~Rp ${approxIdr})`,
+    `📦 *Jumlah:* ${formatAmount(p.amount)} ${p.tokenSymbol}`,
+    `📍 *Kontrak:* \`${p.tokenAddress}\``,
+  ];
+
+  if (p.totalTrades && p.totalTrades > 0) {
+    const wr = p.winRate ? `${p.winRate.toFixed(1)}%` : "N/A";
+    const pnl =
+      p.totalPnl !== undefined
+        ? p.totalPnl >= 0
+          ? `+$${p.totalPnl.toFixed(2)}`
+          : `-$${Math.abs(p.totalPnl).toFixed(2)}`
+        : "N/A";
+    lines.push(
+      `\n🏆 *PERFORMA PAUS:*`,
+      `🎯 Winrate: *${wr}* (${p.totalTrades} Trades) | Total PnL: *${pnl}*`,
+    );
+  }
+
+  const confluence = p.confluenceCount || 1;
+  if (confluence >= 2) {
+    lines.push(
+      `\n🔥 *MULTI-WALLET CONFLUENCE: ${confluence} PAUS AKUMULASI BERSAMAAN!*`,
+      `👥 Setup probabilitas tinggi — dana pintar bergerak serentak.`,
+    );
+  }
+
+  if (p.rugAudit) {
+    const audit = p.rugAudit;
+    const verdictEmoji =
+      audit.verdict === "SAFE"
+        ? "🟢 PASSED ANTI-RUG"
+        : audit.verdict === "CAUTION"
+          ? "🟡 CAUTION"
+          : "🔴 DANGER";
+
+    lines.push(
+      `\n🛡️ *SECURITY AUDIT:* *${verdictEmoji}* (Skor: ${audit.score})`,
+      `• *Liquidity:* ${audit.lpStatus}`,
+      `• *Mint / Freeze:* ${audit.mintStatus} / ${audit.freezeStatus}`,
+      `• *Top 10 Holders:* ${audit.top10Status}`,
+    );
+  }
+
+  lines.push(
+    `\n🔍 [View on Explorer](${p.txUrl})`,
+    `⚠️ _Eksklusif VIP Predator Alpha Feed (>= $1,000). DYOR!_`,
+  );
+
+  return lines.join("\n");
+}
+
+/**
  * Format sinyal Alpha Predator lengkap dengan Anti-Rugpull Guard & Confluence Tracker
  */
 export function buildPredatorAlertMessage(p: PredatorAlertPayload): string {
