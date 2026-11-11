@@ -14,6 +14,8 @@ import path from "path";
 import { ENV } from "../src/config/env";
 import {
   buildPredatorAlertMessage,
+  buildAsistenAlertMessage,
+  buildAlphaFeedAlertMessage,
   buildInlineKeyboard,
   sendTelegramNotification,
 } from "../src/lib/telegram";
@@ -310,69 +312,81 @@ async function checkSolanaWallet(
       const txUrl = `https://solscan.io/tx/${signature}`;
 
       // Build & Send Telegram Alert
-      const alertText = buildPredatorAlertMessage({
-        network: "SOLANA",
-        whaleName: wallet.name,
-        walletAddress: wallet.address,
-        action: isBuy ? "BUY" : "SELL",
-        tokenSymbol,
-        tokenAddress: targetToken,
-        amount: tokenAmount,
-        usdValue,
-        txUrl,
-        rugAudit,
-        confluenceCount,
-      });
-
       const keyboard = buildInlineKeyboard("SOLANA", targetToken, txUrl);
 
-      // Multi-tenant alert routing: send to tenant's chatId (Asisten Crypto DM) if > asistenMin
+      // Multi-tenant alert routing: strict separation between Alpha Feed (>= $1000) and Asisten Crypto ($100 - $999)
       const targetChatId = wallet.chatId || process.env.TELEGRAM_CHAT_ID;
-      let alertDispatched = false;
-
-      if (usdValue > asistenMin && targetChatId) {
-        await sendTelegramNotification({
-          chatId: targetChatId,
-          text: alertText,
-          replyMarkup: { inline_keyboard: keyboard },
-        });
-        console.log(
-          `✅ [ASISTEN CRYPTO SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)} > $${asistenMin})`,
-        );
-        alertDispatched = true;
-      }
-
-      // Forward to Predator Alpha Feed Channel ONLY if > alphaMin ($1,000)
       const alphaChannel =
         wallet.alphaChannelId ||
         process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
         "-1003737826938";
 
-      const isAlphaFeedEligible = usdValue > alphaMin;
+      const hasSeparateAlpha =
+        Boolean(alphaChannel) && alphaChannel !== targetChatId;
+      const isAlphaFeedEligible = usdValue >= alphaMin;
+      let alertDispatched = false;
 
-      if (
-        isAlphaFeedEligible &&
-        alphaChannel &&
-        alphaChannel !== targetChatId
-      ) {
+      if (isAlphaFeedEligible && hasSeparateAlpha) {
+        // ==========================================
+        // RUTE 1: MURNI PREDATOR ALPHA FEED CHANNEL (>= $1,000)
+        // Tidak dikirim ke Asisten Crypto agar tidak redundant!
+        // ==========================================
+        const alphaAlertText = buildAlphaFeedAlertMessage({
+          network: "SOLANA",
+          whaleName: wallet.name,
+          walletAddress: wallet.address,
+          action: isBuy ? "BUY" : "SELL",
+          tokenSymbol,
+          tokenAddress: targetToken,
+          amount: tokenAmount,
+          usdValue,
+          txUrl,
+          rugAudit,
+          confluenceCount,
+        });
+
         await sendTelegramNotification({
           chatId: alphaChannel,
-          text: alertText,
+          text: alphaAlertText,
           replyMarkup: { inline_keyboard: keyboard },
         })
           .then(() => {
             console.log(
-              `👑 [PREDATOR ALPHA FEED SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)} > $${alphaMin})`,
+              `👑 [PREDATOR ALPHA FEED SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)} >= $${alphaMin}) - Exclusive Alpha Routing`,
             );
           })
           .catch((err) =>
             console.error("Failed to forward to Alpha Channel:", err),
           );
         alertDispatched = true;
-      } else if (!isAlphaFeedEligible) {
+      } else if (usdValue > asistenMin && targetChatId) {
+        // ==========================================
+        // RUTE 2: MURNI ASISTEN CRYPTO PERSONAL DM ($100 - $999)
+        // Format taktis harian dengan SOP micro-sizing
+        // ==========================================
+        const asistenAlertText = buildAsistenAlertMessage({
+          network: "SOLANA",
+          whaleName: wallet.name,
+          walletAddress: wallet.address,
+          action: isBuy ? "BUY" : "SELL",
+          tokenSymbol,
+          tokenAddress: targetToken,
+          amount: tokenAmount,
+          usdValue,
+          txUrl,
+          rugAudit,
+          confluenceCount,
+        });
+
+        await sendTelegramNotification({
+          chatId: targetChatId,
+          text: asistenAlertText,
+          replyMarkup: { inline_keyboard: keyboard },
+        });
         console.log(
-          `ℹ️ [SKIP ALPHA FEED] $${usdValue.toFixed(2)} is not > $${alphaMin} threshold for Predator Alpha Feed.`,
+          `🤖 [ASISTEN CRYPTO SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)}) - Exclusive Tactical Routing`,
         );
+        alertDispatched = true;
       }
 
       console.log(`✅ [TELEGRAM ALERT SENT] ${wallet.name} $${tokenSymbol}`);
@@ -461,69 +475,79 @@ async function checkBaseWallet(
 
       const txUrl = `https://basescan.org/tx/${hash}`;
 
-      const alertText = buildPredatorAlertMessage({
-        network: "BASE",
-        whaleName: wallet.name,
-        walletAddress: wallet.address,
-        action: isReceive ? "BUY" : "SELL",
-        tokenSymbol,
-        tokenAddress,
-        amount,
-        usdValue,
-        txUrl,
-        rugAudit: null,
-        confluenceCount: 1,
-      });
-
       const keyboard = buildInlineKeyboard("BASE", tokenAddress, txUrl);
 
-      // Multi-tenant alert routing: send to tenant's chatId (Asisten Crypto DM) if > asistenMin
+      // Multi-tenant alert routing: strict separation between Alpha Feed (>= $1000) and Asisten Crypto ($100 - $999)
       const targetChatId = wallet.chatId || process.env.TELEGRAM_CHAT_ID;
-      let alertDispatched = false;
-
-      if (usdValue > asistenMin && targetChatId) {
-        await sendTelegramNotification({
-          chatId: targetChatId,
-          text: alertText,
-          replyMarkup: { inline_keyboard: keyboard },
-        });
-        console.log(
-          `✅ [ASISTEN CRYPTO SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)} > $${asistenMin})`,
-        );
-        alertDispatched = true;
-      }
-
-      // Forward to Predator Alpha Feed Channel ONLY if > alphaMin ($1,000)
       const alphaChannel =
         wallet.alphaChannelId ||
         process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
         "-1003737826938";
 
-      const isAlphaFeedEligible = usdValue > alphaMin;
+      const hasSeparateAlpha =
+        Boolean(alphaChannel) && alphaChannel !== targetChatId;
+      const isAlphaFeedEligible = usdValue >= alphaMin;
+      let alertDispatched = false;
 
-      if (
-        isAlphaFeedEligible &&
-        alphaChannel &&
-        alphaChannel !== targetChatId
-      ) {
+      if (isAlphaFeedEligible && hasSeparateAlpha) {
+        // ==========================================
+        // RUTE 1: MURNI PREDATOR ALPHA FEED CHANNEL (>= $1,000)
+        // ==========================================
+        const alphaAlertText = buildAlphaFeedAlertMessage({
+          network: "BASE",
+          whaleName: wallet.name,
+          walletAddress: wallet.address,
+          action: isReceive ? "BUY" : "SELL",
+          tokenSymbol,
+          tokenAddress,
+          amount,
+          usdValue,
+          txUrl,
+          rugAudit: null,
+          confluenceCount: 1,
+        });
+
         await sendTelegramNotification({
           chatId: alphaChannel,
-          text: alertText,
+          text: alphaAlertText,
           replyMarkup: { inline_keyboard: keyboard },
         })
           .then(() => {
             console.log(
-              `👑 [PREDATOR ALPHA FEED SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)} > $${alphaMin})`,
+              `👑 [PREDATOR ALPHA FEED SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)} >= $${alphaMin}) - Exclusive Alpha Routing`,
             );
           })
           .catch((err) =>
             console.error("Failed to forward to Alpha Channel:", err),
           );
         alertDispatched = true;
-      } else if (!isAlphaFeedEligible) {
+      } else if (usdValue > asistenMin && targetChatId) {
+        // ==========================================
+        // RUTE 2: MURNI ASISTEN CRYPTO PERSONAL DM ($100 - $999)
+        // ==========================================
+        const asistenAlertText = buildAsistenAlertMessage({
+          network: "BASE",
+          whaleName: wallet.name,
+          walletAddress: wallet.address,
+          action: isReceive ? "BUY" : "SELL",
+          tokenSymbol,
+          tokenAddress,
+          amount,
+          usdValue,
+          txUrl,
+          rugAudit: null,
+          confluenceCount: 1,
+        });
+
+        await sendTelegramNotification({
+          chatId: targetChatId,
+          text: asistenAlertText,
+          replyMarkup: { inline_keyboard: keyboard },
+        });
         console.log(
-          `ℹ️ [SKIP ALPHA FEED] $${usdValue.toFixed(2)} is not > $${alphaMin} threshold for Predator Alpha Feed.`,
+          `🤖 [ASISTEN CRYPTO SENT] ${wallet.name} $${tokenSymbol} ($${usdValue.toFixed(2)}) - Exclusive Tactical Routing`,
         );
+        alertDispatched = true;
       }
 
       console.log(`✅ [TELEGRAM ALERT SENT] ${wallet.name} $${tokenSymbol}`);

@@ -121,7 +121,8 @@ export async function POST(req: Request) {
     }
 
     const globalAlphaChatId =
-      process.env.TELEGRAM_ALPHA_CHANNEL_ID || process.env.TELEGRAM_ALPHA_CHAT_ID;
+      process.env.TELEGRAM_ALPHA_CHANNEL_ID ||
+      process.env.TELEGRAM_ALPHA_CHAT_ID;
     const defaultChatId = process.env.TELEGRAM_CHAT_ID || "2079693450";
     const asistenMinDefault = Number(process.env.ASISTEN_MIN_USD || 100);
     const alphaMinDefault = Number(process.env.ALPHA_FEED_MIN_USD || 1000);
@@ -143,7 +144,9 @@ export async function POST(req: Request) {
           },
         });
       } catch {
-        console.warn("[HELIUS WEBHOOK] DB unreachable, falling back to watchlist config");
+        console.warn(
+          "[HELIUS WEBHOOK] DB unreachable, falling back to watchlist config",
+        );
       }
 
       if (!whales || whales.length === 0) {
@@ -302,41 +305,66 @@ export async function POST(req: Request) {
 
         const actionText = isBuy ? "🟢 BUY" : "🔴 SELL";
         const microSizingBlock = isBuy
-          ? `\n\n🎯 *TACTICAL SIZING (SOP):*\n💵 *Modal:* $2 – $3 (Rp 30k – Rp 50k)\n🎯 *Take Profit:* Tangga 20% – 50%`
+          ? `\n\n🎯 *PANDUAN EKSEKUSI PRIBADI (SOP):*\n💵 *Alokasi Modal:* $2 – $3 (Rp 30.000 – Rp 50.000)\n🎯 *Take Profit:* Tangga 20% – 50% (Tarik modal awal!)\n🛑 *Cut Loss Segera:* Jika dev atau paus mulai dump`
           : "";
-
-        const message =
-          `👑 *ALPHA PREDATOR (HELIUS 24/7 CLOUD)*\n\n` +
-          `👤 *Whale:* ${whale.name ?? "Target"}\n` +
-          `📍 *Address:* \`${whale.address}\`\n` +
-          `📈 *Action:* ${actionText}\n` +
-          `🪙 *Token:* $${tokenSymbol}\n` +
-          `💰 *Value:* $${usdValue.toFixed(2)}\n\n` +
-          `🏆 *WHALE STATS*\n` +
-          `🎯 *Winrate:* ${winRateText} (${whale.totalTrades || 0} Trades)\n` +
-          `💰 *Total PnL:* ${pnlText}` +
-          confluenceBlock +
-          securityBlock +
-          microSizingBlock +
-          `\n\n⚠️ *DYOR! Cloud Webhook Realtime.*`;
 
         const keyboard = buildKeyboard(targetToken, explorerUrl);
 
-        // Dual Telegram Routing:
-        // 1. Send to personal Asisten Crypto (DM)
+        // ========================================================
+        // ⚡ STRICT DUAL ROUTING (PEMILAHAN INFORMASI TANPA REDUNDANSI)
+        // 1. Alpha Feed Channel: KHUSUS Transaksi Mega-Whale >= $1,000 USD
+        // 2. Asisten Crypto DM: KHUSUS Transaksi Taktis Harian $100 - $999 USD
+        // ========================================================
         const asistenChatId = whale.chatId || defaultChatId;
-        if (asistenChatId && usdValue >= minThreshold) {
-          await sendTelegramMessage(asistenChatId, message, keyboard);
-        }
-
-        // 2. Send to Predator Alpha Feed Channel if value > alphaMinDefault ($1,000)
         const alphaTargetChatId = whale.alphaChannelId || globalAlphaChatId;
-        if (
-          alphaTargetChatId &&
-          alphaTargetChatId !== asistenChatId &&
-          usdValue >= alphaMinDefault
-        ) {
-          await sendTelegramMessage(alphaTargetChatId, message, keyboard);
+        const hasSeparateAlpha =
+          Boolean(alphaTargetChatId) && alphaTargetChatId !== asistenChatId;
+
+        const isAlphaTrade = usdValue >= alphaMinDefault;
+
+        if (isAlphaTrade && hasSeparateAlpha) {
+          // RUTE 1: MURNI VIP PREDATOR ALPHA FEED (>= $1,000)
+          const approxIdr = (usdValue * 16200).toLocaleString("id-ID", {
+            maximumFractionDigits: 0,
+          });
+
+          const alphaMessage =
+            `👑 *PREDATOR ALPHA FEED (MEGA WHALE)*\n` +
+            `🚨 *HIGH-CONVICTION ACCUMULATION (>= $1,000 USD)*\n` +
+            `──────────────────────────\n` +
+            `👤 *Paus Alpha:* ${whale.name ?? "Target"}\n` +
+            `📍 *Address:* \`${whale.address}\`\n` +
+            `📈 *Action:* ${isBuy ? "🟢 MEGA BUY" : "🔴 MEGA SELL"}\n` +
+            `🪙 *Token:* $${tokenSymbol}\n` +
+            `💰 *Value:* $${usdValue.toFixed(2)} (~Rp ${approxIdr})\n` +
+            `📍 *Contract:* \`${targetToken}\`\n\n` +
+            `🏆 *WHALE STATS*\n` +
+            `🎯 *Winrate:* ${winRateText} (${whale.totalTrades || 0} Trades)\n` +
+            `💰 *Total PnL:* ${pnlText}` +
+            confluenceBlock +
+            securityBlock +
+            `\n\n🔍 [View on Solscan](${explorerUrl})\n` +
+            `⚠️ *Eksklusif VIP Predator Alpha Feed (>= $1,000). DYOR.*`;
+
+          await sendTelegramMessage(alphaTargetChatId!, alphaMessage, keyboard);
+        } else if (asistenChatId && usdValue >= minThreshold) {
+          // RUTE 2: MURNI ASISTEN CRYPTO PERSONAL DM ($100 - $999)
+          const asistenMessage =
+            `🤖 *ASISTEN CRYPTO (TACTICAL RADAR)*\n` +
+            `🎯 *Sinyal Taktis Harian ($100 – $999 USD)*\n` +
+            `──────────────────────────\n` +
+            `👤 *Target:* ${whale.name ?? "Target"}\n` +
+            `📈 *Action:* ${actionText}\n` +
+            `🪙 *Token:* $${tokenSymbol}\n` +
+            `💰 *Value:* $${usdValue.toFixed(2)}\n` +
+            `📍 *Contract:* \`${targetToken}\`` +
+            confluenceBlock +
+            securityBlock +
+            microSizingBlock +
+            `\n\n🔍 [View on Solscan](${explorerUrl})\n` +
+            `⚠️ *Asisten Taktis Harian. Bukan nasihat finansial.*`;
+
+          await sendTelegramMessage(asistenChatId, asistenMessage, keyboard);
         }
       }
     }

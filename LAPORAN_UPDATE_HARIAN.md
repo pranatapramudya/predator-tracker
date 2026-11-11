@@ -20,7 +20,11 @@ Hari ini telah dilakukan pembaruan arsitektur besar-besaran pada **Predator Trac
    - Delay 300ms browser mobile dihilangkan dengan `touch-manipulation` dan `touch-action: manipulation`.
    - Scroll gesture interception Recharts diperbaiki dengan `touch-pan-y` dan `debounce={100}`.
 4. **Verifikasi Alert Nyata:**
-   - Transaksi `Smart Money Alpha #2` (SELL $ORBIT senilai $107.06 USD) sukses tertangkap radar dan terkirim ke Telegram Asisten Crypto.
+   - Transaksi `Smart Money Alpha #2` (SELL $ORBIT senilai $107.06 USD dan BUY $NIHAO senilai $3,775.88 USD) sukses tertangkap radar dan terkirim ke Telegram.
+5. **Pemilahan Ketat Dual Routing Telegram (Zero Redundansi):**
+   - Transaksi Mega-Whale Alpha ($\ge \$1,000$ USD) **HANYA** masuk ke VIP Predator Alpha Feed Channel dengan format profil conviction paus dan performa PnL.
+   - Transaksi Taktis Harian ($100 – $999 USD) **HANYA** masuk ke Asisten Crypto DM dengan format panduan eksekusi pribadi (SOP Micro-Sizing Rp 30k – Rp 50k).
+   - Menghilangkan duplikasi/redundansi pesan antara channel Alpha dan DM asisten.
 
 ---
 
