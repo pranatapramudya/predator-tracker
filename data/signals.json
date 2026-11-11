@@ -1,5 +1,19 @@
 [
   {
+    "timestamp": "2026-11-11T02:44:12.331Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "BUY",
+    "tokenSymbol": "NIHAO",
+    "tokenAddress": "8yLBuP74RnFmjSRS8BGFebvyoTo8uiEjPB71h3Zgpump",
+    "usdValue": 3953.0407147322853,
+    "priceUsd": 0.005065,
+    "txUrl": "https://solscan.io/tx/1cvCYqELHEg1kRRsSqZAnSCrAbh3SStGWEdxXrRmNwthuRzi8L8J67kwYw45VNBHysgsSQnr49Gz8t3L5WzeZt2",
+    "rugVerdict": "SAFE",
+    "confluenceCount": 1
+  },
+  {
     "timestamp": "2026-11-10T18:00:01.999Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #2",
