@@ -1,5 +1,19 @@
 [
   {
+    "timestamp": "2026-11-13T22:12:42.390Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "BUY",
+    "tokenSymbol": "SPEED",
+    "tokenAddress": "7csfMgiRcBy9Y4GbGVMz8qJWFUk718KG58xfCKpXpump",
+    "usdValue": 114.34532991959608,
+    "priceUsd": 0.0003519,
+    "txUrl": "https://solscan.io/tx/4cf2ha3JKpePXL8P4U83zYD8U7qJqQC9PbNU1cX26Cu1zxRLJpbEq6PDLtAJ4Tz2UZSvNu2WDvJmcQHuzUSc7aiP",
+    "rugVerdict": "CAUTION",
+    "confluenceCount": 1
+  },
+  {
     "timestamp": "2026-11-13T16:41:25.714Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #2",
