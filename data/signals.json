@@ -1,5 +1,19 @@
 [
   {
+    "timestamp": "2026-11-13T16:41:25.714Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "BUY",
+    "tokenSymbol": "JENSEN",
+    "tokenAddress": "F37BKMyLrJxpHAmLcsQxza4f1uwPyCAmMmaeA2C7pump",
+    "usdValue": 162.5762201700355,
+    "priceUsd": 0.0004793,
+    "txUrl": "https://solscan.io/tx/vBmMHeeckEQmJnaANF4Ad76ZuamGUtiBDjuAJwmJ62qax9bwTxvG9gKeH5rBSwe3o1uY5G7LHvR6hj6RraubEDL",
+    "rugVerdict": "SAFE",
+    "confluenceCount": 1
+  },
+  {
     "timestamp": "2026-11-12T20:30:29.289Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #2",
