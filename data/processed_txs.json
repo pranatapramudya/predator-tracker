@@ -1,15 +1,5 @@
 {
   "seenSignatures": [
-    "4bw4NZzdQgJVZbnpWmGRt5XRgxpKRuzEf3RRHPQ2VjhzzwrGmHEQXnyLjgK78PpbpBhkBfRoX1SRSqwyntTSg8ka",
-    "43LYTG926qaWhir93ADfg6jaBpzhgqvNt5QLefPQgyfSe34ojkKwL1RcFxSNr1C89BEwrk5ogEMAMW74KosuQEoj",
-    "2nXB6f7uwfuzuKjYRbTYkL2E8N1gSMtMaC5iudrgUCsQ64v5yRBAb4yYrxZbKJETyLas7tpSRpLKYT7krBZnnK3o",
-    "PTSu1nR5tVkTJahe6GVrWYnR1jPM8xc1cs1VWHF2ZiWkWnokbtbdD2qfvt8jvcfUd5FViRprH9zouUoPgNq7Fhr",
-    "2RRq7UyRwip3PVbeQtpjwTioNHQEqqKsyXAQXukBAJdxWBiUzuN3wnBSEZZcoyDZLbLNe9YWFeUKZjnstrsA8YqX",
-    "4DgU8RdoegJYKKcsNHD2oP5uYqhxGLuNB6fnXg4dTfUj6kPqYRoc1t4hxnBGJ8crWe6Cc6k3dyBncs8nkcEZ1jk7",
-    "2LxFUpQKMWLhLhh7d9hw4UfY4RsGKKGxa9Zu26UWhFY2jrVtmA3Th7rvGrEm3Si7bJkVhswZEqvRYhKEHYXfiLEf",
-    "B3BB142FK5gRbYwvotTGaYMhtMnRXGFoUD8hvPLSHnhSgGkdG1QUt99YDHjvo9pf2KxyPafGkssELzPAMSWkDje",
-    "3LtmDtrkQ6hUG2FMfX5mKZ2paxqzJrqEeu3TjRocCWyeLNDDbBUbkzPHfB77CicDHKYewAZ8c4n6DGRvBo14H42o",
-    "4rG5y65K9riYn5rzrXZb7Mn8ojAmfLR8UWpGCWtBWHh6iucuGo3E8cux1SHpApnjKmmJCByrsr6xjDZ79fq71aj5",
     "5g92DHj5eiwzo6FEuFNzdSqr9hR8q2KWp92JppmhAS6utRHZWj6s3YQXqVy8FPR2qcW6gDDgKFxp1HvpHL22DybY",
     "3A7rFvHpiuFBwWUaMYQ1Gct4dArrzbjDLf82oDf1FQVytfpwEBenh7neakNdvV88n64s7GT3tGZNeYeb3dQxyAd7",
     "43noykMd8duwfBJEsprS6V8Fx6eZ6sCizBS8rqwYxfLdVJJhTbvHsgzYaZJMeaCuTaxAC8hCau1u87Jj4oPPE5iD",
@@ -4999,7 +4989,17 @@
     "3p3sJhCz9hyehLkq3wSXQabHSNQq7HYAKiHUddeVoxnrfGZ1NndEftUzCDvxsU76E3eSEv1k63BmieYwonZthw4D",
     "5auAyzbCLYwCjyJ77Zaqru1svuKdsq8GKJjsxKWm21iWPt1594tvoGFcnaTzoceohoRc6GWdvBE7JQAb2B3tHtE2",
     "49gWnL5VYxvaPCdsHFgwLbbdoTb6VZZLNVBUvggsY5kiGzPHGjuKBN6ttreV1unR3YSp2GUAcDmBGrdCfarfBopQ",
-    "2bxLvfzwbWsdYXdoK3cR1p1L6TW7SFPPehapY6swgwguBY4ZbdcX2yRuwmdsoBiWYTN8wJrWMwEUYwBxERxuDSLu"
+    "2bxLvfzwbWsdYXdoK3cR1p1L6TW7SFPPehapY6swgwguBY4ZbdcX2yRuwmdsoBiWYTN8wJrWMwEUYwBxERxuDSLu",
+    "4kXc8THxPYKZH3kVcjxHpuft2yk3tY4gbbykcdvvMAfXu4n9QqmhdFH6FQPxPRpczesgx5ETaPrb6eRY4QoF6VeL",
+    "4cYjpraKh53ztiTkNRQuuQUCNh4YWZYAqu77bXKxwK3nZYdcyy5Nh4sTbygruyvmXtxiWaNgAMnDiJ9oTxezkCdt",
+    "yRGisJMBhBiXBEX5nP9fNfsmtu3g35Cvwe2N2Zo3aMzipByEhzQqXDv4yCFx4wzso9A4h6DMVMp3mnVErpdTRYj",
+    "3dcAfu7YZ5JzFigzqKk3KpWRpGspDYv76nLaxSCbhaqViec2wWS15yTR4xY1RtL1rREMNkAptCSK5dqpVY58pN5g",
+    "5GmXrvRKeTqSTaV4rcSBNdbZJxYtXghvYr2QSUEdpnhutS8vMHAdDrfRMxcei5rg13ymbubGXJ96L6qhJLhZjeP5",
+    "Y8GQVz4YeDWP8ANkXTPMcPJTPNE7hmPGWoCTAA2wwLBQzYzn7xW1tPuWhe9juSTngDaBfWkeJNCTZBvde7EpMv9",
+    "3g4ofgVzGLMJStR8k3kxdCJ9v8nA3GoFWM5ri4ucpKZaK6xSuYtj75VrZJFki5b1L5Uyo1RKMN7DBEG42x9zwXGi",
+    "2Y1Q8eYqYxgJAtet7pSQYX533JARF3aC17iirsdL9HyHmp2kRs5Aho7sF4AJduxzvZsuNsAoijs4BomCq38r1MQK",
+    "5UUhV1e3QWcDNLymVkiLrnCvJnRxYBwr2obC7WU4atDZmy3Fr7eudWudTCUV3HCdrt3jKxEdnuWymhuiB45GsbUU",
+    "3hRKrDoemyq5D6riHd5KiZRqrNMsLj2sM16sP75ag79V2W1MZpZDabhtGX6vjHjCsicPd9FnMgC7pHZQSRuCbNTu"
   ],
-  "lastRun": "2026-11-18T10:26:34.842Z"
+  "lastRun": "2026-11-18T18:59:50.308Z"
 }

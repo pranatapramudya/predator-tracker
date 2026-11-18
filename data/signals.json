@@ -1,5 +1,19 @@
 [
   {
+    "timestamp": "2026-11-18T18:55:47.590Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "BUY",
+    "tokenSymbol": "Rocco",
+    "tokenAddress": "6qNMHrswqq4tB9aSBCa66orADDH3vYRcoQiS2XnJpump",
+    "usdValue": 210.3259312453529,
+    "priceUsd": 0.0005171,
+    "txUrl": "https://solscan.io/tx/Y8GQVz4YeDWP8ANkXTPMcPJTPNE7hmPGWoCTAA2wwLBQzYzn7xW1tPuWhe9juSTngDaBfWkeJNCTZBvde7EpMv9",
+    "rugVerdict": "CAUTION",
+    "confluenceCount": 1
+  },
+  {
     "timestamp": "2026-11-17T11:42:05.445Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #2",
