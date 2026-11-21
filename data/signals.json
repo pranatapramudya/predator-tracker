@@ -1,5 +1,47 @@
 [
   {
+    "timestamp": "2026-11-21T02:29:50.979Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "BUY",
+    "tokenSymbol": "JENSEN",
+    "tokenAddress": "DkHsZ1kjd2Fua8sgKE6PhHhyCdXYscbDVN7mAfiGpump",
+    "usdValue": 463.19895151117004,
+    "priceUsd": 0.002065,
+    "txUrl": "https://solscan.io/tx/3RwQGMEeTsonZuSS5jib6Nvdn59YVHcBE21VMxWbrmzrAL7NVW8gV6R5gjgDrU7YTBmkC9af9ppEuKE23VQPdAsA",
+    "rugVerdict": "CAUTION",
+    "confluenceCount": 1
+  },
+  {
+    "timestamp": "2026-11-21T02:29:48.936Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "BUY",
+    "tokenSymbol": "JENSEN",
+    "tokenAddress": "DkHsZ1kjd2Fua8sgKE6PhHhyCdXYscbDVN7mAfiGpump",
+    "usdValue": 233.0187047657,
+    "priceUsd": 0.002065,
+    "txUrl": "https://solscan.io/tx/5PcC64LaDgZVdhSd2pmtHYi4jn9pnCAFmjx9a4QxtBdMbpAe2oVw8k3Z7dcaVHTujEqf3QzG1X4RbLze96czovHR",
+    "rugVerdict": "CAUTION",
+    "confluenceCount": 1
+  },
+  {
+    "timestamp": "2026-11-21T02:29:46.918Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "BUY",
+    "tokenSymbol": "JENSEN",
+    "tokenAddress": "DkHsZ1kjd2Fua8sgKE6PhHhyCdXYscbDVN7mAfiGpump",
+    "usdValue": 473.330287115455,
+    "priceUsd": 0.002065,
+    "txUrl": "https://solscan.io/tx/NTRKqbFuUJa91ymLHfohE5UxpnaGjJ72z9K8YkjPEnHQ2vaEiaSZjjdspS4JAWYqYxjzQcuQQnze3hotHQtR6a9",
+    "rugVerdict": "CAUTION",
+    "confluenceCount": 1
+  },
+  {
     "timestamp": "2026-11-20T13:19:26.902Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #2",
