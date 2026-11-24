@@ -1,5 +1,33 @@
 [
   {
+    "timestamp": "2026-11-24T20:39:05.533Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "SELL",
+    "tokenSymbol": "GROKIA",
+    "tokenAddress": "3cL47ohWa2HApLYKtqPsqkjaxJ6HLvT5Ri1KvWdXpump",
+    "usdValue": 1992.448090378214,
+    "priceUsd": 0.001622,
+    "txUrl": "https://solscan.io/tx/gm5KHQnCtWwqeQK1hzqxUsC7zMHxXcR1ehXPpVpbE65SNACmBjAnd7YHERo9kSQcKANPiE7psYefCTYxdm3NJUV",
+    "rugVerdict": "N/A",
+    "confluenceCount": 1
+  },
+  {
+    "timestamp": "2026-11-24T20:39:03.545Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "SELL",
+    "tokenSymbol": "GROKIA",
+    "tokenAddress": "3cL47ohWa2HApLYKtqPsqkjaxJ6HLvT5Ri1KvWdXpump",
+    "usdValue": 1434.462557098977,
+    "priceUsd": 0.001631,
+    "txUrl": "https://solscan.io/tx/hJ3neNvzDgWs4USua91dnS48adWTAywf3Q4AVYQmoPgrykaT6bHZkSLLLS7r3VAVo6fuai2CL6YvTjYUhRRVn2L",
+    "rugVerdict": "N/A",
+    "confluenceCount": 1
+  },
+  {
     "timestamp": "2026-11-24T10:09:05.792Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #2",
