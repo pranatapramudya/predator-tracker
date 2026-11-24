@@ -1,5 +1,19 @@
 [
   {
+    "timestamp": "2026-11-24T00:22:27.185Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "BUY",
+    "tokenSymbol": "TIMOTHY",
+    "tokenAddress": "AWg6LmGPfqjEqAU8N8wR8mYTbwmkwqMUqzrmggbgpump",
+    "usdValue": 161.61036199933142,
+    "priceUsd": 0.0001283,
+    "txUrl": "https://solscan.io/tx/5h75Aiy2Qhwup1xzJqUt1hbsDH8Y9Dd5X35jhvumqH9mJEfHjQKMHPgxxMCfyfcfFxsTq9CP5d3sLxE8yMFT1PaS",
+    "rugVerdict": "CAUTION",
+    "confluenceCount": 1
+  },
+  {
     "timestamp": "2026-11-22T22:45:41.424Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #2",
