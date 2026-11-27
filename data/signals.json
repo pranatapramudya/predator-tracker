@@ -1,5 +1,19 @@
 [
   {
+    "timestamp": "2026-11-27T04:53:33.292Z",
+    "network": "SOLANA",
+    "whaleName": "Smart Money Alpha #2",
+    "walletAddress": "A3EkubssaFS1UP1DfYCEVsjndSZ7SYWbWTqDDUER73mv",
+    "action": "BUY",
+    "tokenSymbol": "KAI",
+    "tokenAddress": "G2ZDG8q3QMYk3KR58JFFYsvaTk4Gy94UzMo7Re7spump",
+    "usdValue": 47618.402915756815,
+    "priceUsd": 0.002935,
+    "txUrl": "https://solscan.io/tx/rgVoDnSAhw4naeqi2uFhpw3dCL3oQYirUhf3bhLcZTX3Sj1G6nKXvTb7f6xdCwMN5eqXh7afegJsALUE6mqGgz6",
+    "rugVerdict": "CAUTION",
+    "confluenceCount": 1
+  },
+  {
     "timestamp": "2026-11-26T14:11:27.121Z",
     "network": "SOLANA",
     "whaleName": "Smart Money Alpha #2",
